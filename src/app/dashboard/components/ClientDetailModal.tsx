@@ -27,7 +27,13 @@ export default function ClientDetailModal({
       setLoadingPayments(true)
       try {
         const res = await fetch(`/api/payments?clientId=${client.id}`)
-        if (!res.ok) throw new Error("Error cargando historial")
+  
+        if (!res.ok) {
+          const txt = await res.text()
+          console.error("Payments fetch failed:", res.status, txt)
+          throw new Error("Error cargando historial")
+        }
+  
         const data: Payment[] = await res.json()
         setPayments(data)
       } catch (e) {
@@ -36,9 +42,10 @@ export default function ClientDetailModal({
         setLoadingPayments(false)
       }
     }
-
+  
     loadPayments()
   }, [client.id])
+  
 
   const handleSave = async () => {
     setSaving(true)

@@ -1,72 +1,126 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/lib/supabaseClient"
 
+// GET /api/payments?clientId=uuid
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const clientId = searchParams.get("clientId")
+
+    if (!clientId) {
+      return NextResponse.json(
+        { error: "clientId is required" },
+        { status: 400 }
+      )
+    }
+
+    const { data, error } = await supabase
+      .from("payments")
+      .select(`
+        id,
+        amount,
+        plan,
+        discount,
+        debt,
+        next_payment_date,
+        period_from,
+        period_to,
+        created_at
+      `)
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Supabase GET payments error:", error)
+      return NextResponse.json(
+        { error: "Error fetching payments" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data ?? [])
+  } catch (e) {
+    console.error("GET payments unexpected error:", e)
+    return NextResponse.json(
+      { error: "Unexpected error fetching payments" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/payments
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json()
     const {
       clientId,
       amount,
       plan,
-      discount,
-      debt,
+      discount = 0,
+      debt = 0,
       periodFrom,
       periodTo,
-    } = await req.json();
+    } = body
 
-    // 1) Insert payment
+    if (!clientId || !plan) {
+      return NextResponse.json(
+        { error: "clientId and plan are required" },
+        { status: 400 }
+      )
+    }
+
+    const numericAmount = Number(amount || 0)
+    const numericDiscount = Number(discount || 0)
+    const numericDebt = Number(debt || 0)
+
+    // Insert payment
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .insert([
         {
           client_id: clientId,
-          amount,
+          amount: numericAmount,
           plan,
-          discount,
-          debt,
-          period_from: periodFrom,
-          period_to: periodTo,
-          next_payment_date: periodTo,
+          discount: numericDiscount,
+          debt: numericDebt,
+          period_from: periodFrom ?? null,
+          period_to: periodTo ?? null,
+          next_payment_date: periodTo ?? null, // lo usamos como "vencimiento"
         },
       ])
       .select()
-      .single();
+      .single()
 
     if (paymentError) {
-      console.error(paymentError);
+      console.error("Supabase POST payments error:", paymentError)
       return NextResponse.json(
-        { error: "Error inserting payment" },
+        { error: "Error registrando pago" },
         { status: 500 }
-      );
+      )
     }
 
-    // 2) Update client snapshot fields
-    // active_until = period_to + 45 days
-    const activeUntil = new Date(periodTo);
-    activeUntil.setDate(activeUntil.getDate() + 45);
-
-    const { error: updateErr } = await supabase
+    // Update client snapshot (deuda actual + próximo vencimiento)
+    const { error: clientError } = await supabase
       .from("clients")
       .update({
-        plan: plan,
-        last_payment_amount: amount,
+        current_debt: numericDebt,
+        last_payment_amount: numericAmount,
         last_payment_date: new Date().toISOString().slice(0, 10),
-        next_payment_date: periodTo,
-        current_debt: debt,
-        active_until: activeUntil.toISOString().slice(0, 10),
+        next_payment_date: periodTo ?? null,
       })
-      .eq("id", clientId);
+      .eq("id", clientId)
 
-    if (updateErr) {
-      console.error(updateErr);
-      return NextResponse.json(
-        { error: "Error updating client after payment" },
-        { status: 500 }
-      );
+    if (clientError) {
+      console.error("Supabase updating client after payment:", clientError)
+      // no cortamos el flujo, porque el pago ya quedó guardado
     }
 
-    return NextResponse.json(payment, { status: 201 });
-  } catch (err) {
-    console.error("Payment POST error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(payment, { status: 201 })
+  } catch (e) {
+    console.error("POST payments unexpected error:", e)
+    return NextResponse.json(
+      { error: "Unexpected error registering payment" },
+      { status: 500 }
+    )
   }
 }
