@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 
 export async function GET() {
+  // Traemos clients + relación payments
   const { data, error } = await supabase
     .from("clients")
     .select(`
@@ -11,13 +12,19 @@ export async function GET() {
       phone,
       address,
       address_number,
-      due_day,
-      payments:payments (
+      plan,
+      current_debt,
+      last_payment_amount,
+      next_payment_date,
+      created_at,
+      payments (
+        id,
         amount,
         plan,
         discount,
         debt,
-        next_payment_date,
+        period_from,
+        period_to,
         created_at
       )
     `)
@@ -38,19 +45,16 @@ export async function GET() {
   const result = (data ?? []).map((client: any) => {
     const payments = client.payments ?? []
 
+    // Ordenamos pagos desc para obtener el último
     const sorted = [...payments].sort(
       (a, b) =>
-        new Date(b.created_at).getTime() -
-        new Date(a.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
     const lastPayment = sorted[0]
 
     const paymentsThisMonth = payments.filter((p: any) => {
       const d = new Date(p.created_at)
-      return (
-        d.getMonth() === currentMonth &&
-        d.getFullYear() === currentYear
-      )
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
     })
 
     const totalPaidThisMonth = paymentsThisMonth.reduce(
@@ -58,11 +62,20 @@ export async function GET() {
       0
     )
 
-    const currentPlan = lastPayment?.plan ?? null
-    const currentDebt = Number(lastPayment?.debt ?? 0)
-    const nextDue = lastPayment?.next_payment_date ?? null
+    // Plan actual: el del último pago, si existe, sino el del cliente
+    const currentPlan = lastPayment?.plan ?? client.plan ?? null
 
-    // Pago “total” del mes = algo pagado este mes y deuda 0
+    // Deuda actual:
+    // prioridad al último pago (porque refleja lo que quedó post-pago),
+    // fallback a campo current_debt en clients
+    const currentDebt =
+      lastPayment?.debt != null
+        ? Number(lastPayment.debt)
+        : Number(client.current_debt || 0)
+
+    // Vencimiento = "Hasta" (period_to) del último pago
+    const nextDue = lastPayment?.period_to ?? client.next_payment_date ?? null
+
     const isMonthFullyPaid = totalPaidThisMonth > 0 && currentDebt <= 0
 
     return {
@@ -72,7 +85,6 @@ export async function GET() {
       phone: client.phone,
       address: client.address,
       addressNumber: client.address_number,
-      dueDay: client.due_day,
       currentPlan,
       currentDebt,
       totalPaidThisMonth,
