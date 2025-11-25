@@ -1,16 +1,30 @@
 "use client"
 
+import React from "react"
+
+type ModalSize = "small" | "normal" | "large"
+
+const SIZE_CLASSES: Record<ModalSize, string> = {
+  small: "max-w-xl",        // ~480–600px
+  normal: "max-w-3xl",      // como ahora
+  large: "max-w-5xl",       // más ancho para formularios grandes
+}
+
+type ModalProps = {
+  children: React.ReactNode
+  onClose: () => void
+  className?: string
+  size?: ModalSize
+}
+
 export default function Modal({
   children,
   onClose,
   className = "",
-  maxWidth = "max-w-3xl",
-}: {
-  children: React.ReactNode
-  onClose: () => void
-  className?: string
-  maxWidth?: string
-}) {
+  size = "normal",
+}: ModalProps) {
+  const maxWidth = SIZE_CLASSES[size]
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div

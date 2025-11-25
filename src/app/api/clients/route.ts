@@ -47,8 +47,15 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date()
+
+    // límites del mes actual (inclusive start, exclusive end)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
     const mapped = (data ?? []).map((client: any) => {
-      const payments = client.payments ?? []
+      const payments = (client.payments ?? []) as any[]
+
+      // último pago por fecha de creación
       const lastPayment = [...payments].sort(
         (a, b) =>
           new Date(b.created_at).getTime() -
@@ -63,9 +70,21 @@ export async function GET(req: NextRequest) {
       if (nextDue) {
         const due = new Date(nextDue)
         const inactiveThreshold = new Date(due)
-        inactiveThreshold.setDate(inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS)
+        inactiveThreshold.setDate(
+          inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS
+        )
         if (now > inactiveThreshold) computedStatus = "inactive"
       }
+
+      // calcular total pagado en el mes actual
+      const totalPaidThisMonth = payments.reduce((sum, p) => {
+        if (!p.created_at) return sum
+        const created = new Date(p.created_at)
+        if (created >= monthStart && created < monthEnd) {
+          return sum + Number(p.amount ?? 0)
+        }
+        return sum
+      }, 0)
 
       return {
         id: client.id,
@@ -76,7 +95,7 @@ export async function GET(req: NextRequest) {
         addressNumber: client.address_number,
         currentPlan: lastPayment?.plan ?? null,
         currentDebt,
-        totalPaidThisMonth: 0, // ya no lo calculamos acá
+        totalPaidThisMonth,
         nextDue,
         isMonthFullyPaid: currentDebt <= 0,
         computedStatus,

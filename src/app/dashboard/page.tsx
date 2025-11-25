@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import TopBar from "./components/TopBar"
+import TopBar from "./components/TopBar" // <- si después no lo usamos, lo podés borrar
 import SearchBar from "./components/SearchBar"
 import StatsGrid from "./components/StatsGrid"
 import ClientsTable from "./components/ClientsTable"
@@ -58,7 +58,9 @@ export default function DashboardPage() {
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null)
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortKey, setSortKey] = useState<"name" | "plan" | "paid" | "debt" | "due">("name")
+  const [sortKey, setSortKey] = useState<
+    "name" | "plan" | "paid" | "debt" | "due"
+  >("name")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   const [status, setStatus] = useState<"active" | "inactive">("active")
@@ -132,7 +134,9 @@ export default function DashboardPage() {
         case "name":
           return a.name.localeCompare(b.name) * dir
         case "plan":
-          return (a.currentPlan ?? "").localeCompare(b.currentPlan ?? "") * dir
+          return (
+            (a.currentPlan ?? "").localeCompare(b.currentPlan ?? "") * dir
+          )
         case "paid":
           return (
             (a.isMonthFullyPaid ? 1 : 0) - (b.isMonthFullyPaid ? 1 : 0)
@@ -151,57 +155,118 @@ export default function DashboardPage() {
   }, [clients, searchTerm, sortKey, sortDir])
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TopBar
-        onNewPayment={() => openNewPayment()}
-        onNewClient={() => setShowNewClient(true)}
-      />
+    <div className="min-h-screen bg-slate-200 flex items-stretch justify-center px-4 py-8">
+      {/* CONTENEDOR PRINCIPAL (la “card grande” del prototipo) */}
+      <div className="w-full max-w-550 rounded-3xl bg-gradient-to-br from-slate-100 via-amber-50/40 to-slate-100 shadow-xl border border-white/60 relative overflow-hidden">
+        {/* HEADER: nombre del gym + acciones */}
+        <header className="flex items-center justify-between px-8 pt-6 pb-4">
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-lg font-semibold text-slate-900">
+              Energym
+            </h1>
+            <span className="h-5 w-px bg-slate-300" />
+            <span className="text-xs uppercase tracking-wide text-slate-500">
+              dashboard
+            </span>
+          </div>
 
-      <main className="px-8 py-6">
-        <SearchBar value={searchTerm} onChange={setSearchTerm} />
-        <StatsGrid {...stats} />
+          <div className="flex gap-3">
+            <button
+              onClick={() => openNewPayment()}
+              className="rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              Registrar pago
+            </button>
+            <button
+              onClick={() => setShowNewClient(true)}
+              className="rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-slate-900 border border-slate-200 hover:bg-white"
+            >
+              Agregar cliente
+            </button>
+          </div>
+        </header>
 
-        {/* TABS Active / Inactive */}
-        <div className="mb-3 flex items-center gap-2">
-          <button
-            onClick={() => setStatus("active")}
-            className={`rounded-md px-4 py-2 text-sm font-medium border transition
-              ${
-                status === "active"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-              }`}
-          >
-            Activos
-          </button>
+        {/* STATS */}
+        <section className="px-8 pb-4">
+          <StatsGrid {...stats} />
+        </section>
 
-          <button
-            onClick={() => setStatus("inactive")}
-            className={`rounded-md px-4 py-2 text-sm font-medium border transition
-              ${
-                status === "inactive"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-              }`}
-          >
-            Inactivos
-          </button>
+        {/* FILA: Tabs + Buscador + Paginador */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-8">
+
+          {/* Tabs */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStatus("active")}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition ${status === "active"
+                  ? "bg-slate-900 text-white shadow-md"
+                  : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                }`}
+            >
+              Activos
+            </button>
+
+            <button
+              onClick={() => setStatus("inactive")}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition ${status === "inactive"
+                  ? "bg-slate-900 text-white shadow-md"
+                  : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                }`}
+            >
+              Inactivos
+            </button>
+          </div>
+
+          {/* Buscador */}
+          <div className="flex-1 flex justify-end align-middle">
+            <SearchBar value={searchTerm} onChange={setSearchTerm} />
+          </div>
+
+          {/* Paginador simple */}
+          <div className="flex items-center gap-4 text-sm text-slate-600">
+
+            {/* Selector de cantidad */}
+            <select
+              className="border rounded-md px-2 py-1"
+              value={50}
+              onChange={() => { }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+
+            <span>1 - 50 de {clients.length}</span>
+
+            <button className="p-1 hover:bg-slate-200 rounded-md">
+              ‹
+            </button>
+            <button className="p-1 hover:bg-slate-200 rounded-md">
+              ›
+            </button>
+          </div>
         </div>
 
-        <ClientsTable
-          clients={sortedClients}
-          loading={loading}
-          error={error}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onToggleSort={toggleSort}
-          onOpenDetail={setDetailClient}
-        />
-      </main>
 
-      {/* MODAL NUEVO CLIENTE */}
+        {/* TABLA */}
+        <section className="px-4 pb-6">
+          <div className="rounded-3xl bg-white/70 backdrop-blur border border-white/80 overflow-hidden">
+            <ClientsTable
+              clients={sortedClients}
+              loading={loading}
+              error={error}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggleSort={toggleSort}
+              onOpenDetail={setDetailClient}
+            />
+          </div>
+        </section>
+      </div>
+
+      {/* MODALS */}
       {showNewClient && (
-        <Modal onClose={() => setShowNewClient(false)}>
+        <Modal size="small" onClose={() => setShowNewClient(false)}>
           <NewClientModal
             onClose={() => setShowNewClient(false)}
             onCreated={fetchClients}
@@ -209,9 +274,8 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {/* MODAL NUEVO PAGO */}
       {isNewPaymentOpen && (
-        <Modal onClose={closeNewPayment}>
+        <Modal size="large" onClose={closeNewPayment}>
           <NewPaymentModal
             clients={clients}
             preselectedClientId={paymentClientId}
@@ -224,17 +288,16 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {/* MODAL DETALLE DE CLIENTE */}
       {detailClient && (
         <Modal onClose={() => setDetailClient(null)}>
           <ClientDetailModal
             client={detailClient}
             onClose={() => setDetailClient(null)}
             onChanged={fetchClients}
-            onRegisterPayment={(clientId) => {
-              // cierro detalle y abro modal de pago para ese cliente
+            onRegisterPayment={(id) => {
+              // cerrar el detalle y abrir modal de pago con el cliente preseleccionado
               setDetailClient(null)
-              openNewPayment(clientId)
+              openNewPayment(id)
             }}
           />
         </Modal>
