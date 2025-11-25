@@ -7,11 +7,14 @@ export default function ClientDetailModal({
   client,
   onClose,
   onChanged,
+  onRegisterPayment,
 }: {
   client: ClientRow
   onClose: () => void
   onChanged: () => void
+  onRegisterPayment: (clientId: string) => void
 }) {
+  // === Local state ==================================================
   const [email, setEmail] = useState(client.email ?? "")
   const [phone, setPhone] = useState(client.phone ?? "")
   const [address, setAddress] = useState(client.address ?? "")
@@ -22,18 +25,19 @@ export default function ClientDetailModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // === Load payment history ==========================================
   useEffect(() => {
     const loadPayments = async () => {
       setLoadingPayments(true)
       try {
         const res = await fetch(`/api/payments?clientId=${client.id}`)
-  
+
         if (!res.ok) {
           const txt = await res.text()
           console.error("Payments fetch failed:", res.status, txt)
           throw new Error("Error cargando historial")
         }
-  
+
         const data: Payment[] = await res.json()
         setPayments(data)
       } catch (e) {
@@ -42,11 +46,11 @@ export default function ClientDetailModal({
         setLoadingPayments(false)
       }
     }
-  
+
     loadPayments()
   }, [client.id])
-  
 
+  // === Save changes ===================================================
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -73,6 +77,7 @@ export default function ClientDetailModal({
     }
   }
 
+  // === Delete client ==================================================
   const handleDelete = async () => {
     if (!confirm("¿Eliminar este cliente y todo su historial de pagos?")) return
 
@@ -91,8 +96,12 @@ export default function ClientDetailModal({
     }
   }
 
+  // ====================================================================
+  // === RENDER ==========================================================
+  // ====================================================================
   return (
     <div className="space-y-5 text-sm p-6">
+      {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold mb-1">Detalle de cliente</h2>
@@ -101,16 +110,25 @@ export default function ClientDetailModal({
           </p>
         </div>
 
-        <button
-          onClick={handleDelete}
-          className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-          disabled={deleting}
-        >
-          {deleting ? "Eliminando..." : "Eliminar cliente"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onRegisterPayment(client.id)}
+            className="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
+          >
+            Registrar pago
+          </button>
+
+          <button
+            onClick={handleDelete}
+            className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+            disabled={deleting}
+          >
+            {deleting ? "Eliminando..." : "Eliminar cliente"}
+          </button>
+        </div>
       </div>
 
-      {/* Datos del cliente */}
+      {/* Form fields */}
       <div className="rounded-md border bg-slate-50 p-3 space-y-3">
         <div>
           <label className="mb-1 block text-xs font-medium">
@@ -174,80 +192,79 @@ export default function ClientDetailModal({
         </div>
       </div>
 
-     {/* Historial de pagos */}
-<div>
-  <h3 className="mb-2 text-sm font-semibold">Historial de pagos</h3>
+      {/* Historial */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Historial de pagos</h3>
 
-  <div className="max-h-64 overflow-auto rounded-md border">
-    {loadingPayments ? (
-      <div className="p-4 text-xs text-slate-500">
-        Cargando historial...
+        <div className="max-h-64 overflow-auto rounded-md border">
+          {loadingPayments ? (
+            <div className="p-4 text-xs text-slate-500">
+              Cargando historial...
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="p-4 text-xs text-slate-500">
+              Este cliente aún no tiene pagos registrados.
+            </div>
+          ) : (
+            <table className="min-w-full text-xs">
+              <thead className="bg-slate-100 text-slate-500">
+                <tr>
+                  <th className="py-2 px-2 text-left">Fecha</th>
+                  <th className="py-2 px-2 text-left">Plan</th>
+                  <th className="py-2 px-2 text-right">Pago</th>
+                  <th className="py-2 px-2 text-right">Bonificación</th>
+                  <th className="py-2 px-2 text-right">Deuda</th>
+                  <th className="py-2 px-2 text-left">Desde</th>
+                  <th className="py-2 px-2 text-left">Hasta</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="py-2 px-2">
+                      {new Date(p.created_at).toLocaleDateString("es-AR")}
+                    </td>
+                    <td className="py-2 px-2">{p.plan ?? "—"}</td>
+                    <td className="py-2 px-2 text-right">
+                      {"$" +
+                        (p.amount ?? 0).toLocaleString("es-AR", {
+                          maximumFractionDigits: 0,
+                        })}
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      {p.discount != null && p.discount > 0
+                        ? "$" +
+                          p.discount.toLocaleString("es-AR", {
+                            maximumFractionDigits: 0,
+                          })
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      {p.debt != null
+                        ? "$" +
+                          p.debt.toLocaleString("es-AR", {
+                            maximumFractionDigits: 0,
+                          })
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-2">
+                      {p.period_from
+                        ? new Date(p.period_from).toLocaleDateString("es-AR")
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-2">
+                      {p.period_to
+                        ? new Date(p.period_to).toLocaleDateString("es-AR")
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    ) : payments.length === 0 ? (
-      <div className="p-4 text-xs text-slate-500">
-        Este cliente aún no tiene pagos registrados.
-      </div>
-    ) : (
-      <table className="min-w-full text-xs">
-        <thead className="bg-slate-100 text-slate-500">
-          <tr>
-            <th className="py-2 px-2 text-left">Fecha</th>
-            <th className="py-2 px-2 text-left">Plan</th>
-            <th className="py-2 px-2 text-right">Pago</th>
-            <th className="py-2 px-2 text-right">Bonificación</th>
-            <th className="py-2 px-2 text-right">Deuda</th>
-            <th className="py-2 px-2 text-left">Desde</th>
-            <th className="py-2 px-2 text-left">Hasta</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {payments.map((p) => (
-            <tr key={p.id} className="border-t">
-              <td className="py-2 px-2">
-                {new Date(p.created_at).toLocaleDateString("es-AR")}
-              </td>
-              <td className="py-2 px-2">{p.plan ?? "—"}</td>
-              <td className="py-2 px-2 text-right">
-                {"$" +
-                  (p.amount ?? 0).toLocaleString("es-AR", {
-                    maximumFractionDigits: 0,
-                  })}
-              </td>
-              <td className="py-2 px-2 text-right">
-                {p.discount != null && p.discount > 0
-                  ? "$" +
-                    p.discount.toLocaleString("es-AR", {
-                      maximumFractionDigits: 0,
-                    })
-                  : "—"}
-              </td>
-              <td className="py-2 px-2 text-right">
-                {p.debt != null
-                  ? "$" +
-                    p.debt.toLocaleString("es-AR", {
-                      maximumFractionDigits: 0,
-                    })
-                  : "—"}
-              </td>
-              <td className="py-2 px-2">
-                {p.period_from
-                  ? new Date(p.period_from).toLocaleDateString("es-AR")
-                  : "—"}
-              </td>
-              <td className="py-2 px-2">
-                {p.period_to
-                  ? new Date(p.period_to).toLocaleDateString("es-AR")
-                  : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )}
-  </div>
-</div>
-
     </div>
   )
 }

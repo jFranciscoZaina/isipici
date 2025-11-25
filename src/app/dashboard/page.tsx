@@ -49,7 +49,12 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [showNewClient, setShowNewClient] = useState(false)
-  const [showNewPayment, setShowNewPayment] = useState(false)
+
+  // Modal de pago
+  const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false)
+  const [paymentClientId, setPaymentClientId] = useState<string | undefined>()
+
+  // Modal de detalle
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null)
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -58,6 +63,16 @@ export default function DashboardPage() {
 
   const [status, setStatus] = useState<"active" | "inactive">("active")
 
+  // Helpers para el modal de pago
+  const openNewPayment = (clientId?: string) => {
+    setPaymentClientId(clientId)
+    setIsNewPaymentOpen(true)
+  }
+
+  const closeNewPayment = () => {
+    setIsNewPaymentOpen(false)
+    setPaymentClientId(undefined)
+  }
 
   const fetchClients = useCallback(async () => {
     try {
@@ -74,21 +89,26 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }, [status])
-  
 
   useEffect(() => {
     fetchClients()
   }, [fetchClients])
 
-  const stats = useMemo(() => ({
-    totalClients: clients.length,
-    clientsWithDebt: clients.filter(c => (c.currentDebt ?? 0) > 0).length,
-    monthlyIncome: clients.reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
-  }), [clients])
+  const stats = useMemo(
+    () => ({
+      totalClients: clients.length,
+      clientsWithDebt: clients.filter((c) => (c.currentDebt ?? 0) > 0).length,
+      monthlyIncome: clients.reduce(
+        (sum, c) => sum + (c.totalPaidThisMonth || 0),
+        0
+      ),
+    }),
+    [clients]
+  )
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) {
-      setSortDir(prev => (prev === "asc" ? "desc" : "asc"))
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
     } else {
       setSortKey(key)
       setSortDir("asc")
@@ -97,26 +117,35 @@ export default function DashboardPage() {
 
   const sortedClients = useMemo(() => {
     const q = searchTerm.toLowerCase().trim()
-    const filtered = clients.filter(c =>
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      (c.email ?? "").toLowerCase().includes(q) ||
-      (c.phone ?? "").toLowerCase().includes(q)
+    const filtered = clients.filter(
+      (c) =>
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        (c.email ?? "").toLowerCase().includes(q) ||
+        (c.phone ?? "").toLowerCase().includes(q)
     )
 
     const dir = sortDir === "asc" ? 1 : -1
 
     return [...filtered].sort((a, b) => {
       switch (sortKey) {
-        case "name": return a.name.localeCompare(b.name) * dir
-        case "plan": return (a.currentPlan ?? "").localeCompare(b.currentPlan ?? "") * dir
-        case "paid": return ((a.isMonthFullyPaid ? 1 : 0) - (b.isMonthFullyPaid ? 1 : 0)) * dir
-        case "debt": return (a.currentDebt - b.currentDebt) * dir
-        case "due":
+        case "name":
+          return a.name.localeCompare(b.name) * dir
+        case "plan":
+          return (a.currentPlan ?? "").localeCompare(b.currentPlan ?? "") * dir
+        case "paid":
+          return (
+            (a.isMonthFullyPaid ? 1 : 0) - (b.isMonthFullyPaid ? 1 : 0)
+          ) * dir
+        case "debt":
+          return (a.currentDebt - b.currentDebt) * dir
+        case "due": {
           const aDue = a.nextDue ? new Date(a.nextDue).getTime() : Infinity
           const bDue = b.nextDue ? new Date(b.nextDue).getTime() : Infinity
           return (aDue - bDue) * dir
-        default: return 0
+        }
+        default:
+          return 0
       }
     })
   }, [clients, searchTerm, sortKey, sortDir])
@@ -124,39 +153,40 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <TopBar
-        onNewPayment={() => setShowNewPayment(true)}
+        onNewPayment={() => openNewPayment()}
         onNewClient={() => setShowNewClient(true)}
       />
 
       <main className="px-8 py-6">
         <SearchBar value={searchTerm} onChange={setSearchTerm} />
         <StatsGrid {...stats} />
-{/* TABS Active / Inactive */}
-<div className="mb-3 flex items-center gap-2">
-  <button
-    onClick={() => setStatus("active")}
-    className={`rounded-md px-4 py-2 text-sm font-medium border transition
-      ${
-        status === "active"
-          ? "bg-slate-900 text-white border-slate-900"
-          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-      }`}
-  >
-    Activos
-  </button>
 
-  <button
-    onClick={() => setStatus("inactive")}
-    className={`rounded-md px-4 py-2 text-sm font-medium border transition
-      ${
-        status === "inactive"
-          ? "bg-slate-900 text-white border-slate-900"
-          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-      }`}
-  >
-    Inactivos
-  </button>
-</div>
+        {/* TABS Active / Inactive */}
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            onClick={() => setStatus("active")}
+            className={`rounded-md px-4 py-2 text-sm font-medium border transition
+              ${
+                status === "active"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              }`}
+          >
+            Activos
+          </button>
+
+          <button
+            onClick={() => setStatus("inactive")}
+            className={`rounded-md px-4 py-2 text-sm font-medium border transition
+              ${
+                status === "inactive"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              }`}
+          >
+            Inactivos
+          </button>
+        </div>
 
         <ClientsTable
           clients={sortedClients}
@@ -169,28 +199,43 @@ export default function DashboardPage() {
         />
       </main>
 
+      {/* MODAL NUEVO CLIENTE */}
       {showNewClient && (
         <Modal onClose={() => setShowNewClient(false)}>
-          <NewClientModal onClose={() => setShowNewClient(false)} onCreated={fetchClients} />
-        </Modal>
-      )}
-
-      {showNewPayment && (
-        <Modal onClose={() => setShowNewPayment(false)} className="max-w-5xl">
-          <NewPaymentModal
-            clients={clients}
-            onClose={() => setShowNewPayment(false)}
+          <NewClientModal
+            onClose={() => setShowNewClient(false)}
             onCreated={fetchClients}
           />
         </Modal>
       )}
 
+      {/* MODAL NUEVO PAGO */}
+      {isNewPaymentOpen && (
+        <Modal onClose={closeNewPayment}>
+          <NewPaymentModal
+            clients={clients}
+            preselectedClientId={paymentClientId}
+            onClose={closeNewPayment}
+            onCreated={async () => {
+              await fetchClients()
+              closeNewPayment()
+            }}
+          />
+        </Modal>
+      )}
+
+      {/* MODAL DETALLE DE CLIENTE */}
       {detailClient && (
         <Modal onClose={() => setDetailClient(null)}>
           <ClientDetailModal
             client={detailClient}
             onClose={() => setDetailClient(null)}
             onChanged={fetchClients}
+            onRegisterPayment={(clientId) => {
+              // cierro detalle y abro modal de pago para ese cliente
+              setDetailClient(null)
+              openNewPayment(clientId)
+            }}
           />
         </Modal>
       )}

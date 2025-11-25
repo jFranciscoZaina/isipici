@@ -10,6 +10,7 @@ type Props = {
   clients: ClientRow[]
   onClose: () => void
   onCreated: () => void
+  preselectedClientId?: string
 }
 
 type PaymentRow = {
@@ -26,8 +27,8 @@ type PaymentRow = {
 const toISO = (d?: Date) =>
   d
     ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      .toISOString()
-      .slice(0, 10)
+        .toISOString()
+        .slice(0, 10)
     : ""
 
 const parseISO = (s?: string | null) =>
@@ -37,8 +38,9 @@ export default function NewPaymentModal({
   clients,
   onClose,
   onCreated,
+  preselectedClientId,
 }: Props) {
-  const [clientId, setClientId] = useState("")
+  const [clientId, setClientId] = useState(preselectedClientId ?? "")
   const [plan, setPlan] = useState<PlanType | "">("")
   const [amount, setAmount] = useState<number | "">("")
   const [discount, setDiscount] = useState<number | "">("")
@@ -47,8 +49,8 @@ export default function NewPaymentModal({
 
   const [selectedClientDebt, setSelectedClientDebt] = useState(0)
 
+  // markers para el calendario (pagado / deuda)
   const [markers, setMarkers] = useState<Record<string, "paid" | "debt">>({})
-
 
   // === Range calendar
   const [dateRange, setDateRange] = useState<DateRangeValue>({})
@@ -62,95 +64,94 @@ export default function NewPaymentModal({
   const hasDebt = (selectedClient?.currentDebt ?? 0) > 0
 
   const handleClientChange = async (id: string) => {
-  setClientId(id)
+    setClientId(id)
 
-  const c = clients.find((cl) => cl.id === id)
-  const d = c ? Number(c.currentDebt || 0) : 0
-  setSelectedClientDebt(d)
+    const c = clients.find((cl) => cl.id === id)
+    const d = c ? Number(c.currentDebt || 0) : 0
+    setSelectedClientDebt(d)
 
-  // --- 1) Traer TODOS los pagos del cliente (tenga o no deuda) ---
-  let pays: PaymentRow[] = []
+    // --- 1) Traer TODOS los pagos del cliente (tenga o no deuda) ---
+    let pays: PaymentRow[] = []
 
-  try {
-    const res = await fetch(`/api/payments?clientId=${id}`)
-    if (res.ok) {
-      pays = await res.json()
+    try {
+      const res = await fetch(`/api/payments?clientId=${id}`)
+      if (res.ok) {
+        pays = await res.json()
+      }
+    } catch (e) {
+      console.log("No pude cargar pagos del cliente:", e)
     }
-  } catch (e) {
-    console.log("No pude cargar pagos del cliente:", e)
-  }
 
     // --- 2) Construir markers para el calendario ---
-  const nextMarkers: Record<string, "paid" | "debt"> = {}
+    const nextMarkers: Record<string, "paid" | "debt"> = {}
 
-  pays.forEach((p) => {
-    if (!p.period_from || !p.period_to) return
+    pays.forEach((p) => {
+      if (!p.period_from || !p.period_to) return
 
-    const from = new Date(p.period_from + "T00:00:00")
-    const to = new Date(p.period_to + "T00:00:00")
+      const from = new Date(p.period_from + "T00:00:00")
+      const to = new Date(p.period_to + "T00:00:00")
 
-    for (let t = new Date(from); t <= to; t.setDate(t.getDate() + 1)) {
-      const key = t.toISOString().slice(0, 10)
-      nextMarkers[key] = Number(p.debt || 0) > 0 ? "debt" : "paid"
+      for (let t = new Date(from); t <= to; t.setDate(t.getDate() + 1)) {
+        const key = t.toISOString().slice(0, 10)
+        nextMarkers[key] = Number(p.debt || 0) > 0 ? "debt" : "paid"
+      }
+    })
+
+    // 👉 Si la deuda actual del cliente es 0, todos los días pasan a "paid" (verde)
+    if (d === 0) {
+      for (const key in nextMarkers) {
+        nextMarkers[key] = "paid"
+      }
     }
-  })
 
-  // 👉 Si la deuda actual del cliente es 0, todos los días pasan a "paid" (verde)
-  if (d === 0) {
-    for (const key in nextMarkers) {
-      nextMarkers[key] = "paid"
-    }
-  }
+    setMarkers(nextMarkers)
 
-  setMarkers(nextMarkers)
+    // --- 3) Lógica de deuda / bloqueo de calendario ---
+    if (d > 0) {
+      setPlan("Pago deuda")
+      setDiscount(0)
 
+      const withDebt = pays.filter((p) => Number(p.debt || 0) > 0)
+      const lastDebt = withDebt.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0]
 
-  // --- 3) Lógica de deuda / bloqueo de calendario ---
-  if (d > 0) {
-    setPlan("Pago deuda")
-    setDiscount(0)
+      if (lastDebt?.period_from && lastDebt?.period_to) {
+        const from = parseISO(lastDebt.period_from)
+        const to = parseISO(lastDebt.period_to)
 
-    const withDebt = pays.filter((p) => Number(p.debt || 0) > 0)
-    const lastDebt = withDebt.sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )[0]
+        setDateRange({ from, to })
+        setCalendarLocked(true)
 
-    if (lastDebt?.period_from && lastDebt?.period_to) {
-      const from = parseISO(lastDebt.period_from)
-      const to = parseISO(lastDebt.period_to)
+        // amount should start as full debt (then discount reduces it)
+        setAmount(d)
+        setDebt(0)
+        return
+      }
 
-      setDateRange({ from, to })
-      setCalendarLocked(true)
-
+      // fallback si hay deuda pero no encontramos período
+      setCalendarLocked(false)
+      setDateRange({})
       setAmount(d)
       setDebt(0)
-      return
+    } else {
+      // no hay deuda: todo editable, sin rango preseleccionado
+      setCalendarLocked(false)
+      setPlan("")
+      setAmount("")
+      setDiscount("")
+      setDebt("")
+      setDateRange({})
     }
-
-    // fallback si hay deuda pero no encontramos período
-    setCalendarLocked(false)
-    setDateRange({})
-    setAmount(d)
-    setDebt(0)
-  } else {
-    // no hay deuda: todo editable, sin rango preseleccionado
-    setCalendarLocked(false)
-    setPlan("")
-    setAmount("")
-    setDiscount("")
-    setDebt("")
-    setDateRange({})
   }
-}
-
 
   const handlePlanChange = (value: PlanType) => {
     if (hasDebt) return // locked
     setPlan(value)
   }
 
-  // === Rule 2: discount reduces amount, and remaining debt recalcs live (only for Pago deuda)
+  // === descuento recalcula amount y deuda (solo Pago deuda) ==========
   useEffect(() => {
     if (plan !== "Pago deuda") return
 
@@ -176,6 +177,14 @@ export default function NewPaymentModal({
     const newDebt = Math.max(baseDebt - aNum - disc, 0)
     setDebt((prev) => (prev === newDebt ? prev : newDebt))
   }, [plan, amount, discount, selectedClientDebt])
+
+  // === preseleccionar cliente cuando viene desde el detalle ==========
+  useEffect(() => {
+    if (preselectedClientId) {
+      handleClientChange(preselectedClientId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedClientId])
 
   const rangeLabel = useMemo(() => {
     if (!dateRange.from || !dateRange.to)
@@ -273,8 +282,9 @@ export default function NewPaymentModal({
                 Plan
               </label>
               <select
-                className={`w-full rounded-md border border-slate-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 ${hasDebt ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
+                className={`w-full rounded-md border border-slate-300 px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 ${
+                  hasDebt ? "opacity-70 cursor-not-allowed" : ""
+                }`}
                 value={plan}
                 onChange={(e) =>
                   handlePlanChange(e.target.value as PlanType)
@@ -365,7 +375,6 @@ export default function NewPaymentModal({
             numberOfMonths={2}
             markers={markers}
           />
-
 
           <p className="mt-4 text-sm text-slate-700">{rangeLabel}</p>
 
