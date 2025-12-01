@@ -1,4 +1,4 @@
-// src/app/api/dev/send-upcoming-reminders/route.ts
+// src/app/api/reminders/upcoming/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { sendUpcomingDueEmail } from "@/lib/email"
@@ -11,8 +11,14 @@ function formatDateDDMMYYYY(d: Date) {
 }
 
 // Endpoint para enviar recordatorios a clientes cuya cuota vence en 5 días.
-// En producción esto lo dispara un CRON/Job, no el usuario final.
-export async function POST(_req: NextRequest) {
+// En producción esto lo dispara un CRON, no el usuario final.
+export async function POST(req: NextRequest) {
+  // 🔐 Proteger endpoint para que solo lo llame el cron de Vercel
+  const auth = req.headers.get("authorization")
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized cron" }, { status: 401 })
+  }
+
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -76,7 +82,11 @@ export async function POST(_req: NextRequest) {
         results.push({ clientId: client.id, email: clientEmail, status: "sent" })
       } catch (err) {
         console.error("Error enviando recordatorio a", clientEmail, err)
-        results.push({ clientId: client.id, email: clientEmail, status: "error" })
+        results.push({
+          clientId: client.id,
+          email: clientEmail,
+          status: "error",
+        })
       }
     }
 
