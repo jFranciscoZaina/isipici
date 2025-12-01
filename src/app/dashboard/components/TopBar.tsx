@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 
 interface TopBarProps {
   onNewPayment: () => void
@@ -8,6 +8,8 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
+  const [gymName, setGymName] = useState<string | null>(null)
+
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" })
@@ -19,18 +21,40 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
     }
   }
 
+  useEffect(() => {
+    const loadGym = async () => {
+      try {
+        const res = await fetch("/api/auth/me")
+        if (res.ok) {
+          const data = await res.json()
+          setGymName(data.name)
+        } else {
+          console.error("No se pudo cargar el gym logueado")
+        }
+      } catch (e) {
+        console.error("Error cargando gym:", e)
+      }
+    }
+
+    loadGym()
+  }, [])
+
   return (
     <header className="flex items-center justify-between px-8 pt-6 pb-4">
-      {/* SECCIÓN IZQUIERDA: Logo y título */}
+      {/* IZQUIERDA: Nombre del proyecto + owner */}
       <div className="flex items-baseline gap-3">
-        <h1 className="text-lg font-semibold text-slate-900">Energym</h1>
-        <span className="h-5 w-px bg-slate-300" />
-        <span className="text-xs uppercase tracking-wide text-slate-500">
-          dashboard
-        </span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold tracking-wide text-slate-900">
+            ISIPICI
+          </span>
+          <span className="h-4 w-px bg-slate-300" />
+          <span className="text-xs text-slate-500">
+            {gymName ? gymName : "Cargando owner..."}
+          </span>
+        </div>
       </div>
 
-      {/* SECCIÓN DERECHA: Botones de acción + Logout */}
+      {/* DERECHA: Botones + logout */}
       <div className="flex items-center gap-3">
         <button
           onClick={onNewPayment}
@@ -38,7 +62,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         >
           Registrar pago
         </button>
-        
+
         <button
           onClick={onNewClient}
           className="rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-slate-900 border border-slate-200 hover:bg-white transition-colors"
@@ -46,7 +70,6 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
           Agregar cliente
         </button>
 
-        {/* Separador visual para el logout */}
         <div className="h-6 w-px bg-slate-300 mx-1" />
 
         <button

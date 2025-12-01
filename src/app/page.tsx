@@ -35,7 +35,7 @@ export default function LandingPage() {
           
           <header className="mb-8">
             <div className="text-sm font-semibold uppercase tracking-widest text-emerald-600 mb-2">
-              Gym-Registry
+              isipici
             </div>
             <h1 className="text-4xl font-extrabold leading-tight text-zinc-900 dark:text-white">
               SIMPLIFICA LA GESTIÓN. <span className="text-emerald-500">ENFÓCATE EN CRECER.</span>
