@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       const clientName = row.name as string
       const dueDate = row.next_due as string
       const gymId = row.gym_id as string
-      const gymName = row.gyms?.name ?? "Tu gimnasio"
+      const gymName = row.owners?.name ?? "Tu gimnasio"
 
       try {
         await sendUpcomingDueEmail({

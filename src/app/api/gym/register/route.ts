@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Supabase gyms insert error:", error)
+      console.error("Supabase owners insert error:", error)
       const message =
         (error as any).code === "23505"
           ? "Ya existe un gym con ese email"

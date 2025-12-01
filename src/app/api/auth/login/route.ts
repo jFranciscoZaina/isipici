@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error || !data) {
-      console.error("Supabase gyms select error:", error)
+      console.error("Supabase owners select error:", error)
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
