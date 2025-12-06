@@ -51,7 +51,10 @@ export default function Modal({
   const maxWidth = SIZE_CLASSES[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
       <div
         className={`
           relative w-full ${maxWidth}
@@ -63,6 +66,7 @@ export default function Modal({
         `}
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         {header && (

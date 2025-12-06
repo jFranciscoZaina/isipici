@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
+import type { PostgrestError } from "@supabase/supabase-js"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("Supabase owners insert error:", error)
       const message =
-        (error as any).code === "23505"
+        (error as PostgrestError | null)?.code === "23505"
           ? "Ya existe un gym con ese email"
           : "Error creando gym"
 

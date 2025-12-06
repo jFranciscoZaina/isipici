@@ -2,10 +2,7 @@ import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
 import { Check, X } from "react-feather";
 import { useState } from "react";
-import {
-  ClientContextMenu,
-  type ClientMenuAction,
-} from "./ClientContextMenu";
+import { ClientContextMenu, type ClientMenuAction } from "./ClientContextMenu";
 
 type Props = {
   clients: ClientRow[];
@@ -36,8 +33,10 @@ export default function ClientsTable({
 
   // Estado del menú contextual
   const [menuClient, setMenuClient] = useState<ClientRow | null>(null);
-  const [menuPosition, setMenuPosition] =
-    useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   const openMenu = (
     client: ClientRow,
@@ -107,11 +106,7 @@ export default function ClientsTable({
               >
                 Pago{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "paid"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
+                  {sortKey === "paid" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(0)}
@@ -127,11 +122,7 @@ export default function ClientsTable({
               >
                 Persona{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "name"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
+                  {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(1)}
@@ -147,11 +138,7 @@ export default function ClientsTable({
               >
                 Plan{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "plan"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
+                  {sortKey === "plan" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(2)}
@@ -167,11 +154,7 @@ export default function ClientsTable({
               >
                 Deuda{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "debt"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
+                  {sortKey === "debt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(3)}
@@ -187,11 +170,7 @@ export default function ClientsTable({
               >
                 Vencimientos{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "due"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
+                  {sortKey === "due" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(4)}
@@ -212,7 +191,7 @@ export default function ClientsTable({
               </th>
             </tr>
           </thead>
-
+          <div className="pb-p10" />
           {/* BODY */}
           <tbody className="bg-bg0 fs-12 text-app">
             {!loading &&

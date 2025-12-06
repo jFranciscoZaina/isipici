@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { sendUpcomingDueEmail } from "@/lib/email"
 
+type UpcomingClientRow = {
+  id: string
+  name: string
+  email: string | null
+  next_payment_date: string | null
+  gym_id: string | null
+}
+
 function formatDateDDMMYYYY(d: Date) {
   const day = String(d.getDate()).padStart(2, "0")
   const month = String(d.getMonth() + 1).padStart(2, "0")
@@ -52,9 +60,9 @@ async function handleUpcomingReminders(req: NextRequest) {
     const results: { clientId: string; email: string; status: string }[] = []
     const gymName = "Tu gimnasio" // MVP
 
-    for (const client of clients as any[]) {
+    for (const client of clients as UpcomingClientRow[]) {
       const clientEmail = client.email as string
-      const clientName = client.name as string
+      const clientName = client.name
       const gymId = client.gym_id ?? null
       const dueDateFormatted = formatDateDDMMYYYY(target)
 

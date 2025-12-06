@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
+  void _req
   const res = NextResponse.json({ ok: true })
 
   // Borrar cookie de sesión

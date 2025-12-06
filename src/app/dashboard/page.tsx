@@ -7,7 +7,6 @@ import SearchTabsAndPagination, {
 } from "./components/SearchBarAndTabs";
 import StatsGrid from "./components/StatsGrid";
 import ClientsTable from "./components/ClientsTable";
-import Modal from "./components/Modal";
 import NewClientModal from "./components/NewClientModal";
 import NewPaymentModal from "./components/NewPaymentModal";
 import ClientDetailModal, { type TabId } from "./components/ClientDetailModal";
@@ -222,7 +221,7 @@ export default function DashboardPage() {
   // === RENDER ===================================================================
   return (
     <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center p-p20">
-      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg pt-p20 p-p30 flex flex-col gap-p20 overflow-hidden grain-surface">
+      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg pt-p10 p-p30 flex flex-col gap-p20 overflow-hidden grain-surface">
         {/* HEADER */}
         <TopBar
           onNewPayment={() => openNewPayment()}

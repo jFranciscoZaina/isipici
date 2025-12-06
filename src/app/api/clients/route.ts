@@ -9,6 +9,33 @@ export const runtime = "nodejs"
 // -----------------------------------------------------------------------------
 const INACTIVE_AFTER_DAYS = 45
 
+type SupabasePaymentRow = {
+  id: string
+  amount: number | null
+  plan: string | null
+  discount: number | null
+  debt: number | null
+  next_payment_date: string | null
+  period_from: string | null
+  period_to: string | null
+  created_at: string
+}
+
+type SupabaseClientRow = {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  address_number: string | null
+  plan: string | null
+  current_debt: number | null
+  last_payment_amount: number | null
+  last_payment_date: string | null
+  next_payment_date: string | null
+  payments?: SupabasePaymentRow[] | null
+}
+
 export async function GET(req: NextRequest) {
   try {
     const gymId = getSessionGymId(req)
@@ -65,8 +92,8 @@ export async function GET(req: NextRequest) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
-    const mapped = (data ?? []).map((client: any) => {
-      const payments = (client.payments ?? []) as any[]
+    const mapped = ((data ?? []) as SupabaseClientRow[]).map((client) => {
+      const payments = client.payments ?? []
 
       // último pago por fecha de creación
       const lastPayment = [...payments].sort(

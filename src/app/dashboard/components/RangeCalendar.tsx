@@ -43,9 +43,6 @@ function isSameDay(a?: Date, b?: Date) {
 function isBefore(a: Date, b: Date) {
   return a.getTime() < b.getTime()
 }
-function isAfter(a: Date, b: Date) {
-  return a.getTime() > b.getTime()
-}
 function inRange(d: Date, from?: Date, to?: Date) {
   if (!from || !to) return false
   const t = d.getTime()

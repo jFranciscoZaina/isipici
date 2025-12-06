@@ -3,8 +3,18 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { sendUpcomingDueEmail } from "@/lib/email"
 
-export async function GET(req: NextRequest) {
+type DueClientRow = {
+  id: string
+  name: string
+  email: string | null
+  next_due: string | null
+  gym_id: string
+  gyms?: { name: string | null } | null
+}
+
+export async function GET(_req: NextRequest) {
   try {
+    void _req
     const now = new Date()
 
     // target = hoy + 5 días
@@ -36,12 +46,12 @@ export async function GET(req: NextRequest) {
 
     let sent = 0
 
-    for (const row of rows as any[]) {
+    for (const row of rows as DueClientRow[]) {
       const clientEmail = row.email as string
-      const clientName = row.name as string
+      const clientName = row.name
       const dueDate = row.next_due as string
-      const gymId = row.gym_id as string
-      const gymName = row.owners?.name ?? "Tu gimnasio"
+      const gymId = row.gym_id
+      const gymName = row.gyms?.name ?? "Tu gimnasio"
 
       try {
         await sendUpcomingDueEmail({
@@ -61,7 +71,8 @@ export async function GET(req: NextRequest) {
         })
 
         sent++
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : "unknown error"
         await supabase.from("email_logs").insert({
           gym_id: gymId,
           client_id: row.id,
@@ -69,7 +80,7 @@ export async function GET(req: NextRequest) {
           subject: `Recordatorio de cuota - ${gymName}`,
           due_date: dueDate,
           status: "failed",
-          error_message: e?.message ?? "unknown error",
+          error_message: errorMessage,
         })
       }
     }

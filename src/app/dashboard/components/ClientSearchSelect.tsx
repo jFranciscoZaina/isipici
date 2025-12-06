@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import type { ClientRow } from "../page"
 
 type Props = {
@@ -17,14 +17,11 @@ export default function ClientSearchSelect({
   const [search, setSearch] = useState("")
   const [isOpen, setIsOpen] = useState(false)
 
-  // Si ya hay un cliente seleccionado, mostramos su nombre en el input
-  useEffect(() => {
-    if (!selectedClientId) return
+  const selectedLabel = useMemo(() => {
+    if (!selectedClientId) return ""
     const c = clients.find((cl) => cl.id === selectedClientId)
-    if (c) {
-      setSearch(`${c.name}${c.email ? ` — ${c.email}` : ""}`)
-    }
-  }, [selectedClientId, clients])
+    return c ? `${c.name}${c.email ? ` — ${c.email}` : ""}` : ""
+  }, [clients, selectedClientId])
 
   // Filtrado local por nombre / email (sin llamadas a la API)
   const filteredClients = useMemo(() => {
@@ -46,6 +43,8 @@ export default function ClientSearchSelect({
     setIsOpen(false)
   }
 
+  const inputValue = search || selectedLabel
+
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-slate-900">
@@ -57,14 +56,14 @@ export default function ClientSearchSelect({
           type="text"
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           placeholder="Buscar por nombre o email..."
-          value={search}
+          value={inputValue}
           onChange={(e) => {
             const value = e.target.value
             setSearch(value)
             setIsOpen(value.trim().length > 0) // solo abre si escribe
           }}
           onFocus={() => {
-            if (search.trim().length > 0) setIsOpen(true)
+            if (inputValue.trim().length > 0) setIsOpen(true)
           }}
         />
 

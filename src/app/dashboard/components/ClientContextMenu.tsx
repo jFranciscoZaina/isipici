@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ComponentType, SVGProps } from "react";
 import type { ClientRow } from "../page";
 import { Trash2, DollarSign, User, CreditCard, Mail } from "react-feather";
 
@@ -54,13 +55,10 @@ export function ClientContextMenu({
   useEffect(() => {
     if (!client || !position) return;
 
-    // reseteamos cuando cambia el anchor
-    setAdjustedTop(position.top);
-
     const margin = 16; // px de margen respecto al borde de la pantalla
 
     // esperamos al próximo frame para asegurarnos de que el menú tenga altura
-    requestAnimationFrame(() => {
+    const raf = requestAnimationFrame(() => {
       if (!ref.current) return;
 
       const menuHeight = ref.current.offsetHeight;
@@ -82,6 +80,8 @@ export function ClientContextMenu({
 
       setAdjustedTop(top);
     });
+
+    return () => cancelAnimationFrame(raf);
   }, [client, position]);
 
   if (!client || !position) return null;
@@ -89,10 +89,9 @@ export function ClientContextMenu({
   const items: {
     id: ClientMenuAction;
     label: string;
-    icon: React.ComponentType<any>;
+    icon: ComponentType<SVGProps<SVGSVGElement>>;
     tone?: "danger";
   }[] = [
-    
     { id: "registerPayment", label: "Registrar pago", icon: DollarSign },
     { id: "editProfile", label: "Editar perfil", icon: User },
     { id: "paymentsHistory", label: "Historial de pagos", icon: CreditCard },
