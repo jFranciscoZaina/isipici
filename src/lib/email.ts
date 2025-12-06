@@ -6,14 +6,14 @@ const resend = new Resend(process.env.RESEND_API_KEY!)
 type UpcomingDueEmailParams = {
   to: string
   clientName: string
-  gymName: string
+  ownerName: string
   dueDate: string // ej: "05/12/2025"
 }
 
 export async function sendUpcomingDueEmail({
   to,
   clientName,
-  gymName,
+  ownerName,
   dueDate,
 }: UpcomingDueEmailParams) {
   const from = process.env.EMAIL_FROM
@@ -24,7 +24,7 @@ export async function sendUpcomingDueEmail({
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: `Recordatorio de pago de cuota - ${gymName}`,
+    subject: `Recordatorio de pago de cuota - ${ownerName}`,
     html: `
       <p>Hola ${clientName},</p>
       <p>Te recordamos que tu cuota vence el día <strong>${dueDate}</strong>.</p>

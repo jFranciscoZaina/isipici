@@ -8,8 +8,8 @@ type DueClientRow = {
   name: string
   email: string | null
   next_due: string | null
-  gym_id: string
-  gyms?: { name: string | null } | null
+  owner_id: string
+  owners?: { name: string | null } | { name: string | null }[] | null
 }
 
 export async function GET(_req: NextRequest) {
@@ -23,8 +23,8 @@ export async function GET(_req: NextRequest) {
     const targetDateStr = target.toISOString().slice(0, 10) // YYYY-MM-DD
 
     // Traer todos los clientes con vencimiento ese día
-    // y join con gym para tener el nombre del gym
-    const { data: rows, error } = await supabase
+    // y join con owner para tener el nombre del owner
+    const { data, error } = await supabase
       .from("clients")
       .select(
         `
@@ -32,15 +32,18 @@ export async function GET(_req: NextRequest) {
         name,
         email,
         next_due,
-        gym_id,
-        gyms ( name )
+        owner_id,
+        owners ( name )
       `
       )
       .eq("next_due", targetDateStr)
       .not("email", "is", null)
 
     if (error) throw error
-    if (!rows || rows.length === 0) {
+
+    const rows = (data ?? []) as DueClientRow[]
+
+    if (rows.length === 0) {
       return NextResponse.json({ ok: true, sent: 0 })
     }
 
@@ -50,22 +53,24 @@ export async function GET(_req: NextRequest) {
       const clientEmail = row.email as string
       const clientName = row.name
       const dueDate = row.next_due as string
-      const gymId = row.gym_id
-      const gymName = row.gyms?.name ?? "Tu gimnasio"
+      const ownerId = row.owner_id
+      const ownerName = Array.isArray(row.owners)
+        ? row.owners[0]?.name ?? "Tu negocio"
+        : row.owners?.name ?? "Tu negocio"
 
       try {
         await sendUpcomingDueEmail({
           to: clientEmail,
           clientName,
-          gymName,
+          ownerName,
           dueDate,
         })
 
         await supabase.from("email_logs").insert({
-          gym_id: gymId,
+          owner_id: ownerId,
           client_id: row.id,
           type: "upcoming_due",
-          subject: `Recordatorio de cuota - ${gymName}`,
+          subject: `Recordatorio de cuota - ${ownerName}`,
           due_date: dueDate,
           status: "sent",
         })
@@ -74,10 +79,10 @@ export async function GET(_req: NextRequest) {
       } catch (e: unknown) {
         const errorMessage = e instanceof Error ? e.message : "unknown error"
         await supabase.from("email_logs").insert({
-          gym_id: gymId,
+          owner_id: ownerId,
           client_id: row.id,
           type: "upcoming_due",
-          subject: `Recordatorio de cuota - ${gymName}`,
+          subject: `Recordatorio de cuota - ${ownerName}`,
           due_date: dueDate,
           status: "failed",
           error_message: errorMessage,

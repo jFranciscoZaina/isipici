@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Modal from "./Modal";
@@ -17,25 +17,30 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
   const [addressNumber, setAddressNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const isValid =
-    name.trim().length > 0 &&
-    email.trim().length > 0; // por ahora lo básico: nombre + email
+  const emailTrimmed = email.trim();
+  const emailIsValid =
+    emailTrimmed.length === 0 ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
+
+  const isValid = name.trim().length > 0 && emailIsValid;
 
   const handleSave = async () => {
     if (!isValid || loading) return;
 
     setLoading(true);
     try {
+      const payload = {
+        name: name.trim(),
+        email: emailTrimmed || "", // la BD puede tener NOT NULL, enviamos string vacío si no hay email
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        addressNumber: addressNumber.trim() || null,
+      };
+
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          address,
-          addressNumber,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Error creando cliente");
@@ -50,18 +55,15 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
     }
   };
 
-  // HEADER (título centrado)
   const header = (
     <div className="flex items-center gap-p10 w-full justify-start">
-          <div className="flex h-8 w-8 items-center justify-center">
-            <User className="h-4 w-4 text-app " />
-          </div>
-          <h2 className="fs-14 font-semibold">Registrar cliente</h2>
-        </div>
-    
+      <div className="flex h-8 w-8 items-center justify-center">
+        <User className="h-4 w-4 text-app " />
+      </div>
+      <h2 className="fs-14 font-semibold">Registrar cliente</h2>
+    </div>
   );
 
-  // ACTIONS (botones del footer)
   const secondaryAction = {
     label: "Regresar",
     onClick: onClose,
@@ -91,17 +93,20 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
           />
         </Field>
 
-        <Field label="Email">
+        <Field label="Email (opcional)">
           <input
             type="email"
             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            placeholder="Opcional, si querés enviar emails"
           />
+          {!emailIsValid && (
+            <p className="fs-12 text-danger">Ingresá un email válido</p>
+          )}
         </Field>
 
-        <Field label="N° de teléfono">
+        <Field label="Nº de teléfono">
           <input
             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
             value={phone}
@@ -129,8 +134,6 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
     </Modal>
   );
 }
-
-/* === Sub-componente de campo, igual criterio que en ClientDetailModal === */
 
 type FieldProps = {
   label: string;

@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
-import { getSessionGymId } from "@/lib/auth"
+import { getSessionOwnerId } from "@/lib/auth"
+import type { PostgrestError } from "@supabase/supabase-js"
 
 export const runtime = "nodejs"
 
 // -----------------------------------------------------------------------------
-// GET – Lista clientes con filtro active/inactive (para el gym logueado)
+// GET - Lista clientes con filtro active/inactive (para el owner logueado)
 // -----------------------------------------------------------------------------
-const INACTIVE_AFTER_DAYS = 45
+const INACTIVE_AFTER_DAYS = 21
 
 type SupabasePaymentRow = {
   id: string
@@ -36,11 +37,20 @@ type SupabaseClientRow = {
   payments?: SupabasePaymentRow[] | null
 }
 
+function isUndefinedColumn(error: PostgrestError | null) {
+  if (!error) return false
+  return (
+    error.code === "42703" ||
+    (error.message ?? "").toLowerCase().includes("column") ||
+    (error.details ?? "").toLowerCase().includes("column")
+  )
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const gymId = getSessionGymId(req)
+    const ownerId = getSessionOwnerId(req)
 
-    if (!gymId) {
+    if (!ownerId) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -49,34 +59,47 @@ export async function GET(req: NextRequest) {
 
     const statusParam = req.nextUrl.searchParams.get("status") // active | inactive | null
 
-    const { data, error } = await supabase
-      .from("clients")
-      .select(`
+    const selectClause = `
+      id,
+      name,
+      email,
+      phone,
+      address,
+      address_number,
+      plan,
+      current_debt,
+      last_payment_amount,
+      last_payment_date,
+      next_payment_date,
+      payments (
         id,
-        name,
-        email,
-        phone,
-        address,
-        address_number,
+        amount,
         plan,
-        current_debt,
-        last_payment_amount,
-        last_payment_date,
+        discount,
+        debt,
         next_payment_date,
-        payments (
-          id,
-          amount,
-          plan,
-          discount,
-          debt,
-          next_payment_date,
-          period_from,
-          period_to,
-          created_at
-        )
-      `)
-      .eq("gym_id", gymId)
+        period_from,
+        period_to,
+        created_at
+      )
+    `
+
+    let ownerColumn: "owner_id" | "gym_id" = "owner_id"
+
+    let { data, error } = await supabase
+      .from("clients")
+      .select(selectClause)
+      .eq(ownerColumn, ownerId)
       .order("created_at", { ascending: true })
+
+    if (isUndefinedColumn(error)) {
+      ownerColumn = "gym_id"
+      ;({ data, error } = await supabase
+        .from("clients")
+        .select(selectClause)
+        .eq(ownerColumn, ownerId)
+        .order("created_at", { ascending: true }))
+    }
 
     if (error) {
       console.error("Supabase GET error:", error)
@@ -87,28 +110,41 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date()
-
-    // límites del mes actual (inclusive start, exclusive end)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
     const mapped = ((data ?? []) as SupabaseClientRow[]).map((client) => {
       const payments = client.payments ?? []
 
-      // último pago por fecha de creación
+      // Ultimo pago por fecha de creacion
       const lastPayment = [...payments].sort(
         (a, b) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime()
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
 
       const currentDebt = Number(lastPayment?.debt ?? 0)
       const nextDue = lastPayment?.period_to ?? null
 
-      // calcular status
+      // calcular status: inactivo si nunca pagó o si pasó el umbral desde el ultimo pago/vencimiento
       let computedStatus: "active" | "inactive" = "active"
+      const lastPaymentDate = lastPayment?.created_at
+        ? new Date(lastPayment.created_at)
+        : null
+      if (lastPaymentDate) lastPaymentDate.setHours(0, 0, 0, 0)
+
+      if (!lastPaymentDate) {
+        computedStatus = "inactive"
+      } else {
+        const inactiveThreshold = new Date(lastPaymentDate)
+        inactiveThreshold.setDate(
+          inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS
+        )
+        if (now > inactiveThreshold) computedStatus = "inactive"
+      }
+
       if (nextDue) {
         const due = new Date(nextDue)
+        due.setHours(0, 0, 0, 0)
         const inactiveThreshold = new Date(due)
         inactiveThreshold.setDate(
           inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS
@@ -116,7 +152,6 @@ export async function GET(req: NextRequest) {
         if (now > inactiveThreshold) computedStatus = "inactive"
       }
 
-      // calcular total pagado en el mes actual
       const totalPaidThisMonth = payments.reduce((sum, p) => {
         if (!p.created_at) return sum
         const created = new Date(p.created_at)
@@ -155,13 +190,13 @@ export async function GET(req: NextRequest) {
 }
 
 // -----------------------------------------------------------------------------
-// POST – Crear cliente para el gym logueado
+// POST - Crear cliente para el owner logueado
 // -----------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const gymId = getSessionGymId(req)
+    const ownerId = getSessionOwnerId(req)
 
-    if (!gymId) {
+    if (!ownerId) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -170,20 +205,27 @@ export async function POST(req: NextRequest) {
 
     const { name, email, phone, address, addressNumber } = await req.json()
 
-    const { data, error } = await supabase
+    const basePayload = {
+      name,
+      email,
+      phone,
+      address,
+      address_number: addressNumber,
+    }
+
+    let { data, error } = await supabase
       .from("clients")
-      .insert([
-        {
-          name,
-          email,
-          phone,
-          address,
-          address_number: addressNumber,
-          gym_id: gymId,
-        },
-      ])
+      .insert([{ ...basePayload, owner_id: ownerId }])
       .select()
       .single()
+
+    if (isUndefinedColumn(error)) {
+      ;({ data, error } = await supabase
+        .from("clients")
+        .insert([{ ...basePayload, gym_id: ownerId }])
+        .select()
+        .single())
+    }
 
     if (error) {
       console.error("Supabase POST error:", error)

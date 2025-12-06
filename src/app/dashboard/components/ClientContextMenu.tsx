@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import type { ClientRow } from "../page";
-import { Trash2, DollarSign, User, CreditCard, Mail } from "react-feather";
+import { Trash2, DollarSign, UserPlus, CreditCard, Mail } from "react-feather";
 
 export type ClientMenuAction =
   | "delete"
@@ -93,7 +93,7 @@ export function ClientContextMenu({
     tone?: "danger";
   }[] = [
     { id: "registerPayment", label: "Registrar pago", icon: DollarSign },
-    { id: "editProfile", label: "Editar perfil", icon: User },
+    { id: "editProfile", label: "Editar perfil", icon: UserPlus },
     { id: "paymentsHistory", label: "Historial de pagos", icon: CreditCard },
     { id: "emailsHistory", label: "Historial de emails", icon: Mail },
     { id: "delete", label: "Eliminar cliente", icon: Trash2, tone: "danger" },

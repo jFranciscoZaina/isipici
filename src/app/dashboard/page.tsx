@@ -194,23 +194,36 @@ export default function DashboardPage() {
     );
 
     const dir = sortDir === "asc" ? 1 : -1;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     return [...filtered].sort((a, b) => {
+      const aDue = a.nextDue ? new Date(a.nextDue) : null;
+      const bDue = b.nextDue ? new Date(b.nextDue) : null;
+      if (aDue) aDue.setHours(0, 0, 0, 0);
+      if (bDue) bDue.setHours(0, 0, 0, 0);
+      const aOverdue = !!aDue && aDue < today;
+      const bOverdue = !!bDue && bDue < today;
+
+      const paidValue = (c: typeof a, overdue: boolean) => {
+        if (overdue) return 0; // minus
+        if (c.isMonthFullyPaid) return 2; // check
+        return 1; // cross / pendiente
+      };
+
       switch (sortKey) {
         case "name":
           return a.name.localeCompare(b.name) * dir;
         case "plan":
           return (a.currentPlan ?? "").localeCompare(b.currentPlan ?? "") * dir;
         case "paid":
-          return (
-            ((a.isMonthFullyPaid ? 1 : 0) - (b.isMonthFullyPaid ? 1 : 0)) * dir
-          );
+          return (paidValue(a, aOverdue) - paidValue(b, bOverdue)) * dir;
         case "debt":
           return (a.currentDebt - b.currentDebt) * dir;
         case "due": {
-          const aDue = a.nextDue ? new Date(a.nextDue).getTime() : Infinity;
-          const bDue = b.nextDue ? new Date(b.nextDue).getTime() : Infinity;
-          return (aDue - bDue) * dir;
+          const aTime = aDue ? aDue.getTime() : Infinity;
+          const bTime = bDue ? bDue.getTime() : Infinity;
+          return (aTime - bTime) * dir;
         }
         default:
           return 0;

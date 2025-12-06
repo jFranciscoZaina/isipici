@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
       console.error("Supabase owners insert error:", error)
       const message =
         (error as PostgrestError | null)?.code === "23505"
-          ? "Ya existe un gym con ese email"
-          : "Error creando gym"
+          ? "Ya existe un owner con ese email"
+          : "Error creando owner"
 
       return NextResponse.json(
         { error: message, details: error.message },
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const token = jwt.sign(
       {
-        gymId: data.id,
+        ownerId: data.id,
         email: data.email,
       },
       JWT_SECRET,
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     return res
   } catch (err) {
-    console.error("Unexpected /api/gym/register error:", err)
+    console.error("Unexpected /api/owner/register error:", err)
     return NextResponse.json(
       { error: "Unexpected error" },
       { status: 500 }

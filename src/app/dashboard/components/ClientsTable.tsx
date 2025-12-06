@@ -1,7 +1,7 @@
+import { useMemo, useState } from "react";
 import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
-import { Check, X } from "react-feather";
-import { useState } from "react";
+import { Check, Minus, X } from "react-feather";
 import { ClientContextMenu, type ClientMenuAction } from "./ClientContextMenu";
 
 type Props = {
@@ -12,7 +12,6 @@ type Props = {
   sortDir: "asc" | "desc";
   onToggleSort: (key: "name" | "plan" | "paid" | "debt" | "due") => void;
   onOpenDetail: (client: ClientRow) => void;
-  // Opcional: el padre puede engancharse a las acciones del menú
   onMenuAction?: (action: ClientMenuAction, client: ClientRow) => void;
 };
 
@@ -26,12 +25,10 @@ export default function ClientsTable({
   onOpenDetail,
   onMenuAction,
 }: Props) {
-  // Anchos iniciales de las columnas [Pago, Persona, Plan, Deuda, Vencimientos, Detalle]
   const [colWidths, setColWidths] = useState<number[]>([
     80, 260, 160, 140, 160, 120,
   ]);
 
-  // Estado del menú contextual
   const [menuClient, setMenuClient] = useState<ClientRow | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
@@ -56,12 +53,10 @@ export default function ClientsTable({
     if (onMenuAction) {
       onMenuAction(action, client);
     } else {
-      // Fallback: por ahora todo abre el modal de detalle
       onOpenDetail(client);
     }
   };
 
-  // Resize columnas
   const startResize = (index: number, startX: number) => {
     const startWidth = colWidths[index];
 
@@ -69,7 +64,7 @@ export default function ClientsTable({
       const delta = e.clientX - startX;
       setColWidths((prev) => {
         const next = [...prev];
-        next[index] = Math.max(80, startWidth + delta); // mínimo 80px
+        next[index] = Math.max(80, startWidth + delta);
         return next;
       });
     };
@@ -90,15 +85,18 @@ export default function ClientsTable({
       startResize(index, e.clientX);
     };
 
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
+
   return (
     <div className="h-full w-full rounded-br15 bg-bg0 border border-n2 overflow-hidden flex-1 flex flex-col">
-      {/* Scroll SOLO dentro de la tabla */}
       <div className="h-full max-h-full overflow-y-auto scrollbar-hide">
         <table className="min-w-full table-auto">
-          {/* HEADER */}
-          <thead className="bg-[color:var(--n8)] fs-12 text-[color:var(--n0)]">
+          <thead className="bg-[color:var(--n8)] fs-12 text-[color:var(--n0)] sticky top-0 z-10">
             <tr>
-              {/* Pago */}
               <th
                 style={{ width: colWidths[0], fontWeight: 400 }}
                 className="relative cursor-pointer select-none pl-p40 pr-p20 py-p10 text-left"
@@ -106,15 +104,13 @@ export default function ClientsTable({
               >
                 Pago{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "paid" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  {sortKey === "paid" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(0)}
                   className="absolute inset-y-0 right-0 w-[4px] cursor-col-resize"
                 />
               </th>
-
-              {/* Persona */}
               <th
                 style={{ width: colWidths[1], fontWeight: 400 }}
                 className="relative cursor-pointer select-none px-p20 py-p10 text-left"
@@ -122,15 +118,13 @@ export default function ClientsTable({
               >
                 Persona{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  {sortKey === "name" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(1)}
                   className="absolute inset-y-0 right-0 w-[4px] cursor-col-resize"
                 />
               </th>
-
-              {/* Plan */}
               <th
                 style={{ width: colWidths[2], fontWeight: 400 }}
                 className="relative cursor-pointer select-none px-p20 py-p10 text-left"
@@ -138,15 +132,13 @@ export default function ClientsTable({
               >
                 Plan{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "plan" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  {sortKey === "plan" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(2)}
                   className="absolute inset-y-0 right-0 w-[4px] cursor-col-resize"
                 />
               </th>
-
-              {/* Deuda */}
               <th
                 style={{ width: colWidths[3], fontWeight: 400 }}
                 className="relative cursor-pointer select-none px-p20 py-p10 text-left"
@@ -154,15 +146,13 @@ export default function ClientsTable({
               >
                 Deuda{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "debt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  {sortKey === "debt" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(3)}
                   className="absolute inset-y-0 right-0 w-[4px] cursor-col-resize"
                 />
               </th>
-
-              {/* Vencimientos */}
               <th
                 style={{ width: colWidths[4], fontWeight: 400 }}
                 className="relative cursor-pointer select-none px-p20 py-p10 text-left"
@@ -170,15 +160,13 @@ export default function ClientsTable({
               >
                 Vencimientos{" "}
                 <span className="fs-12 font-normal">
-                  {sortKey === "due" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  {sortKey === "due" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </span>
                 <span
                   onMouseDown={handleResizeMouseDown(4)}
                   className="absolute inset-y-0 right-0 w-[4px] cursor-col-resize"
                 />
               </th>
-
-              {/* Detalle */}
               <th
                 style={{ width: colWidths[5], fontWeight: 400 }}
                 className="relative px-p20 py-p10 text-left"
@@ -191,71 +179,89 @@ export default function ClientsTable({
               </th>
             </tr>
           </thead>
-          <div className="pb-p10" />
-          {/* BODY */}
           <tbody className="bg-bg0 fs-12 text-app">
+            {loading && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-p20 py-p20 text-center text-app-secondary"
+                >
+                  Cargando clientes...
+                </td>
+              </tr>
+            )}
+
+            {!loading && error && (
+              <tr>
+                <td colSpan={6} className="px-p20 py-p20 text-center text-danger">
+                  {error}
+                </td>
+              </tr>
+            )}
+
             {!loading &&
               !error &&
-              clients.map((client) => (
-                <tr
-                  key={client.id}
-                  className="border-b border-[color:var(--n0)] fs-12 text-app transition hover:border-[color:var(--n2)]"
-                >
-                  {/* Pago – más padding a la izquierda */}
-                  <td className="pl-p50 pr-p20 py-p10">
-                    {client.isMonthFullyPaid ? (
-                      <Check className="h-4 w-4 stroke-[2.5] text-app" />
-                    ) : (
-                      <X className="h-4 w-4 stroke-[2.5] text-danger" />
-                    )}
-                  </td>
+              clients.map((client) => {
+                const due = client.nextDue ? new Date(client.nextDue) : null;
+                if (due) due.setHours(0, 0, 0, 0);
+                const isOverdue = !!due && due < today;
 
-                  {/* Persona (NOMBRE EN NEGRITA) */}
-                  <td className="px-p20 py-p10 fs-12 font-bold">
-                    {client.name}
-                  </td>
+                return (
+                  <tr
+                    key={client.id}
+                    className="border-b border-[color:var(--n0)] fs-12 text-app transition hover:border-[color:var(--n2)]"
+                  >
+                    <td className="pl-p50 pr-p20 py-p10">
+                      {isOverdue ? (
+                        <Minus className="h-4 w-4 stroke-[2.5] text-danger" />
+                      ) : client.isMonthFullyPaid ? (
+                        <Check className="h-4 w-4 stroke-[2.5] text-app" />
+                      ) : (
+                        <X className="h-4 w-4 stroke-[2.5] text-danger" />
+                      )}
+                    </td>
 
-                  {/* Plan */}
-                  <td className="px-p20 py-p10 fs-12 font-normal">
-                    {client.currentPlan ?? (
-                      <span className="text-app-disabled">Sin plan</span>
-                    )}
-                  </td>
+                    <td className="px-p20 py-p10 fs-12 font-bold">
+                      {client.name}
+                    </td>
 
-                  {/* Deuda */}
-                  <td className="px-p20 py-p10 fs-12 font-normal">
-                    {client.currentDebt > 0
-                      ? "$" +
-                        client.currentDebt.toLocaleString("es-AR", {
-                          maximumFractionDigits: 0,
-                        })
-                      : "—"}
-                  </td>
+                    <td className="px-p20 py-p10 fs-12 font-normal">
+                      {client.currentPlan ?? (
+                        <span className="text-app-disabled">Sin plan</span>
+                      )}
+                    </td>
 
-                  {/* Vencimientos */}
-                  <td className="px-p20 py-p10 fs-12 font-normal">
-                    {formatDateEs(client.nextDue)}
-                  </td>
+                    <td className="px-p20 py-p10 fs-12 font-normal">
+                      {client.currentDebt > 0
+                        ? "$" +
+                          client.currentDebt.toLocaleString("es-AR", {
+                            maximumFractionDigits: 0,
+                          })
+                        : ""}
+                    </td>
 
-                  {/* Detalle → abre menú contextual */}
-                  <td className="px-p20 py-p10 fs-12">
-                    <button
-                      className="fs-12 text-[color:var(--color-accent-primary)] no-underline hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMenu(client, e);
-                      }}
-                    >
-                      Ver más
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-p20 py-p10 fs-12 font-normal">
+                      {formatDateEs(client.nextDue)}
+                    </td>
+
+                    <td className="px-p20 py-p10 fs-12">
+                      <button
+                        className="fs-12 text-[color:var(--color-accent-primary)] no-underline hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openMenu(client, e);
+                        }}
+                      >
+                        Ver más
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
 
-      {/* MENÚ CONTEXTUAL */}
       <ClientContextMenu
         client={menuClient}
         position={menuPosition}

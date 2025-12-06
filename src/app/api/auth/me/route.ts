@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
-import { getSessionGymId } from "@/lib/auth"
+import { getSessionOwnerId } from "@/lib/auth"
 
 export const runtime = "nodejs"
 
 export async function GET(req: NextRequest) {
-  const gymId = getSessionGymId(req)
+  const ownerId = getSessionOwnerId(req)
 
-  if (!gymId) {
+  if (!ownerId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
   const { data, error } = await supabase
     .from("owners")
     .select("id, name, email")
-    .eq("id", gymId)
+    .eq("id", ownerId)
     .single()
 
   if (error || !data) {
     return NextResponse.json(
-      { error: "Gym no encontrado" },
+      { error: "Owner no encontrado" },
       { status: 404 }
     )
   }

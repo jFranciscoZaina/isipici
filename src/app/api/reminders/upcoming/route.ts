@@ -8,7 +8,7 @@ type UpcomingClientRow = {
   name: string
   email: string | null
   next_payment_date: string | null
-  gym_id: string | null
+  owner_id: string | null
 }
 
 function formatDateDDMMYYYY(d: Date) {
@@ -38,7 +38,7 @@ async function handleUpcomingReminders(req: NextRequest) {
 
     const { data: clients, error: clientsError } = await supabase
       .from("clients")
-      .select("id, name, email, next_payment_date, gym_id")
+      .select("id, name, email, next_payment_date, owner_id")
       .eq("next_payment_date", targetISO)
       .not("email", "is", null)
 
@@ -58,27 +58,27 @@ async function handleUpcomingReminders(req: NextRequest) {
     }
 
     const results: { clientId: string; email: string; status: string }[] = []
-    const gymName = "Tu gimnasio" // MVP
+    const ownerName = "Tu negocio" // MVP
 
     for (const client of clients as UpcomingClientRow[]) {
       const clientEmail = client.email as string
       const clientName = client.name
-      const gymId = client.gym_id ?? null
+      const ownerId = client.owner_id ?? null
       const dueDateFormatted = formatDateDDMMYYYY(target)
 
       try {
         await sendUpcomingDueEmail({
           to: clientEmail,
           clientName,
-          gymName,
+          ownerName,
           dueDate: dueDateFormatted,
         })
 
         const { error: logError } = await supabase.from("email_logs").insert({
           client_id: client.id,
-          gym_id: gymId,
+          owner_id: ownerId,
           type: "upcoming_due",
-          subject: `Recordatorio de pago de cuota - ${gymName}`,
+          subject: `Recordatorio de pago de cuota - ${ownerName}`,
           due_date: targetISO,
           status: "sent",
           sent_at: new Date().toISOString(),

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { DollarSign, User } from "react-feather";
+import { DollarSign, UserPlus } from "react-feather";
 
 interface TopBarProps {
   onNewPayment: () => void;
@@ -9,7 +9,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
-  const [gymName, setGymName] = useState<string | null>(null);
+  const [ownerName, setOwnerName] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -23,21 +23,21 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
   };
 
   useEffect(() => {
-    const loadGym = async () => {
+    const loadOwner = async () => {
       try {
         const res = await fetch("/api/auth/me");
         if (res.ok) {
           const data = await res.json();
-          setGymName(data.name);
+          setOwnerName(data.name);
         } else {
-          console.error("No se pudo cargar el gym logueado");
+          console.error("No se pudo cargar el owner logueado");
         }
       } catch (e) {
-        console.error("Error cargando gym:", e);
+        console.error("Error cargando owner:", e);
       }
     };
 
-    loadGym();
+    loadOwner();
   }, []);
 
   return (
@@ -51,7 +51,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         <span className="h-5 w-px bg-bg3" />
 
         <span className="text-xs text-app-secondary">
-          {gymName ?? "Fran Zaina from Abllle.com"}
+          {ownerName ?? "Owner invitado"}
         </span>
       </div>
 
@@ -65,7 +65,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
 
         {/* Agregar cliente */}
         <button onClick={onNewClient} className="btn-primary">
-          <User className="h-4 w-4" strokeWidth={2} />
+          <UserPlus className="h-4 w-4" strokeWidth={2} />
           <span>Agregar cliente</span>
         </button>
 

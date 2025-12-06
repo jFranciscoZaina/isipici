@@ -185,7 +185,25 @@ export default function ClientDetailModal({
         ? " Vence el " + new Date(p.period_to).toLocaleDateString("es-AR") + "."
         : "";
 
-      return `${fecha} – Pagó ${monto} por el plan ${plan}.${deuda}${vencimiento}`;
+      return (
+        <div key={p.id ?? p.created_at} className=" pb-p10">
+          {fecha} – Pagó {monto} por el plan {plan}.
+          {/* Bloque Condicional para 'deuda' */}
+          {deuda && (
+            <>
+              <br />
+              {deuda}
+            </>
+          )}
+          {/* Bloque Condicional para 'vencimiento' */}
+          {vencimiento && (
+            <>
+              <br />
+              {vencimiento}
+            </>
+          )}
+        </div>
+      );
     });
   }, [payments]);
 
@@ -310,7 +328,7 @@ export default function ClientDetailModal({
           ) : (
             <ul className="list-disc pl-6 space-y-p10">
               {paymentLines.map((line, idx) => (
-                <li key={idx}>{line}</li>
+                <li key={`payment-${idx}`}>{line}</li>
               ))}
             </ul>
           )}
@@ -331,7 +349,7 @@ export default function ClientDetailModal({
           ) : (
             <ul className="list-disc pl-6 space-y-p10">
               {emailLines.map((line, idx) => (
-                <li key={idx}>{line}</li>
+                <li key={`email-${idx}`}>{line}</li>
               ))}
             </ul>
           )}

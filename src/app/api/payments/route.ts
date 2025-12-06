@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
-import { getSessionGymId } from "@/lib/auth"
+import { getSessionOwnerId } from "@/lib/auth"
 
 export const runtime = "nodejs"
 
 // GET /api/payments?clientId=uuid
 export async function GET(req: NextRequest) {
   try {
-    const gymId = getSessionGymId(req)
+    const ownerId = getSessionOwnerId(req)
 
-    if (!gymId) {
+    if (!ownerId) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         created_at
       `)
       .eq("client_id", clientId)
-      .eq("gym_id", gymId)
+      .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -64,9 +64,9 @@ export async function GET(req: NextRequest) {
 // POST /api/payments
 export async function POST(req: NextRequest) {
   try {
-    const gymId = getSessionGymId(req)
+    const ownerId = getSessionOwnerId(req)
 
-    if (!gymId) {
+    if (!ownerId) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -95,13 +95,13 @@ export async function POST(req: NextRequest) {
     const numericDiscount = Number(discount || 0)
     const numericDebt = Number(debt || 0)
 
-    // Insert payment (ahora atado al gym)
+    // Insert payment (atado al owner)
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .insert([
         {
           client_id: clientId,
-          gym_id: gymId,
+          owner_id: ownerId,
           amount: numericAmount,
           plan,
           discount: numericDiscount,
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
         next_payment_date: periodTo ?? null,
       })
       .eq("id", clientId)
-      .eq("gym_id", gymId)
+      .eq("owner_id", ownerId)
 
     if (clientError) {
       console.error("Supabase updating client after payment:", clientError)

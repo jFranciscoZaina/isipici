@@ -1,4 +1,4 @@
-// src/app/login/page.tsx
+﻿// src/app/login/page.tsx
 "use client"
 
 import React, { useState } from "react"
@@ -44,10 +44,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
         <h1 className="text-xl font-semibold text-slate-900 mb-1">
-          Energym – Login
+          isipici � Login
         </h1>
         <p className="text-sm text-slate-500 mb-6">
-          Inicia sesión con la cuenta de tu gimnasio para ver tus clientes y pagos.
+          Inicia sesión con la cuenta de tu negocio para ver tus clientes y pagos.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,7 +95,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-[11px] text-slate-400">
-          Si todavía no tenés cuenta de gimnasio, creala vía API por ahora
+          Si todavía no tenés cuenta de negocio, creala vía API por ahora
           (después hacemos el registro desde UI).
         </p>
       </div>

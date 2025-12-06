@@ -93,12 +93,9 @@ export default function StatsGrid({
 
             <StatCard
               title="Ingresos Mensuales"
-              value={
-                "$" +
-                monthlyIncome.toLocaleString("es-AR", {
-                  maximumFractionDigits: 0,
-                })
-              }
+              value={monthlyIncome.toLocaleString("es-AR", {
+                maximumFractionDigits: 0,
+              })}
               isHidden={hidden.monthlyIncome}
               onToggleHidden={() => toggleHidden("monthlyIncome")}
             />

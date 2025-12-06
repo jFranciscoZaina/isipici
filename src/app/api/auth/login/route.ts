@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Buscar gym por email
+    // Buscar owner por email
     const { data, error } = await supabase
       .from("owners")
       .select("id, name, email, password_hash")
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     const token = jwt.sign(
       {
-        gymId: data.id,
+        ownerId: data.id,
         email: data.email,
       },
       JWT_SECRET, // ahora es string, TS feliz
