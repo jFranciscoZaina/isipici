@@ -1,25 +1,30 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
+import React, { useState } from "react";
+import Modal from "./Modal";
+import { User } from "react-feather";
 
-export default function NewClientModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void
-  onCreated: () => void
-}) {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [address, setAddress] = useState("")
-  const [addressNumber, setAddressNumber] = useState("")
-  const [loading, setLoading] = useState(false)
+type Props = {
+  onClose: () => void;
+  onCreated: () => void;
+};
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+export default function NewClientModal({ onClose, onCreated }: Props) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  const isValid =
+    name.trim().length > 0 &&
+    email.trim().length > 0; // por ahora lo básico: nombre + email
+
+  const handleSave = async () => {
+    if (!isValid || loading) return;
+
+    setLoading(true);
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
@@ -31,84 +36,112 @@ export default function NewClientModal({
           address,
           addressNumber,
         }),
-      })
+      });
 
-      if (!res.ok) throw new Error("Error creando cliente")
+      if (!res.ok) throw new Error("Error creando cliente");
 
-      onCreated()
-      onClose()
+      onCreated();
+      onClose();
     } catch (err) {
-      console.error(err)
-      alert(err instanceof Error ? err.message : "Error creando cliente")
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Error creando cliente");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // HEADER (título centrado)
+  const header = (
+    <div className="flex items-center gap-p10 w-full justify-start">
+          <div className="flex h-8 w-8 items-center justify-center">
+            <User className="h-4 w-4 text-app " />
+          </div>
+          <h2 className="fs-14 font-semibold">Registrar cliente</h2>
+        </div>
+    
+  );
+
+  // ACTIONS (botones del footer)
+  const secondaryAction = {
+    label: "Regresar",
+    onClick: onClose,
+  };
+
+  const primaryAction = {
+    label: loading ? "Guardando..." : "Guardar cambios",
+    onClick: handleSave,
+    disabled: loading || !isValid,
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-sm p-6">
-      <h2 className="text-lg font-semibold mb-2">Agregar Cliente</h2>
+    <Modal
+      size="small"
+      onClose={onClose}
+      header={header}
+      secondaryAction={secondaryAction}
+      primaryAction={primaryAction}
+    >
+      <div className="space-y-p20">
+        <Field label="Nombre">
+          <input
+            className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </Field>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium">Nombre</label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
+        <Field label="Email">
+          <input
+            type="email"
+            className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Field>
+
+        <Field label="N° de teléfono">
+          <input
+            className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Domicilio">
+          <input
+            className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Calle / barrio"
+          />
+        </Field>
+
+        <Field label="Número / piso / depto (opcional)">
+          <input
+            className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
+            value={addressNumber}
+            onChange={(e) => setAddressNumber(e.target.value)}
+          />
+        </Field>
       </div>
+    </Modal>
+  );
+}
 
-      <div>
-        <label className="mb-1 block text-xs font-medium">Email</label>
-        <input
-          type="email"
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
+/* === Sub-componente de campo, igual criterio que en ClientDetailModal === */
 
-      <div>
-        <label className="mb-1 block text-xs font-medium">
-          Número de teléfono
-        </label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
+type FieldProps = {
+  label: string;
+  children: React.ReactNode;
+};
 
-      <div>
-        <label className="mb-1 block text-xs font-medium">Domicilio</label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Calle / barrio"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium">
-          Número / piso / depto (opcional)
-        </label>
-        <input
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={addressNumber}
-          onChange={(e) => setAddressNumber(e.target.value)}
-        />
-      </div>
-
-      <button
-        type="submit"
-        className="mt-2 w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-70"
-        disabled={loading}
-      >
-        {loading ? "Guardando..." : "Guardar Cliente"}
-      </button>
-    </form>
-  )
+function Field({ label, children }: FieldProps) {
+  return (
+    <div className="flex flex-col gap-p10">
+      <label className="fs-12 text-app-secondary">{label}</label>
+      {children}
+    </div>
+  );
 }

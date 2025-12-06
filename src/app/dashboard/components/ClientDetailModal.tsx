@@ -1,110 +1,146 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import type { ClientRow, Payment } from "../page"
+import React, { useEffect, useMemo, useState } from "react";
+import type { ClientRow, Payment } from "../page";
+import Modal from "./Modal";
+import { User as UserIcon, DollarSign, Mail as MailIcon } from "react-feather";
 
-// Podés mover este type a ../page si querés centralizarlo
+/** Log de emails del cliente */
 type EmailLog = {
-  id: string
-  sent_at: string
-  type: string
-  subject: string
-  due_date: string | null
-  status: string
-}
+  id: string;
+  sent_at: string;
+  type: string;
+  subject: string;
+  due_date: string | null;
+  status: string;
+};
 
-type TabId = "data" | "payments" | "emails"
+export type TabId = "data" | "payments" | "emails";
+
+type Props = {
+  client: ClientRow;
+  onClose: () => void;
+  onChanged: () => void;
+  onRegisterPayment: (clientId: string) => void;
+  initialTab?: TabId;
+};
 
 export default function ClientDetailModal({
   client,
   onClose,
   onChanged,
   onRegisterPayment,
-}: {
-  client: ClientRow
-  onClose: () => void
-  onChanged: () => void
-  onRegisterPayment: (clientId: string) => void
-}) {
+  initialTab = "data",
+}: Props) {
   // === Local state ==================================================
-  const [email, setEmail] = useState(client.email ?? "")
-  const [phone, setPhone] = useState(client.phone ?? "")
-  const [address, setAddress] = useState(client.address ?? "")
+  const [email, setEmail] = useState(client.email ?? "");
+  const [phone, setPhone] = useState(client.phone ?? "");
+  const [address, setAddress] = useState(client.address ?? "");
   const [addressNumber, setAddressNumber] = useState(
     client.addressNumber ?? ""
-  )
+  );
 
-  const [activeTab, setActiveTab] = useState<TabId>("data")
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [loadingPayments, setLoadingPayments] = useState(false)
-  const [paymentsLoaded, setPaymentsLoaded] = useState(false)
+  // si el modal se reabre para otro cliente/pestaña
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setEmail(client.email ?? "");
+    setPhone(client.phone ?? "");
+    setAddress(client.address ?? "");
+    setAddressNumber(client.addressNumber ?? "");
+  }, [
+    initialTab,
+    client.id,
+    client.email,
+    client.phone,
+    client.address,
+    client.addressNumber,
+  ]);
 
-  const [emails, setEmails] = useState<EmailLog[]>([])
-  const [loadingEmails, setLoadingEmails] = useState(false)
-  const [emailsLoaded, setEmailsLoaded] = useState(false)
+  // valores originales para saber si hubo cambios
+  const originalEmail = client.email ?? "";
+  const originalPhone = client.phone ?? "";
+  const originalAddress = client.address ?? "";
+  const originalAddressNumber = client.addressNumber ?? "";
 
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const isDirty =
+    email !== originalEmail ||
+    phone !== originalPhone ||
+    address !== originalAddress ||
+    addressNumber !== originalAddressNumber;
+
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentsLoaded, setPaymentsLoaded] = useState(false);
+
+  const [emails, setEmails] = useState<EmailLog[]>([]);
+  const [loadingEmails, setLoadingEmails] = useState(false);
+
+  const [saving, setSaving] = useState(false);
 
   // === Load payment history (lazy por tab) ==========================
   useEffect(() => {
-    if (activeTab !== "payments" || paymentsLoaded) return
+    if (activeTab !== "payments" || paymentsLoaded) return;
 
     const loadPayments = async () => {
-      setLoadingPayments(true)
+      setLoadingPayments(true);
       try {
-        const res = await fetch(`/api/payments?clientId=${client.id}`)
+        const res = await fetch(`/api/payments?clientId=${client.id}`);
 
         if (!res.ok) {
-          const txt = await res.text()
-          console.error("Payments fetch failed:", res.status, txt)
-          throw new Error("Error cargando historial")
+          const txt = await res.text();
+          console.error("Payments fetch failed:", res.status, txt);
+          throw new Error("Error cargando historial");
         }
 
-        const data: Payment[] = await res.json()
-        setPayments(data)
-        setPaymentsLoaded(true)
+        const data: Payment[] = await res.json();
+        setPayments(data);
+        setPaymentsLoaded(true);
       } catch (e) {
-        console.error(e)
+        console.error(e);
+        alert("Error cargando historial de pagos");
       } finally {
-        setLoadingPayments(false)
+        setLoadingPayments(false);
       }
-    }
+    };
 
-    loadPayments()
-  }, [activeTab, paymentsLoaded, client.id])
+    loadPayments();
+  }, [activeTab, paymentsLoaded, client.id]);
 
-  // === Load email history (lazy por tab) ============================
+  // === Load email history (siempre, es liviano) =====================
   useEffect(() => {
-  const loadEmails = async () => {
-    setLoadingEmails(true)
-    try {
-      const res = await fetch(`/api/clients/emails?clientId=${client.id}`)
+    const loadEmails = async () => {
+      setLoadingEmails(true);
+      try {
+        const res = await fetch(`/api/clients/emails?clientId=${client.id}`);
 
-      if (!res.ok) {
-        const txt = await res.text()
-        console.error("Emails fetch failed:", res.status, txt)
-        throw new Error("Error cargando historial de emails")
+        if (!res.ok) {
+          const txt = await res.text();
+          console.error("Emails fetch failed:", res.status, txt);
+          throw new Error("Error cargando historial de emails");
+        }
+
+        const data: EmailLog[] = await res.json();
+        setEmails(data);
+      } catch (e) {
+        console.error(e);
+        alert(
+          e instanceof Error ? e.message : "Error cargando historial de emails"
+        );
+      } finally {
+        setLoadingEmails(false);
       }
+    };
 
-      const data: EmailLog[] = await res.json()
-      setEmails(data)
-    } catch (e) {
-      console.error(e)
-      alert(e instanceof Error ? e.message : "Error cargando historial de emails")
-    } finally {
-      setLoadingEmails(false)
-    }
-  }
-
-  loadEmails()
-}, [client.id])
-
+    loadEmails();
+  }, [client.id]);
 
   // === Save changes ===================================================
   const handleSave = async () => {
-    setSaving(true)
+    if (!isDirty || activeTab !== "data") return;
+
+    setSaving(true);
     try {
       const res = await fetch(`/api/clients/${client.id}`, {
         method: "PATCH",
@@ -115,295 +151,241 @@ export default function ClientDetailModal({
           address,
           addressNumber,
         }),
-      })
+      });
 
-      if (!res.ok) throw new Error("Error guardando cambios")
+      if (!res.ok) throw new Error("Error guardando cambios");
 
-      onChanged()
-      onClose()
+      onChanged();
+      onClose();
     } catch (err) {
-      console.error(err)
-      alert(err instanceof Error ? err.message : "Error guardando cambios")
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Error guardando cambios");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  // === Delete client ==================================================
-  const handleDelete = async () => {
-    if (!confirm("¿Eliminar este cliente y todo su historial de pagos?")) return
+  // === Helpers de formato ============================================
 
-    setDeleting(true)
-    try {
-      const res = await fetch(`/api/clients/${client.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Error eliminando cliente")
+  const paymentLines = useMemo(() => {
+    return payments.map((p) => {
+      const fecha = new Date(p.created_at).toLocaleDateString("es-AR");
+      const monto =
+        "$" +
+        (p.amount ?? 0).toLocaleString("es-AR", {
+          maximumFractionDigits: 0,
+        });
+      const plan = p.plan ?? "sin plan";
+      const deuda =
+        p.debt && p.debt > 0
+          ? " Debe " +
+            "$" +
+            p.debt.toLocaleString("es-AR", { maximumFractionDigits: 0 }) +
+            "."
+          : "";
+      const vencimiento = p.period_to
+        ? " Vence el " + new Date(p.period_to).toLocaleDateString("es-AR") + "."
+        : "";
 
-      onChanged()
-      onClose()
-    } catch (err) {
-      console.error(err)
-      alert(err instanceof Error ? err.message : "Error eliminando cliente")
-    } finally {
-      setDeleting(false)
-    }
-  }
+      return `${fecha} – Pagó ${monto} por el plan ${plan}.${deuda}${vencimiento}`;
+    });
+  }, [payments]);
+
+  const emailLines = useMemo(() => {
+    return emails.map((mail) => {
+      const fecha = new Date(mail.sent_at).toLocaleDateString("es-AR");
+      const tipo = mail.type;
+      const vencimiento = mail.due_date
+        ? " Vence el " +
+          new Date(mail.due_date).toLocaleDateString("es-AR") +
+          "."
+        : "";
+      return `${fecha} – Envío mail de “${tipo}”.${vencimiento}`;
+    });
+  }, [emails]);
+
+  // === HEADER para Modal (tabs centradas) ============================
+
+  const header = (
+    <div className="flex flex-col items-center w-full">
+      <div className="flex items-center justify-around gap-p40 w-full px-p20">
+        <TabButton
+          icon={UserIcon}
+          label="Perfil"
+          isActive={activeTab === "data"}
+          onClick={() => setActiveTab("data")}
+        />
+        <TabButton
+          icon={DollarSign}
+          label="Pagos"
+          isActive={activeTab === "payments"}
+          onClick={() => setActiveTab("payments")}
+        />
+        <TabButton
+          icon={MailIcon}
+          label="Emails"
+          isActive={activeTab === "emails"}
+          onClick={() => setActiveTab("emails")}
+        />
+      </div>
+    </div>
+  );
+
+  // === FOOTER actions para Modal =====================================
+
+  const secondaryAction = {
+    label: "Regresar",
+    onClick: onClose,
+  };
+
+  const primaryAction = {
+    label: saving ? "Guardando..." : "Guardar cambios",
+    onClick: handleSave,
+    disabled: saving || !isDirty || activeTab !== "data",
+  };
 
   // ====================================================================
   // === RENDER =========================================================
   // ====================================================================
   return (
-    <div className="space-y-5 text-sm p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold mb-1">Detalle de cliente</h2>
-          <p className="text-xs text-slate-500">
-            Podés editar datos de contacto y vencimiento.
-          </p>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => onRegisterPayment(client.id)}
-            className="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
-          >
-            Registrar pago
-          </button>
-
-          <button
-            onClick={handleDelete}
-            className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-            disabled={deleting}
-          >
-            {deleting ? "Eliminando..." : "Eliminar cliente"}
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b flex gap-6 text-sm font-medium">
-        <button
-          type="button"
-          onClick={() => setActiveTab("data")}
-          className={`pb-2 -mb-px border-b-2 ${
-            activeTab === "data"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          Datos
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("payments")}
-          className={`pb-2 -mb-px border-b-2 ${
-            activeTab === "payments"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          Historial de Pagos
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("emails")}
-          className={`pb-2 -mb-px border-b-2 ${
-            activeTab === "emails"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          Historial de emails
-        </button>
-      </div>
-
-      {/* TAB: Datos */}
+    <Modal
+      size="normal"
+      onClose={onClose}
+      header={header}
+      secondaryAction={secondaryAction}
+      primaryAction={primaryAction}
+    >
+      {/* TAB: Datos / Perfil */}
       {activeTab === "data" && (
-        <div className="rounded-md border bg-slate-50 p-3 space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              Nombre (no editable)
-            </label>
+        <div className="space-y-p20">
+          <Field label="Nombre">
             <input
               value={client.name}
               readOnly
-              className="w-full rounded-md border bg-slate-100 px-3 py-2 text-sm text-slate-700"
+              className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app-secondary"
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium">Email</label>
+          <Field label="Email">
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              Número de teléfono
-            </label>
+          <Field label="N° de teléfono">
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium">Domicilio</label>
+          <Field label="Domicilio">
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              Número / piso / depto
-            </label>
+          <Field label="Número / piso / depto">
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
               value={addressNumber}
               onChange={(e) => setAddressNumber(e.target.value)}
             />
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={handleSave}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-              disabled={saving}
-            >
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </button>
-          </div>
+          </Field>
         </div>
       )}
 
       {/* TAB: Historial de Pagos */}
       {activeTab === "payments" && (
-        <div>
-          <h3 className="mb-2 text-sm font-semibold">Historial de pagos</h3>
-
-          <div className="max-h-64 overflow-auto rounded-md border">
-            {loadingPayments ? (
-              <div className="p-4 text-xs text-slate-500">
-                Cargando historial...
-              </div>
-            ) : payments.length === 0 ? (
-              <div className="p-4 text-xs text-slate-500">
-                Este cliente aún no tiene pagos registrados.
-              </div>
-            ) : (
-              <table className="min-w-full text-xs">
-                <thead className="bg-slate-100 text-slate-500">
-                  <tr>
-                    <th className="py-2 px-2 text-left">Fecha</th>
-                    <th className="py-2 px-2 text-left">Plan</th>
-                    <th className="py-2 px-2 text-right">Pago</th>
-                    <th className="py-2 px-2 text-right">Bonificación</th>
-                    <th className="py-2 px-2 text-right">Deuda</th>
-                    <th className="py-2 px-2 text-left">Desde</th>
-                    <th className="py-2 px-2 text-left">Hasta</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {payments.map((p) => (
-                    <tr key={p.id} className="border-t">
-                      <td className="py-2 px-2">
-                        {new Date(p.created_at).toLocaleDateString("es-AR")}
-                      </td>
-                      <td className="py-2 px-2">{p.plan ?? "—"}</td>
-                      <td className="py-2 px-2 text-right">
-                        {"$" +
-                          (p.amount ?? 0).toLocaleString("es-AR", {
-                            maximumFractionDigits: 0,
-                          })}
-                      </td>
-                      <td className="py-2 px-2 text-right">
-                        {p.discount != null && p.discount > 0
-                          ? "$" +
-                            p.discount.toLocaleString("es-AR", {
-                              maximumFractionDigits: 0,
-                            })
-                          : "—"}
-                      </td>
-                      <td className="py-2 px-2 text-right">
-                        {p.debt != null
-                          ? "$" +
-                            p.debt.toLocaleString("es-AR", {
-                              maximumFractionDigits: 0,
-                            })
-                          : "—"}
-                      </td>
-                      <td className="py-2 px-2">
-                        {p.period_from
-                          ? new Date(p.period_from).toLocaleDateString("es-AR")
-                          : "—"}
-                      </td>
-                      <td className="py-2 px-2">
-                        {p.period_to
-                          ? new Date(p.period_to).toLocaleDateString("es-AR")
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+        <div className="space-y-p20 fs-14 text-app">
+          {loadingPayments ? (
+            <p className="text-app-secondary">Cargando historial...</p>
+          ) : paymentLines.length === 0 ? (
+            <p className="text-app-secondary">
+              Este cliente aún no tiene pagos registrados.
+            </p>
+          ) : (
+            <ul className="list-disc pl-6 space-y-p10">
+              {paymentLines.map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
       {/* TAB: Historial de emails */}
       {activeTab === "emails" && (
-        <div>
-          <h3 className="mb-2 text-sm font-semibold">Historial de emails</h3>
-
-          <div className="max-h-64 overflow-auto rounded-md border">
-            {loadingEmails ? (
-              <div className="p-4 text-xs text-slate-500">
-                Cargando historial de emails...
-              </div>
-            ) : emails.length === 0 ? (
-              <div className="p-4 text-xs text-slate-500">
-                Todavía no se enviaron emails a este cliente.
-              </div>
-            ) : (
-              <table className="min-w-full text-xs">
-                <thead className="bg-slate-100 text-slate-500">
-                  <tr>
-                    <th className="py-2 px-2 text-left">Fecha</th>
-                    <th className="py-2 px-2 text-left">Tipo</th>
-                    <th className="py-2 px-2 text-left">Vencimiento</th>
-                    <th className="py-2 px-2 text-left">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {emails.map((mail) => (
-                    <tr key={mail.id} className="border-t">
-                      <td className="py-2 px-2">
-                        {new Date(mail.sent_at).toLocaleDateString("es-AR")}
-                      </td>
-                      <td className="py-2 px-2">{mail.type}</td>
-                      <td className="py-2 px-2">
-                        {mail.due_date
-                          ? new Date(mail.due_date).toLocaleDateString("es-AR")
-                          : "—"}
-                      </td>
-                      <td className="py-2 px-2">{mail.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+        <div className="space-y-p20 fs-14 text-app">
+          {loadingEmails ? (
+            <p className="text-app-secondary">
+              Cargando historial de emails...
+            </p>
+          ) : emailLines.length === 0 ? (
+            <p className="text-app-secondary">
+              Todavía no se enviaron emails a este cliente.
+            </p>
+          ) : (
+            <ul className="list-disc pl-6 space-y-p10">
+              {emailLines.map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
+    </Modal>
+  );
+}
+
+/* ===== Subcomponentes UI ===== */
+
+type TabButtonProps = {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+};
+
+function TabButton({ icon: Icon, label, isActive, onClick }: TabButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        flex items-center gap-p10
+        
+       
+        fs-14 font-medium
+        transition-colors
+        ${
+          isActive
+            ? "border-n8 text-app"
+            : "border-transparent text-app-secondary hover:text-app"
+        }
+      `}
+    >
+      <Icon className="h-5 w-5" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+type FieldProps = {
+  label: string;
+  children: React.ReactNode;
+};
+
+function Field({ label, children }: FieldProps) {
+  return (
+    <div className="flex flex-col gap-p10">
+      <label className="fs-12 text-app-secondary">{label}</label>
+      {children}
     </div>
-  )
+  );
 }
