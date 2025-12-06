@@ -21,7 +21,6 @@ type Props = {
   client: ClientRow;
   onClose: () => void;
   onChanged: () => void;
-  onRegisterPayment: (clientId: string) => void;
   initialTab?: TabId;
 };
 
@@ -29,7 +28,6 @@ export default function ClientDetailModal({
   client,
   onClose,
   onChanged,
-  onRegisterPayment,
   initialTab = "data",
 }: Props) {
   // === Local state ==================================================
