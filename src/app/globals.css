@@ -183,6 +183,7 @@
 
   
   /* Font sizes (si querés usarlos explícitamente) */
+
   .fs-12 { font-size: var(--fs-12); }
   .fs-14 { font-size: var(--fs-14); }
   .fs-16 { font-size: var(--fs-16); }
@@ -218,38 +219,46 @@
   .rounded-br30 { border-radius: var(--br30); }
 
   /* Paddings basados en p10/p20/... */
+  .p-p0 { padding: var(--p0); }
   .p-p10  { padding: var(--p10); }
   .p-p20  { padding: var(--p20); }
   .p-p30  { padding: var(--p30); }
   .p-p40  { padding: var(--p40); }
   .p-p50  { padding: var(--p50); }
 
+  .px-p0 { padding-left: var(--p0); padding-right: var(--p0); }
   .px-p10 { padding-left: var(--p10); padding-right: var(--p10); }
   .px-p20 { padding-left: var(--p20); padding-right: var(--p20); }
   .px-p30 { padding-left: var(--p30); padding-right: var(--p30); }
 
+  .py-p0 { padding-top: var(--p0); padding-bottom: var(--p0); }
   .py-p10 { padding-top: var(--p10); padding-bottom: var(--p10); }
   .py-p20 { padding-top: var(--p20); padding-bottom: var(--p20); }
   .py-p30 { padding-top: var(--p30); padding-bottom: var(--p30); }
+  .py-p40 { padding-top: var(--p40); padding-bottom: var(--p40); }
 
+  .pl-p0 { padding-left: var(--p0); }
   .pl-p10 { padding-left: var(--p10); }
   .pl-p20 { padding-left: var(--p20); }
   .pl-p30 { padding-left: var(--p30); }
   .pl-p40 { padding-left: var(--p40); }
   .pl-p50 { padding-left: var(--p50); }
 
+  .pr-p0 { padding-right: var(--p0); }
   .pr-p10 { padding-right: var(--p10); }
   .pr-p20 { padding-right: var(--p20); }
   .pr-p30 { padding-right: var(--p30); }
   .pr-p40 { padding-right: var(--p40); }
   .pr-p50 { padding-right: var(--p50); }
 
+  .pt-p0 { padding-top: var(--p0); }
   .pt-p10 { padding-top: var(--p10); }
   .pt-p20 { padding-top: var(--p20); }
   .pt-p30 { padding-top: var(--p30); }
   .pt-p40 { padding-top: var(--p40); }
   .pt-p50 { padding-top: var(--p50); }
 
+  .pb-p0 { padding-bottom: var(--p0); }
   .pb-p10 { padding-bottom: var(--p10); }
   .pb-p20 { padding-bottom: var(--p20); }
   .pb-p30 { padding-bottom: var(--p30); }
@@ -257,18 +266,21 @@
   .pb-p50 { padding-bottom: var(--p50); }
 
   /* Gaps */
+  .gap-p0 { gap: var(--p0); }
   .gap-p10 { gap: var(--p10); }
   .gap-p20 { gap: var(--p20); }
   .gap-p30 { gap: var(--p30); } 
   .gap-p40 { gap: var(--p40); }
   .gap-p50 { gap: var(--p50); }  
 
+  .row-gap-p0 { row-gap: var(--p0); }
   .row-gap-p10 { row-gap: var(--p10); }
   .row-gap-p20 { row-gap: var(--p20); }
   .row-gap-p30 { row-gap: var(--p30); }
   .row-gap-p40 { row-gap: var(--p40); }
   .row-gap-p50 { row-gap: var(--p50); }
   
+  .column-gap-p0 { column-gap: var(--p0); }
   .column-gap-p10 { column-gap: var(--p10); }
   .column-gap-p20 { column-gap: var(--p20); }
   .column-gap-p30 { column-gap: var(--p30); }

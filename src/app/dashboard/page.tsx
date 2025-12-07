@@ -233,8 +233,8 @@ export default function DashboardPage() {
 
   // === RENDER ===================================================================
   return (
-    <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center p-p20">
-      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg pt-p10 p-p30 flex flex-col gap-p20 overflow-hidden grain-surface">
+    <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center px-[var(--p0)] py-[var(--p20)] md:p-[var(--p20)]">
+      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg flex flex-col gap-p20 overflow-hidden grain-surface p-p20 pt-p10">
         {/* HEADER */}
         <TopBar
           onNewPayment={() => openNewPayment()}

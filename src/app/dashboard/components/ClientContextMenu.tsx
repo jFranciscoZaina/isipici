@@ -27,6 +27,14 @@ export function ClientContextMenu({
 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [adjustedTop, setAdjustedTop] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 640);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   // Cerrar con click afuera o ESC
   useEffect(() => {
@@ -100,6 +108,45 @@ export function ClientContextMenu({
   ];
 
   const top = adjustedTop ?? position.top;
+
+  if (isMobile) {
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-black/60 sm:hidden"
+        onClick={onClose}
+      >
+        <div
+          className="mt-auto w-full bg-white rounded-t-3xl p-p20 space-y-p20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-center fs-14 text-app font-semibold">
+            Acciones
+          </div>
+          <ul className="space-y-p10">
+            {items.map(({ id, label, icon: Icon, tone }) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  className={`flex w-full items-center gap-p15 rounded-br15 px-p15 py-p12 text-left fs-14 transition-colors ${
+                    tone === "danger"
+                      ? "text-danger hover:bg-[color:var(--danger-50,#fef2f2)]"
+                      : "text-app hover:bg-bg1"
+                  }`}
+                  onClick={() => {
+                    onAction(id, client);
+                    onClose();
+                  }}
+                >
+                  <Icon className="h-5 w-5 stroke-[2]" />
+                  <span>{label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-40 pointer-events-none">
