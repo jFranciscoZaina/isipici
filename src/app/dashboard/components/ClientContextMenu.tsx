@@ -112,22 +112,23 @@ export function ClientContextMenu({
   if (isMobile) {
     return (
       <div
-        className="fixed inset-0 z-50 bg-black/60 sm:hidden"
+        className="fixed inset-0 z-50 flex items-end sm:hidden bg-black/60 transition-opacity duration-200"
         onClick={onClose}
       >
         <div
-          className="mt-auto w-full bg-white rounded-t-3xl p-p20 space-y-p20"
+          className="w-full bg-bg1  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] "
           onClick={(e) => e.stopPropagation()}
+          style={{ animationFillMode: "both" }}
         >
           <div className="text-center fs-14 text-app font-semibold">
             Acciones
           </div>
-          <ul className="space-y-p10">
+          <ul className="space-y-p10 flex flex-col gap-p20">
             {items.map(({ id, label, icon: Icon, tone }) => (
               <li key={id}>
                 <button
                   type="button"
-                  className={`flex w-full items-center gap-p15 rounded-br15 px-p15 py-p12 text-left fs-14 transition-colors ${
+                  className={`flex w-full items-center gap-p20 rounded-br15 px-p15 py-p12 text-left fs-14 transition-colors ${
                     tone === "danger"
                       ? "text-danger hover:bg-[color:var(--danger-50,#fef2f2)]"
                       : "text-app hover:bg-bg1"
