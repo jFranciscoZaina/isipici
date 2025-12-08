@@ -83,7 +83,7 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
       secondaryAction={secondaryAction}
       primaryAction={primaryAction}
     >
-      <div className="space-y-p20">
+      <div className="flex flex-col gap-p10">
         <Field label="Nombre">
           <input
             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
@@ -142,7 +142,7 @@ type FieldProps = {
 
 function Field({ label, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-p10">
+    <div className="flex flex-col gap-p5">
       <label className="fs-12 text-app-secondary">{label}</label>
       {children}
     </div>

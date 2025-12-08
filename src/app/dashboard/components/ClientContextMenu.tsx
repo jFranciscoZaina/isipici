@@ -120,10 +120,8 @@ export function ClientContextMenu({
           onClick={(e) => e.stopPropagation()}
           style={{ animationFillMode: "both" }}
         >
-          <div className="text-center fs-14 text-app font-semibold">
-            Acciones
-          </div>
-          <ul className="space-y-p10 flex flex-col gap-p20">
+          
+          <ul className="space-y-p10 flex flex-col gap-p30">
             {items.map(({ id, label, icon: Icon, tone }) => (
               <li key={id}>
                 <button

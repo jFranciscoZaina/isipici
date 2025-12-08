@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
         <h1 className="text-xl font-semibold text-slate-900 mb-1">
-          isipici � Login
+          isipici Login
         </h1>
         <p className="text-sm text-slate-500 mb-6">
           Inicia sesión con la cuenta de tu negocio para ver tus clientes y pagos.
@@ -57,7 +57,7 @@ export default function LoginPage() {
             </label>
             <input
               type="email"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900/50"
+             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -71,7 +71,7 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900/50"
+             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Search as SearchIcon } from "react-feather";
 
 export type ClientStatus = "active" | "inactive";
@@ -22,6 +22,21 @@ export default function SearchTabsAndPagination({
   onStatusChange,
   totalClients,
 }: SearchTabsAndPaginationProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   const itemsPerPage = 50;
   const currentPage = 1;
   const totalPages = Math.ceil(totalClients / itemsPerPage);
@@ -29,7 +44,13 @@ export default function SearchTabsAndPagination({
   const endCount = Math.min(currentPage * itemsPerPage, totalClients);
 
   return (
-    <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-4">
+    <div
+      className={`flex-shrink-0 ${
+        isMobile
+          ? "flex flex-col gap-4"
+          : "flex flex-wrap items-center justify-between gap-4"
+      }`}
+    >
       {/* ================= TABS ================= */}
       <div className="flex items-center gap-2">
         <button
@@ -104,34 +125,36 @@ export default function SearchTabsAndPagination({
       </div>
 
       {/* ================= PAGINADOR ================= */}
-      <div className="flex items-center gap-4 text-app-secondary fs-12 font-semibold">
-        <select
-          className="border-none rounded-none bg-bg0 text-app fs-12 font-semibold"
-          value={itemsPerPage}
-          onChange={() => {}}
-        >
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
+      {!isMobile && (
+        <div className="flex items-center gap-4 text-app-secondary fs-12 font-semibold">
+          <select
+            className="border-none rounded-none bg-bg0 text-app fs-12 font-semibold"
+            value={itemsPerPage}
+            onChange={() => {}}
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
 
-        <span className="fs-12 font-semibold text-app">
-          {startCount} - {endCount} de {totalClients}
-        </span>
+          <span className="fs-12 font-semibold text-app">
+            {startCount} - {endCount} de {totalClients}
+          </span>
 
-        <button
-          className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
-          disabled={currentPage === 1}
-        >
-          ‹
-        </button>
-        <button
-          className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
-          disabled={currentPage === totalPages}
-        >
-          ›
-        </button>
-      </div>
+          <button
+            className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
+            disabled={currentPage === 1}
+          >
+            ‹
+          </button>
+          <button
+            className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
+            disabled={currentPage === totalPages}
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 }

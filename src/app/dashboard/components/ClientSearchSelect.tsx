@@ -46,15 +46,15 @@ export default function ClientSearchSelect({
   const inputValue = search || selectedLabel
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-900">
+    <div className="flex flex-col gap-p5">
+      <label className="block text-sm font-medium text-app-secondary">
         Persona
       </label>
 
       <div className="relative">
         <input
           type="text"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+           className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
           placeholder="Buscar por nombre o email..."
           value={inputValue}
           onChange={(e) => {

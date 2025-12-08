@@ -273,7 +273,7 @@ export default function ClientDetailModal({
     >
       {/* TAB: Datos / Perfil */}
       {activeTab === "data" && (
-        <div className="space-y-p20">
+        <div className="flex flex-col gap-p10">
           <Field label="Nombre">
             <input
               value={client.name}
@@ -399,7 +399,7 @@ type FieldProps = {
 
 function Field({ label, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-p10">
+    <div className="flex flex-col gap-p5">
       <label className="fs-12 text-app-secondary">{label}</label>
       {children}
     </div>

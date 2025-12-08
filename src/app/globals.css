@@ -93,6 +93,7 @@
 
   /* === SPACES (Figma: p0, p10, p20, ...) === */
   --p0: 0rem;
+  --p5: 0.3125rem;    /* 5px  */
   --p10: 0.625rem;   /* 10px */
   --p20: 1.25rem;    /* 20px */
   --p30: 1.875rem;   /* 30px */
@@ -267,6 +268,7 @@
 
   /* Gaps */
   .gap-p0 { gap: var(--p0); }
+  .gap-p5 { gap: var(--p5); }
   .gap-p10 { gap: var(--p10); }
   .gap-p20 { gap: var(--p20); }
   .gap-p30 { gap: var(--p30); } 
@@ -274,6 +276,7 @@
   .gap-p50 { gap: var(--p50); }  
 
   .row-gap-p0 { row-gap: var(--p0); }
+  .row-gap-p5 { row-gap: var(--p5); }
   .row-gap-p10 { row-gap: var(--p10); }
   .row-gap-p20 { row-gap: var(--p20); }
   .row-gap-p30 { row-gap: var(--p30); }
@@ -281,6 +284,7 @@
   .row-gap-p50 { row-gap: var(--p50); }
   
   .column-gap-p0 { column-gap: var(--p0); }
+  .column-gap-p5 { column-gap: var(--p5); }
   .column-gap-p10 { column-gap: var(--p10); }
   .column-gap-p20 { column-gap: var(--p20); }
   .column-gap-p30 { column-gap: var(--p30); }

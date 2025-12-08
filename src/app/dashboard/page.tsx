@@ -40,7 +40,7 @@ export type Payment = {
   created_at: string;
 };
 
-export const PLANS = ["Basic", "Fitness", "Pro fitness", "Pago deuda"] as const;
+export const PLANS = ["Starter", "Plus", "Premium","Pro","total", "Pago deuda"] as const;
 export type PlanType = (typeof PLANS)[number];
 
 // === ROOT DASHBOARD ===============================================================

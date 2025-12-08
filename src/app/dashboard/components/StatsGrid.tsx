@@ -20,7 +20,7 @@ export default function StatsGrid({
   clientsWithDebt,
   monthlyIncome,
 }: Props) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const [hidden, setHidden] = useState<HiddenState>({
     totalClients: false,

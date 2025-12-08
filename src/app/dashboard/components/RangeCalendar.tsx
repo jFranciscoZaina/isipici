@@ -126,7 +126,7 @@ export default function RangeCalendar({
   }
 
   return (
-    <div className={`rounded-xl border bg-white p-5 shadow-sm ${className}`}>
+    <div className={`rounded-xl p-5 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -145,7 +145,7 @@ export default function RangeCalendar({
           {months.map((m) => (
             <div
               key={m.toISOString()}
-              className="text-center font-semibold text-slate-900"
+              className="text-center font-semibold text-slate-900 fs-14"
             >
               {monthLabel(m)}
             </div>

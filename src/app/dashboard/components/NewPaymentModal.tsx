@@ -64,6 +64,10 @@ export default function NewPaymentModal({
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const hasDebt = (selectedClient?.currentDebt ?? 0) > 0;
+  const availablePlans = useMemo(
+    () => (hasDebt ? PLANS : PLANS.filter((p) => p !== "Pago deuda")),
+    [hasDebt]
+  );
 
   const handleClientChange = async (id: string) => {
     setClientId(id);
@@ -286,7 +290,7 @@ export default function NewPaymentModal({
     >
       <div className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] gap-p30">
         {/* LEFT: Datos del pago */}
-        <div className="space-y-p20">
+        <div className="flex flex-col gap-p10">
           {/* Cliente */}
           <ClientSearchSelect
             clients={clients}
@@ -306,7 +310,7 @@ export default function NewPaymentModal({
               disabled={hasDebt}
             >
               <option value="">Seleccionar plan...</option>
-              {PLANS.map((p) => (
+              {availablePlans.map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>
@@ -376,7 +380,7 @@ export default function NewPaymentModal({
             markers={markers}
           />
 
-          <p className="fs-14 text-app">{rangeLabel}</p>
+          <p className="fs-14 text-app-secondary text-center">{rangeLabel}</p>
 
           {calendarLocked && (
             <p className="fs-12 text-app-secondary">
@@ -398,7 +402,7 @@ type FieldProps = {
 
 function Field({ label, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-p10">
+    <div className="flex flex-col gap-p5">
       <label className="fs-12 text-app-secondary">{label}</label>
       {children}
     </div>
