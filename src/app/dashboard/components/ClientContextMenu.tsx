@@ -116,7 +116,7 @@ export function ClientContextMenu({
         onClick={onClose}
       >
         <div
-          className="w-full bg-bg1  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] "
+          className="w-full bg-bg0  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] "
           onClick={(e) => e.stopPropagation()}
           style={{ animationFillMode: "both" }}
         >
