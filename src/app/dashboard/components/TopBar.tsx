@@ -104,7 +104,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
           onClick={() => setShowSheet(false)}
         >
           <div
-            className="w-full bg-bg0 rounded-t-3xl p-p40 shadow-2xl flex flex-col gap-p20 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
+            className="w-full bg-bg0 rounded-t-3xl p-p40 pb-p20 shadow-2xl flex flex-col gap-p20 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center fs-14 text-app font-semibold">

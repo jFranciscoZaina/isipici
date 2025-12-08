@@ -50,6 +50,7 @@ export default function NewPaymentModal({
   const [loading, setLoading] = useState(false);
 
   const [selectedClientDebt, setSelectedClientDebt] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   // markers para el calendario (pagado / deuda)
   const [markers, setMarkers] = useState<Record<string, "paid" | "debt">>({});
@@ -190,6 +191,14 @@ export default function NewPaymentModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedClientId]);
+
+  // Responsive: single calendar month on mobile
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 640);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   const rangeLabel = useMemo(() => {
     if (!dateRange.from || !dateRange.to)
@@ -376,7 +385,7 @@ export default function NewPaymentModal({
             value={dateRange}
             onChange={setDateRange}
             disabled={calendarLocked}
-            numberOfMonths={2}
+            numberOfMonths={isMobile ? 1 : 2}
             markers={markers}
           />
 
