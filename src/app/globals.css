@@ -295,8 +295,8 @@
   .btn-primary {
     @apply inline-flex items-center gap-4 text-sm ;
     border-radius: var(--br999, 999px); /* opcional, pill */
-    padding-left: var(--p20);
-    padding-right: var(--p30);
+    padding-left: var(--p30);
+    padding-right: var(--p40);
     padding-block: var(--p10);
     background-color: var(--color-accent-primary);
     color: var(--color-text-on-primary);

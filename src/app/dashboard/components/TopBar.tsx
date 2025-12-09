@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { DollarSign, UserPlus, Menu } from "react-feather";
-import {isisvg} from "../../isipici.svg";
+import Image from "next/image";
+import isipiciLogo from "../../isipici.svg";
 
 interface TopBarProps {
   onNewPayment: () => void;
@@ -54,7 +55,15 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         {/* Izquierda: marca + owner */}
         <div className="flex items-baseline gap-3 items-center">
           <span className="text-sm font-semibold tracking-[0.18em] text-[color:var(--color-accent-primary)] uppercase">
-            <isisvg className="h-6 w-6" />
+           
+              <Image
+                src={isipiciLogo}
+                alt="ISIPICI"
+                width={24}
+                height={24}
+                className="h-6 w-20"
+              />
+            
           </span>
           <span className="h-5 w-px bg-bg3" />
           <span className="text-xs text-app-secondary">
