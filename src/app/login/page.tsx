@@ -3,6 +3,8 @@
 
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image";
+import isipiciLogo from "../isipici.svg";
 
 export default function LoginPage() {
   const router = useRouter()
@@ -43,9 +45,17 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
-        <h1 className="text-xl font-semibold text-slate-900 mb-1">
-          isipici Login
-        </h1>
+       <span className="text-sm font-semibold tracking-[0.18em] text-[color:var(--color-accent-primary)] flex justify-center pb-p20">
+           
+              <Image
+                src={isipiciLogo}
+                alt="ISIPICI"
+                width={24}
+                height={24}
+                className="h-6 w-30"
+              />
+            
+          </span>
         <p className="text-sm text-slate-500 mb-6">
           Inicia sesión con la cuenta de tu negocio para ver tus clientes y pagos.
         </p>
@@ -95,8 +105,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-[11px] text-slate-400">
-          Si todavía no tenés cuenta de negocio, creala vía API por ahora
-          (después hacemos el registro desde UI).
+          Si todavía no tenés cuenta de negocio, contactanos. Es GRATIS!
         </p>
       </div>
     </div>
