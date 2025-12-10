@@ -9,7 +9,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "isipici – gestor de clientes y pagos para gimnasios",
+  title: "Gestioná clientes, pagos y vencimientos de tu gimnasio, club, instituto, etc. desde un solo lugar. isipici es el panel de control pensado para el día a día.",
   description: "Panel de gestión para gimnasios: clientes, pagos y deudas en un solo lugar.",
   metadataBase: new URL("https://www.isipici.com"),
   icons: {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "isipici – plataforma para gimnasios",
     description:
-      "Gestioná clientes, pagos y deudas de tu gimnasio con un dashboard simple y claro.",
+      "Gestioná clientes, pagos y deudas de tu gimnasio, club, instituto, etc. con un dashboard simple y claro.",
     url: "https://www.isipici.com",
     siteName: "isipici",
     images: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
         url: "/isipici-busqueda.png",
         width: 1200,
         height: 630,
-        alt: "isipici - gestor de clientes y pagos para gimnasios",
+        alt: "isipici - gestor de clientes y pagos para gimnasio, club, instituto, etc.",
       },
     ],
   },
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "isipici – gestor de clientes y pagos para gimnasios",
     description:
-      "Administra clientes, pagos y deudas con un dashboard pensado para el día a día del gimnasio.",
+      "Administra clientes, pagos y deudas con un dashboard pensado para el día a día del gimnasio, club, instituto, etc..",
     images: ["/isipici-busqueda.png"],
   },
 };
