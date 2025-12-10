@@ -84,11 +84,12 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-p10">
               <button
                 type="button"
-                className=" px-p30 py-p10
+                className=" 
                   rounded-full
                   fs-14
                   border border-n2
-                  bg-bg8
+                  btn-primary2
+                  
                   text-[color:var(--n1)]
                   w-fit 
                   flex
@@ -97,7 +98,7 @@ export default function HomePage() {
                   window.location.href = "/login";
                 }}
               >
-                Ir al dashboard
+                Ir al logIn
               </button>
               <button
                 type="button"

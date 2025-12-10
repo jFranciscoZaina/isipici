@@ -304,6 +304,18 @@
     font-size: var(--fs-14);
   }
 
+  .btn-primary2 {
+    @apply inline-flex items-center gap-4 text-sm ;
+    border-radius: var(--br999, 999px); /* opcional, pill */
+    padding-left: var(--p40);
+    padding-right: var(--p40);
+    padding-block: var(--p10);
+    background-color: var(--color-accent-primary);
+    color: var(--color-text-on-primary);
+    box-shadow: var(--shadow-sm);
+    font-size: var(--fs-14);
+  }
+
   .btn-primary:hover {
     background-color: color-mix(
       in srgb,
