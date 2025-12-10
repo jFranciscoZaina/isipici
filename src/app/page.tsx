@@ -2,7 +2,8 @@
 
 import Dither from "./dashboard/components/Dither";
 import Image from "next/image";
-import isipiciLogo from "../../public/isipiciXL.svg";
+import isipiciLogo from "../../public/isipiciw.svg";
+import ablelogo from "../../public/abllle-logo-o.png";
 
 export default function HomePage() {
   return (
@@ -39,6 +40,11 @@ export default function HomePage() {
             relative z-10
             w-full max-w-[1120px]
             px-p20
+            items-center justify-center
+            flex
+            flex-col
+            min-h-screen
+            py-p50
             
           "
         >
@@ -58,26 +64,25 @@ export default function HomePage() {
               <p className="fs-12 tracking-[0.18em] uppercase text-[color:var(--n0)]">
                 CLIENT & PAYMENT MANAGER
               </p>
-              
-                <span className="text-sm font-semibold tracking-[0.18em]  uppercase flex justify-center">
-                  <Image
-                    src={isipiciLogo}
-                    alt="ISIPICI"
-                    width={44}
-                    height={44}
-                    color="FFFFFF"
-                    className="h-18 w-60 "
-                  />
-                </span>{" "}
-              
+              <span className="text-sm font-semibold tracking-[0.18em]  uppercase flex justify-center">
+                <Image
+                  src={isipiciLogo}
+                  alt="ISIPICI"
+                  width={44}
+                  height={44}
+                  color="FFFFFF"
+                  className="h-18 w-60 "
+                />
+              </span>{" "}
               <div className=" flex-col gap-p0 flex">
-             <h1 className="fs-32 font-semibold text-[color:var(--n0)]">
-                control total de tus cuotas
-              </h1>
-              <p className="fs-14 text-[color:var(--n0)] max-w-[460px]">
-                Administra clientes, pagos y deudas en un dashboard pensado para
-                el día a día del gimnasio. Datos claros, decisiones rápidas.
-              </p>
+                <h1 className="fs-32 font-semibold text-[color:var(--n0)]">
+                  control total de tus cuotas
+                </h1>
+                <p className="fs-14 text-[color:var(--n0)] max-w-[460px]">
+                  Administra clientes, pagos y deudas en un dashboard pensado
+                  para el día a día del gimnasio. Datos claros, decisiones
+                  rápidas.
+                </p>
               </div>
             </div>
 
@@ -113,11 +118,30 @@ export default function HomePage() {
                   flex
                   max-w-[350px] items-center justify-center 
                 "
+                onClick={() => {
+                  window.location.href = "https://w.app/oievhw";
+                }}
               >
                 Quiero una cuenta de negocio
               </button>
             </div>
           </div>
+          <a
+            className="fs-12 text-[color:var(--n4)] mt-p10 flex flex-wrap items-center gap-p10 w-fit pt-p30"
+            target="_blank" rel="noopener noreferrer"
+            href="https://abllle.com"
+            
+          >
+            powered by
+            <Image
+              src={ablelogo}
+              alt="Able Software"
+              width={40}
+              height={6}
+              className="h-6 w-auto mt-p10 mx-auto"
+              priority
+            />
+          </a>
         </div>
       </section>
     </main>
