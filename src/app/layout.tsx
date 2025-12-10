@@ -1,11 +1,11 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import React from "react";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-geist-sans", // reemplaza la fuente Geist
+  variable: "--font-geist-sans",
 });
 
 export const metadata: Metadata = {
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.isipici.com"),
   icons: {
     icon: [
-      { url: "/favicon.ico" },
-      { url: "/isipici.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg" },
+      { url: "/favicon.ico", type: "image/svg+xml" },
     ],
   },
   openGraph: {
@@ -42,31 +42,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const logoJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "isipici",
-    url: "https://www.isipici.com",
-    logo: "https://www.isipici.com/isipici.svg",
-  };
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={plusJakarta.variable}>
-      <head>
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(logoJsonLd) }}
-        />
-      </head>
-      <body className="font-sans antialiased">
-        {children}
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
