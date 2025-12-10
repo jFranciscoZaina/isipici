@@ -11,6 +11,7 @@ import NewClientModal from "./components/NewClientModal";
 import NewPaymentModal from "./components/NewPaymentModal";
 import ClientDetailModal, { type TabId } from "./components/ClientDetailModal";
 import type { ClientMenuAction } from "./components/ClientContextMenu";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 // === TYPES =======================================================================
 
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   // Modal de detalle
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null);
   const [detailInitialTab, setDetailInitialTab] = useState<TabId>("data");
+  const [confirmDeleteClient, setConfirmDeleteClient] = useState<ClientRow | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<
@@ -135,21 +137,7 @@ export default function DashboardPage() {
   // === Acciones del menú contextual ============================================
 
   async function handleDeleteClient(client: ClientRow) {
-    if (!confirm("¿Eliminar este cliente y todo su historial de pagos?"))
-      return;
-
-    try {
-      const res = await fetch(`/api/clients/${client.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Error eliminando cliente");
-
-      await fetchClients(); // refresca la tabla
-      setDetailClient(null);
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Error eliminando cliente");
-    }
+    setConfirmDeleteClient(client);
   }
 
   function handleClientMenuAction(action: ClientMenuAction, client: ClientRow) {
@@ -299,6 +287,32 @@ export default function DashboardPage() {
             initialTab={detailInitialTab}
           />
         )}
+
+        <ConfirmDialog
+          open={!!confirmDeleteClient}
+          title="Eliminar cliente"
+          message="Se borrará el cliente y todo su historial de pagos. ¿Continuar?"
+          confirmLabel="Eliminar"
+          onCancel={() => setConfirmDeleteClient(null)}
+          onConfirm={async () => {
+            if (!confirmDeleteClient) return;
+            try {
+              const res = await fetch(`/api/clients/${confirmDeleteClient.id}`, {
+                method: "DELETE",
+              });
+              if (!res.ok) throw new Error("Error eliminando cliente");
+              await fetchClients();
+              setDetailClient(null);
+            } catch (err) {
+              console.error(err);
+              alert(
+                err instanceof Error ? err.message : "Error eliminando cliente"
+              );
+            } finally {
+              setConfirmDeleteClient(null);
+            }
+          }}
+        />
       </div>
     </div>
   );

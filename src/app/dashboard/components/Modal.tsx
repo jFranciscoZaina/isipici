@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
 type ModalSize = "small" | "normal" | "large";
 
@@ -50,11 +50,16 @@ export default function Modal({
 }: ModalProps) {
   const maxWidth = SIZE_CLASSES[size];
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
         className={`
           relative w-full ${maxWidth}
@@ -66,7 +71,6 @@ export default function Modal({
         `}
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         {header && (
@@ -119,7 +123,7 @@ export default function Modal({
                   inline-flex items-center justify-center
                   px-p30 py-p10 rounded-full
                   fs-14 text-center
-                  btn-primary
+                  btn-primary2
                   disabled:opacity-60
                   w-full
                   max-w-[250px]

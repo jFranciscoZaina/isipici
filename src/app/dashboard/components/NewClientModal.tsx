@@ -70,7 +70,7 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
   };
 
   const primaryAction = {
-    label: loading ? "Guardando..." : "Guardar cambios",
+    label: loading ? "Guardando..." : "Registrar cliente",
     onClick: handleSave,
     disabled: loading || !isValid,
   };

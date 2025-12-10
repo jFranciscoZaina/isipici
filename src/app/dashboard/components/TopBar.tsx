@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { DollarSign, UserPlus, Menu } from "react-feather";
 import Image from "next/image";
+import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
 
 interface TopBarProps {
@@ -14,6 +15,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -55,15 +57,14 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         {/* Izquierda: marca + owner */}
         <div className="flex items-baseline gap-3 items-center">
           <span className="text-sm font-semibold tracking-[0.18em] text-[color:var(--color-accent-primary)] uppercase">
-           
-              <Image
-                src={isipiciLogo}
-                alt="ISIPICI"
-                width={24}
-                height={24}
-                className="h-6 w-20"
-              />
-            
+            <Image
+              src={isipiciLogo}
+              alt="ISIPICI"
+              width={96}
+              height={24}
+              className="h-6 w-auto"
+              priority
+            />
           </span>
           <span className="h-5 w-px bg-bg3" />
           <span className="text-xs text-app-secondary">
@@ -85,7 +86,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               </button>
               <span className="h-5 w-px bg-bg3" />
               <button
-                onClick={handleLogout}
+                onClick={() => setConfirmLogout(true)}
                 className="text-xs font-medium text-app-secondary underline-offset-4 hover:text-danger hover:underline"
                 title="Cerrar sesión"
               >
@@ -146,7 +147,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
             <button
               onClick={() => {
                 setShowSheet(false);
-                handleLogout();
+                setConfirmLogout(true);
               }}
               className="w-full text-center fs-14 text-app-secondary hover:text-danger py-p10"
             >
@@ -155,6 +156,18 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Cerrar sesión"
+        message="No podrás ver ni gestionar los datos de tu negocio hasta que inicies sesión nuevamente."
+        confirmLabel="Salir"
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => {
+          setConfirmLogout(false);
+          void handleLogout();
+        }}
+      />
     </>
   );
 }

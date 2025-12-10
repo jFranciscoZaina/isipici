@@ -17,7 +17,7 @@ type Props = {
   markers?: Record<string, "paid" | "debt">
 }
 
-const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+const WEEK_DAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
 
 function isToday(d: Date) {
   const t = new Date()
@@ -54,7 +54,7 @@ function addMonths(d: Date, n: number) {
   return next
 }
 function monthLabel(d: Date) {
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+  return d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
 }
 
 function buildMonthGrid(monthDate: Date) {
@@ -215,7 +215,7 @@ export default function RangeCalendar({
                           <span
                             className={[
                               isEdge ? "text-white" : "text-slate-900",
-                              isToday(d0) ? "font-semibold" : "",
+                              isToday(d0) ? "font-bold" : "",
                             ].join(" ")}
                           >
                             {d0.getDate()}

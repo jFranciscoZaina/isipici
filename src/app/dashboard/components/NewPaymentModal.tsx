@@ -282,7 +282,7 @@ export default function NewPaymentModal({
   };
 
   const primaryAction = {
-    label: loading ? "Guardando..." : "Guardar cambios",
+    label: loading ? "Guardando..." : "Registrar pago",
     onClick: handleSave,
     disabled: loading || !canSave,
   };
@@ -310,7 +310,7 @@ export default function NewPaymentModal({
           {/* Plan */}
           <Field label="Plan">
             <select
-              className={`w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app ${
+              className={`w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app appearance-none pr-p30 ${
                 hasDebt ? "opacity-70 cursor-not-allowed" : ""
               }`}
               value={plan}
