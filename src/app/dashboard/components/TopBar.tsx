@@ -87,7 +87,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               <span className="h-5 w-px bg-bg3" />
               <button
                 onClick={() => setConfirmLogout(true)}
-                className="text-xs font-medium text-app-secondary underline-offset-4 hover:text-danger hover:underline"
+                className="text-xs font-medium text-app-secondary underline-offset-4 hover:text-danger hover:underline cursor-pointer"
                 title="Cerrar sesión"
               >
                 Salir

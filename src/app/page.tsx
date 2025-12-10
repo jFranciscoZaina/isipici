@@ -39,7 +39,7 @@ export default function HomePage() {
           
             relative z-10
             w-full max-w-[1120px]
-            px-p20
+            
             items-center justify-center
             flex
             flex-col
@@ -60,7 +60,7 @@ export default function HomePage() {
               items-center justify-center
             "
           >
-            <div className="flex flex-col gap-p50 text-center max-w-lg">
+            <div className="flex flex-col gap-p50 text-center max-w-[600px]">
               <p className="fs-12 tracking-[0.18em] uppercase text-[color:var(--n0)]">
                 CLIENT & PAYMENT MANAGER
               </p>
@@ -74,8 +74,8 @@ export default function HomePage() {
                   className="h-18 w-60 "
                 />
               </span>{" "}
-              <div className=" flex-col gap-p0 flex">
-                <h1 className="fs-32 font-semibold text-[color:var(--n0)]">
+              <div className=" flex-col gap-p10 flex">
+                <h1 className="fs-16 font-semibold text-[color:var(--n0)] uppercase ">
                   control total de tus cuotas
                 </h1>
                 <p className="fs-14 text-[color:var(--n0)] max-w-[460px]">
@@ -92,9 +92,8 @@ export default function HomePage() {
                 className=" 
                   rounded-full
                   fs-14
-                  border border-n2
-                  btn-primary2
                   
+                  btn-primary2
                   text-[color:var(--n1)]
                   w-fit 
                   flex
@@ -117,20 +116,22 @@ export default function HomePage() {
                   w-fit 
                   flex
                   max-w-[350px] items-center justify-center 
+                  transition-all duration-300 ease-in-out
+                  hover:bg-[color:var(--n2)] hover:text-[color:var(--n0)] hover:cursor-pointer
                 "
                 onClick={() => {
                   window.location.href = "https://w.app/oievhw";
                 }}
               >
-                Quiero una cuenta de negocio
+                Abrir cuenta
               </button>
             </div>
           </div>
           <a
             className="fs-12 text-[color:var(--n4)] mt-p10 flex flex-wrap items-center gap-p10 w-fit pt-p30"
-            target="_blank" rel="noopener noreferrer"
+            target="_blank"
+            rel="noopener noreferrer"
             href="https://abllle.com"
-            
           >
             powered by
             <Image

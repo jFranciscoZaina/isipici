@@ -3,6 +3,7 @@ import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
 import { Check, Minus, X } from "react-feather";
 import { ClientContextMenu, type ClientMenuAction } from "./ClientContextMenu";
+import React from 'react';
 
 type Props = {
   clients: ClientRow[];
@@ -193,7 +194,10 @@ export default function ClientsTable({
 
             {!loading && error && (
               <tr>
-                <td colSpan={6} className="px-p20 py-p20 text-center text-danger">
+                <td
+                  colSpan={6}
+                  className="px-p20 py-p20 text-center text-danger"
+                >
                   {error}
                 </td>
               </tr>
@@ -210,6 +214,12 @@ export default function ClientsTable({
                   <tr
                     key={client.id}
                     className="border-b border-[color:var(--n0)] fs-12 text-app transition hover:border-[color:var(--n2)]"
+                    onClick={(e) => {
+                      if (window.innerWidth < 450) {
+                        e.stopPropagation();
+                        openMenu(client, e as any);
+                      }
+                    }}
                   >
                     <td className="pl-p50 pr-p20 py-p10">
                       {isOverdue ? (
@@ -221,7 +231,7 @@ export default function ClientsTable({
                       )}
                     </td>
 
-                    <td className="px-p20 py-p10 fs-12 font-bold">
+                    <td className="px-p20 py-p10 fs-12 font-bold uppercase">
                       {client.name}
                     </td>
 

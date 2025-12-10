@@ -116,10 +116,11 @@ export function ClientContextMenu({
         onClick={onClose}
       >
         <div
-          className="w-full bg-bg0  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] "
+          className="w-full bg-bg0  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] flex flex-col gap-p30"
           onClick={(e) => e.stopPropagation()}
           style={{ animationFillMode: "both" }}
         >
+          <div className="font-bold uppercase">{client.name}</div>
           
           <ul className="space-y-p10 flex flex-col gap-p30">
             {items.map(({ id, label, icon: Icon, tone }) => (

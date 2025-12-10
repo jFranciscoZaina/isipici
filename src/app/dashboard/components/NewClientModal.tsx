@@ -93,13 +93,13 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
           />
         </Field>
 
-        <Field label="Email (opcional)">
+        <Field label="Email (Recomendado)">
           <input
             type="email"
             className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Opcional, si querés enviar emails"
+            placeholder="Recomendado, para el correcto funcionamiento del sistema"
           />
           {!emailIsValid && (
             <p className="fs-12 text-danger">Ingresá un email válido</p>
