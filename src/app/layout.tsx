@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "isipici – plataforma para gimnasios",
+    title: "isipici",
     description:
       "Gestioná clientes, pagos y deudas de tu gimnasio, club, instituto, etc. con un dashboard simple y claro.",
     url: "https://www.isipici.com",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "isipici – gestor de clientes y pagos para gimnasios",
+    title: "isipici",
     description:
       "Administra clientes, pagos y deudas con un dashboard pensado para el día a día del gimnasio, club, instituto, etc..",
     images: ["/isipici-busqueda.png"],

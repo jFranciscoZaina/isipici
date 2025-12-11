@@ -93,7 +93,7 @@ void main() {
     float effect = 1.0 - smoothstep(0.0, mouseRadius, dist);
     f -= 0.5 * effect;
   }
-  vec3 col = mix(vec3(0.0), waveColor, f);
+  vec3 col = mix(vec3(1.0), waveColor, f);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -259,6 +259,15 @@ function DitheredWaves({
     );
   };
 
+  // Also listen to global pointer events so mouse is tracked even when
+  // hovering DOM elements rendered on top of the canvas.
+  React.useEffect(() => {
+    if (!enableMouseInteraction) return;
+    const onPointer = (ev: PointerEvent) => handlePointerMove(ev);
+    window.addEventListener("pointermove", onPointer);
+    return () => window.removeEventListener("pointermove", onPointer);
+  }, [enableMouseInteraction]);
+
   return (
     <>
       <mesh ref={mesh} scale={[viewport.width, viewport.height, 1]}>
@@ -297,37 +306,44 @@ type DitherProps = {
   disableAnimation?: boolean;
   enableMouseInteraction?: boolean;
   mouseRadius?: number;
+  children?: React.ReactNode;
 };
 
 export default function Dither({
   waveSpeed = 0.05,
-  waveFrequency = 3,
-  waveAmplitude = 0.3,
-  waveColor = [0.5, 0.5, 0.5],
-  colorNum = 4,
+  waveFrequency = 1.5,
+  waveAmplitude = 0.0,
+  waveColor = [0.12, 0.12, 0.12],
+  colorNum = 40,
   pixelSize = 2,
   disableAnimation = false,
   enableMouseInteraction = true,
-  mouseRadius = 1,
+  mouseRadius = 0.3,
+  children,
 }: DitherProps) {
   return (
-    <Canvas
-      className="dither-container"
-      camera={{ position: [0, 0, 6] }}
-      dpr={1}
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
-    >
-      <DitheredWaves
-        waveSpeed={waveSpeed}
-        waveFrequency={waveFrequency}
-        waveAmplitude={waveAmplitude}
-        waveColor={waveColor}
-        colorNum={colorNum}
-        pixelSize={pixelSize}
-        disableAnimation={disableAnimation}
-        enableMouseInteraction={enableMouseInteraction}
-        mouseRadius={mouseRadius}
-      />
-    </Canvas>
+    <div className="relative w-full min-h-screen h-screen">
+      <Canvas
+        className="absolute inset-0 z-0 dither-container"
+        camera={{ position: [0, 0, 6] }}
+        dpr={1}
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
+      >
+        <DitheredWaves
+          waveSpeed={waveSpeed}
+          waveFrequency={waveFrequency}
+          waveAmplitude={waveAmplitude}
+          waveColor={waveColor}
+          colorNum={colorNum}
+          pixelSize={pixelSize}
+          disableAnimation={disableAnimation}
+          enableMouseInteraction={enableMouseInteraction}
+          mouseRadius={mouseRadius}
+        />
+      </Canvas>
+
+      {/* Overlay children rendered above the canvas and centered */}
+      <div className="absolute inset-0 z-10 pointer-events-auto flex items-center justify-center">{children}</div>
+    </div>
   );
 }
