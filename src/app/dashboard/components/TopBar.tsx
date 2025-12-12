@@ -18,15 +18,27 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    } catch (e) {
-      console.error("Error al cerrar sesión", e);
+  try {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isipici_unlocked"); // 👈 limpia el PIN unlock del tab
     }
-  };
+
+    await fetch("/api/auth/logout", { method: "POST" });
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  } catch (e) {
+    console.error("Error al cerrar sesión", e);
+
+    // fallback: igual limpiamos y redirigimos
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isipici_unlocked");
+      window.location.href = "/login";
+    }
+  }
+};
+
 
   useEffect(() => {
     const loadOwner = async () => {

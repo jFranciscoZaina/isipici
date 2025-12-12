@@ -5,15 +5,14 @@ import jwt from "jsonwebtoken"
 
 export const runtime = "nodejs"
 
-// Lo tipamos explícitamente como string
 const rawJwtSecret = process.env.JWT_SECRET
 
 if (!rawJwtSecret) {
-  throw new Error("JWT_SECRET no está definido en .env")
+  throw new Error("JWT_SECRET no esta definido en .env")
 }
 
 const JWT_SECRET: string = rawJwtSecret
-const JWT_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7 // 7 días
+const JWT_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7 // 7 dias
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,17 +25,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Buscar owner por email
+    const trimmedEmail = String(email).trim()
+
     const { data, error } = await supabase
       .from("owners")
       .select("id, name, email, password_hash")
-      .eq("email", email)
+      .eq("email", trimmedEmail)
       .single()
 
     if (error || !data) {
       console.error("Supabase owners select error:", error)
       return NextResponse.json(
-        { error: "Credenciales inválidas" },
+        { error: "Credenciales invalidas" },
         { status: 401 }
       )
     }
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     if (!isValid) {
       return NextResponse.json(
-        { error: "Credenciales inválidas" },
+        { error: "Credenciales invalidas" },
         { status: 401 }
       )
     }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         ownerId: data.id,
         email: data.email,
       },
-      JWT_SECRET, // ahora es string, TS feliz
+      JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN_SECONDS }
     )
 
@@ -79,9 +79,6 @@ export async function POST(req: NextRequest) {
     return res
   } catch (err) {
     console.error("Unexpected /api/auth/login error:", err)
-    return NextResponse.json(
-      { error: "Unexpected error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 })
   }
 }
