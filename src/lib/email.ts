@@ -250,7 +250,7 @@ export async function sendUpcomingDueEmail({
                   alt="ISIPICI"
                   width="1200"
                   style="
-                    width: 100% !important;
+                    width: 600% !important;
                     max-width: 1200px;
                     height: auto;
                     display: block;
