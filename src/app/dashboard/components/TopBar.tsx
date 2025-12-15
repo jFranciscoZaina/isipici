@@ -142,7 +142,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               className="w-full btn-primary justify-center py-p12 fs-14"
             >
               <DollarSign className="h-4 w-4" strokeWidth={2} />
-              <span>Registrar</span>
+              <span>Registrar pago</span>
             </button>
 
             <button
