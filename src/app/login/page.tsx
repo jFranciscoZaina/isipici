@@ -15,6 +15,25 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  // Si ya hay session, redirigir al dashboard
+  React.useEffect(() => {
+    const verify = async () => {
+      try {
+        const res = await fetch("/api/auth/me", { method: "GET" })
+        if (res.ok) {
+          router.replace("/dashboard")
+          return
+        }
+      } catch {
+        // ignore, mostramos el login
+      } finally {
+        setCheckingSession(false)
+      }
+    }
+    verify()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,6 +62,16 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8 text-sm text-slate-500">
+          Verificando sesion...
+        </div>
+      </div>
+    )
   }
 
   return (
