@@ -9,6 +9,7 @@ type DueClientRow = {
   email: string | null
   next_due: string | null
   owner_id: string
+  current_debt?: number | null
   owners?: { name: string | null } | { name: string | null }[] | null
 }
 
@@ -33,6 +34,7 @@ export async function GET(_req: NextRequest) {
         email,
         next_due,
         owner_id,
+        current_debt,
         owners ( name )
       `
       )
@@ -59,11 +61,15 @@ export async function GET(_req: NextRequest) {
         : row.owners?.name ?? "Tu negocio"
 
       try {
+        const remainingDebt =
+          typeof row.current_debt === "number" ? row.current_debt : null
+
         await sendUpcomingDueEmail({
           to: clientEmail,
           clientName,
           ownerName,
           dueDate,
+          remainingDebt,
         })
 
         await supabase.from("email_logs").insert({

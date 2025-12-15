@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ClientRow } from "../page"
 
 type Props = {
@@ -43,7 +43,19 @@ export default function ClientSearchSelect({
     setIsOpen(false)
   }
 
-  const inputValue = search || selectedLabel
+  // Sincroniza el input cuando el cliente cambia externamente, pero permite borrar a mano
+  const prevSelectedRef = useRef<string>("")
+  useEffect(() => {
+    if (selectedClientId !== prevSelectedRef.current) {
+      prevSelectedRef.current = selectedClientId
+      if (selectedClientId) {
+        const c = clients.find((cl) => cl.id === selectedClientId)
+        setSearch(c ? `${c.name}${c.email ? ` — ${c.email}` : ""}` : "")
+      } else {
+        setSearch("")
+      }
+    }
+  }, [selectedClientId, clients])
 
   return (
     <div className="flex flex-col gap-p5">
@@ -54,16 +66,16 @@ export default function ClientSearchSelect({
       <div className="relative">
         <input
           type="text"
-           className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
+          className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
           placeholder="Buscar por nombre o email..."
-          value={inputValue}
+          value={search}
           onChange={(e) => {
             const value = e.target.value
             setSearch(value)
             setIsOpen(value.trim().length > 0) // solo abre si escribe
           }}
           onFocus={() => {
-            if (inputValue.trim().length > 0) setIsOpen(true)
+            if (search.trim().length > 0) setIsOpen(true)
           }}
         />
 
@@ -78,7 +90,6 @@ export default function ClientSearchSelect({
                 <button
                   key={c.id}
                   type="button"
-                  // Evitamos que el blur del input cierre antes del click
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(c.id)}
                   className={`w-full text-left px-3 py-2 text-xs md:text-sm hover:bg-slate-50 ${

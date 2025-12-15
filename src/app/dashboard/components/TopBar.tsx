@@ -94,7 +94,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               </button>
               <button onClick={onNewClient} className="btn-primary">
                 <UserPlus className="h-4 w-4" strokeWidth={2} />
-                <span>Agregar cliente</span>
+                <span>Registrar cliente</span>
               </button>
               <span className="h-5 w-px bg-bg3" />
               <button
@@ -142,7 +142,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               className="w-full btn-primary justify-center py-p12 fs-14"
             >
               <DollarSign className="h-4 w-4" strokeWidth={2} />
-              <span>Registrar pago</span>
+              <span>Registrar</span>
             </button>
 
             <button
@@ -153,7 +153,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
               className="w-full btn-primary justify-center py-p12 fs-14"
             >
               <UserPlus className="h-4 w-4" strokeWidth={2} />
-              <span>Agregar cliente</span>
+              <span>Registrar cliente</span>
             </button>
 
             <button

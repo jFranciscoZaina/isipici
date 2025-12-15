@@ -12,6 +12,7 @@ import NewPaymentModal from "./components/NewPaymentModal";
 import ClientDetailModal, { type TabId } from "./components/ClientDetailModal";
 import type { ClientMenuAction } from "./components/ClientContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
+import Snackbar from "./components/Snackbar";
 
 // === TYPES =======================================================================
 
@@ -61,6 +62,7 @@ export default function DashboardPage() {
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null);
   const [detailInitialTab, setDetailInitialTab] = useState<TabId>("data");
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<ClientRow | null>(null);
+  const [snackbar, setSnackbar] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<
@@ -264,6 +266,8 @@ export default function DashboardPage() {
           <NewClientModal
             onClose={() => setShowNewClient(false)}
             onCreated={fetchClients}
+            onSuccess={(msg) => setSnackbar({ message: msg, type: "success" })}
+            onError={(msg) => setSnackbar({ message: msg, type: "error" })}
           />
         )}
 
@@ -276,6 +280,8 @@ export default function DashboardPage() {
               await fetchClients();
               closeNewPayment();
             }}
+            onSuccess={(msg) => setSnackbar({ message: msg, type: "success" })}
+            onError={(msg) => setSnackbar({ message: msg, type: "error" })}
           />
         )}
 
@@ -313,6 +319,14 @@ export default function DashboardPage() {
             }
           }}
         />
+
+        {snackbar && (
+          <Snackbar
+            message={snackbar.message}
+            type={snackbar.type}
+            onClose={() => setSnackbar(null)}
+          />
+        )}
       </div>
     </div>
   );

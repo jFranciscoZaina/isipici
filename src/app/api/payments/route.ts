@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
           amount: numericAmount,
           dueDate,
           plan,
+          remainingDebt: numericDebt,
         })
       }
     } catch (emailError) {

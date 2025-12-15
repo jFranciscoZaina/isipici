@@ -7,9 +7,16 @@ import { User } from "react-feather";
 type Props = {
   onClose: () => void;
   onCreated: () => void;
+  onSuccess?: (msg: string) => void;
+  onError?: (msg: string) => void;
 };
 
-export default function NewClientModal({ onClose, onCreated }: Props) {
+export default function NewClientModal({
+  onClose,
+  onCreated,
+  onSuccess,
+  onError,
+}: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,10 +53,15 @@ export default function NewClientModal({ onClose, onCreated }: Props) {
       if (!res.ok) throw new Error("Error creando cliente");
 
       onCreated();
+      onSuccess?.(
+        "El cliente se ha creado con exito. Registrale un pago para que quede activo."
+      );
       onClose();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Error creando cliente");
+      onError?.(
+        err instanceof Error ? err.message : "Error creando cliente"
+      );
     } finally {
       setLoading(false);
     }

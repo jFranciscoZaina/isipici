@@ -43,10 +43,12 @@ export async function sendUpcomingDueEmail({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="x-apple-disable-message-reformatting" />
+<meta name="color-scheme" content="dark" />
+<meta name="supported-color-schemes" content="dark" />
     <title>Recordatorio de pago</title>
   </head>
 
-  <body
+  <body bgcolor="#000000"
     style="
       margin: 0 !important;
       padding: 0 !important;
@@ -91,7 +93,7 @@ export async function sendUpcomingDueEmail({
       "
     >
       <tr>
-        <td align="center" style="padding: 0; margin: 0;">
+        <td align="center" bgcolor="#000000" style="padding: 0; margin: 0; background: #000000 !important;">
           <!-- Main container -->
           <table
             role="presentation"
@@ -99,6 +101,7 @@ export async function sendUpcomingDueEmail({
             cellpadding="0"
             cellspacing="0"
             border="0"
+            bgcolor="#000000"
             style="
               width: 100%;
               max-width: 600px;
@@ -109,7 +112,7 @@ export async function sendUpcomingDueEmail({
             "
           >
             <tr>
-              <td style="padding: 40px 24px 18px 24px; color: #ffffff !important;">
+              <td bgcolor="#000000" style="padding: 40px 24px 18px 24px; color: #ffffff !important; background: #000000 !important;">
                 <!-- Headings -->
                 <div
                   style="
@@ -244,13 +247,13 @@ export async function sendUpcomingDueEmail({
             "
           >
             <tr>
-              <td align="center" style="padding: 16px 0 0 0; margin: 0;">
+              <td align="center" bgcolor="#000000" style="padding: 16px 0 0 0; margin: 0; background: #000000 !important;">
                 <img
-                  src="https://i.ibb.co/kVSWh4cV/Recurso-9-0-5x.png"
+                  src="https://i.postimg.cc/MGsjFppx/Recurso-9-0-5x.png"
                   alt="ISIPICI"
                   width="1200"
                   style="
-                    width: 600% !important;
+                    width: 100% !important;
                     max-width: 1200px;
                     height: auto;
                     display: block;
@@ -334,11 +337,15 @@ export async function sendPaymentReceiptEmail({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="x-apple-disable-message-reformatting" />
+<meta name="x-apple-disable-message-reformatting" />
+
+<meta name="color-scheme" content="dark" />
+<meta name="supported-color-schemes" content="dark" />
+
     <title>Pago registrado</title>
   </head>
 
-  <body
+  <body bgcolor="#000000"
     style="
       margin: 0 !important;
       padding: 0 !important;
@@ -383,7 +390,7 @@ export async function sendPaymentReceiptEmail({
       "
     >
       <tr>
-        <td align="center" style="padding: 0; margin: 0;">
+        <td align="center" bgcolor="#000000" style="padding: 0; margin: 0; background: #000000 !important;">
           <!-- Main container (responsive) -->
           <table
             role="presentation"
@@ -391,6 +398,7 @@ export async function sendPaymentReceiptEmail({
             cellpadding="0"
             cellspacing="0"
             border="0"
+            bgcolor="#000000"
             style="
               width: 100%;
               max-width: 600px;
@@ -606,9 +614,9 @@ export async function sendPaymentReceiptEmail({
             "
           >
             <tr>
-              <td align="center" style="padding: 16px 0 0 0; margin: 0;">
+              <td align="center" bgcolor="#000000" style="padding: 16px 0 0 0; margin: 0; background: #000000 !important;">
                 <img
-                  src="https://i.ibb.co/kVSWh4cV/Recurso-9-0-5x.png"
+                  src="https://i.postimg.cc/MGsjFppx/Recurso-9-0-5x.png"
                   alt="ISIPICI"
                   width="1200"
                   style="

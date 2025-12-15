@@ -9,6 +9,7 @@ type UpcomingClientRow = {
   email: string | null
   next_payment_date: string | null
   owner_id: string | null
+  current_debt?: number | null
 }
 
 function formatDateDDMMYYYY(d: Date) {
@@ -38,7 +39,7 @@ async function handleUpcomingReminders(req: NextRequest) {
 
     const { data: clients, error: clientsError } = await supabase
       .from("clients")
-      .select("id, name, email, next_payment_date, owner_id")
+      .select("id, name, email, next_payment_date, owner_id, current_debt")
       .eq("next_payment_date", targetISO)
       .not("email", "is", null)
 
@@ -65,6 +66,8 @@ async function handleUpcomingReminders(req: NextRequest) {
       const clientName = client.name
       const ownerId = client.owner_id ?? null
       const dueDateFormatted = formatDateDDMMYYYY(target)
+      const remainingDebt =
+        typeof client.current_debt === "number" ? client.current_debt : null
 
       try {
         await sendUpcomingDueEmail({
@@ -72,6 +75,7 @@ async function handleUpcomingReminders(req: NextRequest) {
           clientName,
           ownerName,
           dueDate: dueDateFormatted,
+          remainingDebt,
         })
 
         const { error: logError } = await supabase.from("email_logs").insert({
