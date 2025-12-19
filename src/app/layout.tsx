@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import PWARegister from "./PWARegister";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -40,12 +41,22 @@ export const metadata: Metadata = {
       "Administra clientes, pagos y deudas con un dashboard pensado para el día a día del gimnasio, club, instituto, etc..",
     images: ["/isipici-busqueda.png"],
   },
+  manifest: "/manifest.webmanifest",
+  themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "isipici",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={plusJakarta.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <PWARegister />
+        {children}
+      </body>
     </html>
   );
 }
