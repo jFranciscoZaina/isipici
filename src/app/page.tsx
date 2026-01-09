@@ -115,7 +115,7 @@ export default function HomePage() {
                     hover:bg-[color:var(--n2)] hover:text-[color:var(--n8)] hover:cursor-pointer
                   "
                   onClick={() => {
-                    window.location.href = "https://w.app/oievhw";
+                    window.location.href = "https://wa.link/cf2s3z";
                   }}
                 >
                   Abrir cuenta
