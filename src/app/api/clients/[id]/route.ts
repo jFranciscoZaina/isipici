@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
+import { getSessionOwnerId } from "@/lib/auth"
 
-// PATCH /api/clients/:id  -> actualizar datos del cliente
+// PATCH /api/clients/:id -> actualizar datos del cliente del owner logueado
 export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const ownerId = getSessionOwnerId(req)
+
+  if (!ownerId) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const { id } = await ctx.params
   const clientId = id
 
@@ -28,8 +35,9 @@ export async function PATCH(
       due_day: dueDay,
     })
     .eq("id", clientId)
+    .eq("owner_id", ownerId)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error("Supabase update client error:", error)
@@ -39,14 +47,27 @@ export async function PATCH(
     )
   }
 
+  if (!data) {
+    return NextResponse.json(
+      { error: "Cliente no encontrado" },
+      { status: 404 }
+    )
+  }
+
   return NextResponse.json(data)
 }
 
-// DELETE /api/clients/:id  -> eliminar cliente + pagos (ON DELETE CASCADE)
+// DELETE /api/clients/:id -> eliminar cliente + pagos (ON DELETE CASCADE)
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const ownerId = getSessionOwnerId(req)
+
+  if (!ownerId) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const { id } = await ctx.params
   const clientId = id
 
@@ -57,16 +78,26 @@ export async function DELETE(
     )
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("clients")
     .delete()
     .eq("id", clientId)
+    .eq("owner_id", ownerId)
+    .select("id")
+    .maybeSingle()
 
   if (error) {
     console.error("Supabase delete client error:", error)
     return NextResponse.json(
       { error: "Error eliminando cliente" },
       { status: 500 }
+    )
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      { error: "Cliente no encontrado" },
+      { status: 404 }
     )
   }
 
