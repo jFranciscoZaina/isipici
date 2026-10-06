@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import PWARegister from "./PWARegister";
@@ -42,12 +42,15 @@ export const metadata: Metadata = {
     images: ["/isipici-busqueda.png"],
   },
   manifest: "/manifest.webmanifest",
-  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "isipici",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

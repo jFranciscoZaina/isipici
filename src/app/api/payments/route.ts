@@ -93,11 +93,33 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // La service role bypassea RLS, por eso validamos ownership en la API.
+    const { data: ownedClient, error: ownedClientError } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("id", clientId)
+      .eq("owner_id", ownerId)
+      .maybeSingle()
+
+    if (ownedClientError) {
+      console.error("Supabase client ownership check error:", ownedClientError)
+      return NextResponse.json(
+        { error: "Error validando cliente" },
+        { status: 500 }
+      )
+    }
+
+    if (!ownedClient) {
+      return NextResponse.json(
+        { error: "Cliente no encontrado" },
+        { status: 404 }
+      )
+    }
+
     const numericAmount = Number(amount || 0)
     const numericDiscount = Number(discount || 0)
     const numericDebt = Number(debt || 0)
 
-    // Insert payment (atado al owner)
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .insert([
@@ -110,7 +132,7 @@ export async function POST(req: NextRequest) {
           debt: numericDebt,
           period_from: periodFrom ?? null,
           period_to: periodTo ?? null,
-          next_payment_date: periodTo ?? null, // lo usamos como "vencimiento"
+          next_payment_date: periodTo ?? null,
         },
       ])
       .select()
@@ -141,9 +163,8 @@ export async function POST(req: NextRequest) {
       // no cortamos el flujo, porque el pago ya quedó guardado
     }
 
-    // ===== NUEVO: Enviar comprobante de pago por email =====
+    // Enviar comprobante de pago por email sin romper el registro si Resend falla.
     try {
-      // 1) Traer datos del cliente (nombre + email)
       const { data: client, error: clientFetchError } = await supabase
         .from("clients")
         .select("name, email")
@@ -158,9 +179,7 @@ export async function POST(req: NextRequest) {
             clientFetchError,
           )
         }
-        // si no hay email, no mandamos nada y seguimos
       } else {
-        // 2) Traer nombre del owner (gimnasio)
         const { data: owner, error: ownerError } = await supabase
           .from("owners")
           .select("name")
@@ -191,9 +210,7 @@ export async function POST(req: NextRequest) {
       }
     } catch (emailError) {
       console.error("Error enviando email de comprobante de pago:", emailError)
-      // nunca rompemos la respuesta al cliente por un fallo de email
     }
-    // ===== FIN BLOQUE NUEVO =====
 
     return NextResponse.json(payment, { status: 201 })
   } catch (e) {

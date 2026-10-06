@@ -13,9 +13,15 @@ type DueClientRow = {
   owners?: { name: string | null } | { name: string | null }[] | null
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  if (process.env.VERCEL_ENV === "production") {
+    const auth = req.headers.get("authorization")
+    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: "Unauthorized cron" }, { status: 401 })
+    }
+  }
+
   try {
-    void _req
     const now = new Date()
 
     // target = hoy + 5 días
