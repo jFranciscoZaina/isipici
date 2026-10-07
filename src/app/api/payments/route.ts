@@ -186,7 +186,10 @@ export async function POST(req: NextRequest) {
         const ownerName = owner?.name ?? "tu negocio"
         const dueDate = periodTo ?? null
 
-        await sendPaymentReceiptEmail({
+        const emailResult = await sendPaymentReceiptEmail({
+          ownerId,
+          clientId,
+          deduplicationKey: `payment-receipt:${ownerId}:${payment.id}`,
           to: client.email,
           clientName: client.name,
           ownerName,
@@ -195,6 +198,9 @@ export async function POST(req: NextRequest) {
           plan,
           remainingDebt: numericDebt,
         })
+        if (emailResult.status !== "sent" && emailResult.status !== "already_recorded" || emailResult.loggingError) {
+          console.warn("Comprobante pendiente de revisión", { code: emailResult.error?.code, loggingError: emailResult.loggingError === true })
+        }
       }
     } catch (emailError) {
       console.error("Error enviando email de comprobante de pago:", emailError)

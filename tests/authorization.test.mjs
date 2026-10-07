@@ -121,12 +121,13 @@ test("internal login fails closed when persistent throttle denies or is unavaila
 })
 
 test("cron endpoints fail closed without configured bearer secret", async () => {
-  for (const path of ["due", "upcoming"]) {
-    const route = load(`src/app/api/reminders/${path}/route.ts`, {
+  {
+    const route = load("src/lib/emails/reminders.ts", {
+      "server-only": {},
       "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
-      "@/lib/supabaseClient": {}, "@/lib/email": {},
+      "@/lib/supabaseClient": {}, "./service": {},
     })
-    assert.equal((await route.GET({ headers: { get: () => "Bearer undefined" } })).status, 401)
+    assert.equal((await route.handleUpcomingReminders({ headers: { get: () => "Bearer undefined" } })).status, 401)
   }
 })
 
