@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken"
 export const ADMIN_COOKIE = "isipici_admin"
 export async function requireAdmin() {
   const secret = process.env.ADMIN_JWT_SECRET
-  const email = process.env.ADMIN_EMAIL
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
   const token = (await cookies()).get(ADMIN_COOKIE)?.value
   if (secret && secret.length >= 32 && secret !== process.env.JWT_SECRET && email && token) {
     try {

@@ -112,7 +112,7 @@ test("internal login fails closed when persistent throttle denies or is unavaila
       bcryptjs: { compare: async () => { compared = true; return true } }, jsonwebtoken: jwt,
       "@/lib/admin-auth": {}, "@/lib/owner-registration": {},
       "@/lib/supabaseClient": { supabase: { rpc: async () => result } },
-    }, { ADMIN_EMAIL: "operator@example.test", ADMIN_PASSWORD_HASH: "hash", ADMIN_JWT_SECRET: adminSecret, JWT_SECRET: secret })
+    }, { ADMIN_EMAIL: "operator@example.test", ADMIN_PASSWORD_HASH: "$2a$12$" + "a".repeat(53), ADMIN_JWT_SECRET: adminSecret, JWT_SECRET: secret })
     const form = new FormData()
     form.set("password", "password")
     await assert.rejects(actions.loginAdmin(form), /error=(limit|config)/)

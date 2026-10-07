@@ -9,11 +9,12 @@ import { createOwner } from "@/lib/owner-registration"
 import { supabase } from "@/lib/supabaseClient"
 
 export async function loginAdmin(form: FormData) {
-  const email = process.env.ADMIN_EMAIL
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
   const hash = process.env.ADMIN_PASSWORD_HASH
   const secret = process.env.ADMIN_JWT_SECRET
   const password = form.get("password")
   if (!email || !hash || !secret || secret.length < 32 || secret === process.env.JWT_SECRET) redirect("/admin/login?error=config")
+  if (!/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(hash)) redirect("/admin/login?error=config")
   const attempt = await supabase.rpc("consume_admin_login_attempt")
   if (attempt.error) redirect("/admin/login?error=config")
   if (attempt.data !== true) redirect("/admin/login?error=limit")
@@ -21,7 +22,8 @@ export async function loginAdmin(form: FormData) {
   if (typeof password === "string" && Buffer.byteLength(password) <= 72) {
     try { valid = await bcrypt.compare(password, hash) } catch { /* Configuración inválida. */ }
   }
-  if (form.get("email") !== email || !valid) redirect("/admin/login?error=credentials")
+  const inputEmail = form.get("email")
+  if (typeof inputEmail !== "string" || inputEmail.trim().toLowerCase() !== email || !valid) redirect("/admin/login?error=credentials")
   const token = jwt.sign({ role: "operator" }, secret, { subject: email, audience: "isipici-admin", issuer: "isipici", expiresIn: "1h", algorithm: "HS256" })
   ;(await cookies()).set(ADMIN_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/admin", maxAge: 3600 })
   redirect("/admin")

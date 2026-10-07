@@ -41,10 +41,12 @@ Aplicar en orden con el mecanismo habitual de migraciones:
 
 ## Variables y operación
 
+Si el login devuelve `error=credentials`, ejecutar localmente `node scripts/check-admin-login.mjs` desde la carpeta del proyecto. El diagnóstico carga el entorno como Next.js en desarrollo y pide la contraseña sin eco; solo informa si la configuración es válida y si la contraseña coincide. No imprime ni envía claves, hashes o contraseñas. `--self-test` prueba bcrypt con datos ficticios sin cargar archivos de entorno. El login normaliza espacios y mayúsculas del email y rechaza hashes mal formados como `error=config`.
+
 `.env.example` incluye variables existentes y tres nuevas, exclusivamente servidor:
 
 - `ADMIN_EMAIL`: email exacto del operador MVP.
-- `ADMIN_PASSWORD_HASH`: hash bcrypt de la contraseña del operador (coste 12). Generarlo localmente con bcrypt y copiar el hash, nunca la contraseña. Al usar archivos dotenv, encerrar el hash entre comillas simples para conservar los caracteres `$`.
+- `ADMIN_PASSWORD_HASH`: hash bcrypt de la contraseña del operador (coste 12). Generarlo localmente con bcrypt y copiar el hash, nunca la contraseña. En archivos `.env` cargados por Next.js, escapar cada `$` como `\$`; las comillas simples no impiden la expansión. Ejemplo ficticio: `ADMIN_PASSWORD_HASH=\$2a\$12\$RESTO_DEL_HASH`. En la interfaz de variables de Vercel, pegar el hash original sin estos escapes.
 - `ADMIN_JWT_SECRET`: aleatorio, al menos 32 caracteres, independiente de `JWT_SECRET`.
 
 Configurar en Vercel Preview/Staging primero. Mantener `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM` y `CRON_SECRET` privados. No usar prefijo `NEXT_PUBLIC_`. `CRON_SECRET` pasa a ser obligatorio también en desarrollo/preview; llamadas manuales necesitan `Authorization: Bearer <secreto>`. Nunca pegarlo en tickets o logs.
