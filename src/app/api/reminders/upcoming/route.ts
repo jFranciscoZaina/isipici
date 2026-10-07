@@ -21,12 +21,9 @@ function formatDateDDMMYYYY(d: Date) {
 
 // Lógica compartida para GET (cron) y POST (tests manuales)
 async function handleUpcomingReminders(req: NextRequest) {
-  // 🔐 Solo exigir el header en producción
-  if (process.env.VERCEL_ENV === "production") {
-    const auth = req.headers.get("authorization")
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized cron" }, { status: 401 })
-    }
+  const auth = req.headers.get("authorization")
+  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized cron" }, { status: 401 })
   }
 
   try {
@@ -62,6 +59,8 @@ async function handleUpcomingReminders(req: NextRequest) {
     const ownerName = "Tu negocio" // MVP
 
     for (const client of clients as UpcomingClientRow[]) {
+      const { data: activeOwner } = await supabase.from("owners").select("id").eq("id", client.owner_id).eq("is_active", true).maybeSingle()
+      if (!activeOwner) continue
       const clientEmail = client.email as string
       const clientName = client.name
       const ownerId = client.owner_id ?? null

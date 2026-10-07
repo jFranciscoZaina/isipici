@@ -48,7 +48,7 @@ function isUndefinedColumn(error: PostgrestError | null) {
 
 export async function GET(req: NextRequest) {
   try {
-    const ownerId = getSessionOwnerId(req)
+    const ownerId = await getSessionOwnerId(req)
 
     if (!ownerId) {
       return NextResponse.json(
@@ -90,6 +90,7 @@ export async function GET(req: NextRequest) {
       .from("clients")
       .select(selectClause)
       .eq(ownerColumn, ownerId)
+      .eq("payments.owner_id", ownerId)
       .order("created_at", { ascending: true })
 
     if (isUndefinedColumn(error)) {
@@ -98,13 +99,14 @@ export async function GET(req: NextRequest) {
         .from("clients")
         .select(selectClause)
         .eq(ownerColumn, ownerId)
+        .eq("payments.owner_id", ownerId)
         .order("created_at", { ascending: true }))
     }
 
     if (error) {
       console.error("Supabase GET error:", error)
       return NextResponse.json(
-        { error: "Error fetching clients", details: error.message },
+        { error: "Error fetching clients" },
         { status: 500 }
       )
     }
@@ -194,7 +196,7 @@ export async function GET(req: NextRequest) {
 // -----------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const ownerId = getSessionOwnerId(req)
+    const ownerId = await getSessionOwnerId(req)
 
     if (!ownerId) {
       return NextResponse.json(
@@ -230,7 +232,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("Supabase POST error:", error)
       return NextResponse.json(
-        { error: "Error creating client", details: error.message },
+        { error: "Error creating client" },
         { status: 500 }
       )
     }

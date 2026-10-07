@@ -9,7 +9,7 @@ const MAX_TRIES = 5
 const LOCK_MINUTES = 10
 
 export async function POST(req: NextRequest) {
-  const ownerId = getSessionOwnerId(req)
+  const ownerId = await getSessionOwnerId(req)
   if (!ownerId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }

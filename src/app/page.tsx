@@ -75,7 +75,7 @@ export default function HomePage() {
                   </h1>
                   <p className="fs-14 text-[color:var(--n8)]">
                     Administra clientes, pagos y deudas en un dashboard pensado
-                    para el día a día del gimnasio. Datos claros, decisiones
+                    para el día a día de tu organización. Datos claros, decisiones
                     rápidas.
                   </p>
                 </div>

@@ -1,5 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+CRM genérico y back office interno: ver [auditoría y guía de despliegue](docs/admin-rollout.md) antes de aplicar migraciones o configurar `/admin`.
+
 ## Getting Started
 
 First, run the development server:

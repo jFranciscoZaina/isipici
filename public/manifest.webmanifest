@@ -1,7 +1,7 @@
 {
   "name": "isipici",
   "short_name": "isipici",
-  "description": "Panel de gestión para gimnasios: clientes, pagos y deudas.",
+  "description": "Gestión de clientes, pagos y deudas para negocios y organizaciones.",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
