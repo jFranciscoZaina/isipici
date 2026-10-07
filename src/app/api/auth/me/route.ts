@@ -5,7 +5,7 @@ import { getSessionOwnerId } from "@/lib/auth"
 export const runtime = "nodejs"
 
 export async function GET(req: NextRequest) {
-  const ownerId = getSessionOwnerId(req)
+  const ownerId = await getSessionOwnerId(req)
 
   if (!ownerId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })

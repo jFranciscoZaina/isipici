@@ -1,7 +1,7 @@
 // src/app/api/payments/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
-import { getSessionOwnerId } from "@/lib/auth"
+import { getSessionOwnerId, ownedClientColumn } from "@/lib/auth"
 import { sendPaymentReceiptEmail } from "@/lib/email"
 
 export const runtime = "nodejs"
@@ -9,7 +9,7 @@ export const runtime = "nodejs"
 // GET /api/payments?clientId=uuid
 export async function GET(req: NextRequest) {
   try {
-    const ownerId = getSessionOwnerId(req)
+    const ownerId = await getSessionOwnerId(req)
 
     if (!ownerId) {
       return NextResponse.json(
@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       )
     }
+
+    if (!await ownedClientColumn(clientId, ownerId)) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
 
     const { data, error } = await supabase
       .from("payments")
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
 // POST /api/payments
 export async function POST(req: NextRequest) {
   try {
-    const ownerId = getSessionOwnerId(req)
+    const ownerId = await getSessionOwnerId(req)
 
     if (!ownerId) {
       return NextResponse.json(
@@ -93,9 +95,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const ownerColumn = await ownedClientColumn(clientId, ownerId)
+    if (!ownerColumn) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
+
     const numericAmount = Number(amount || 0)
     const numericDiscount = Number(discount || 0)
     const numericDebt = Number(debt || 0)
+
+    if (![numericAmount, numericDiscount, numericDebt].every(n => Number.isFinite(n) && n >= 0)) return NextResponse.json({ error: "Importes inválidos" }, { status: 400 })
 
     // Insert payment (atado al owner)
     const { data: payment, error: paymentError } = await supabase
@@ -134,7 +141,7 @@ export async function POST(req: NextRequest) {
         next_payment_date: periodTo ?? null,
       })
       .eq("id", clientId)
-      .eq("owner_id", ownerId)
+      .eq(ownerColumn, ownerId)
 
     if (clientError) {
       console.error("Supabase updating client after payment:", clientError)
@@ -148,7 +155,7 @@ export async function POST(req: NextRequest) {
         .from("clients")
         .select("name, email")
         .eq("id", clientId)
-        .eq("owner_id", ownerId)
+        .eq(ownerColumn, ownerId)
         .single()
 
       if (clientFetchError || !client?.email) {
@@ -160,7 +167,7 @@ export async function POST(req: NextRequest) {
         }
         // si no hay email, no mandamos nada y seguimos
       } else {
-        // 2) Traer nombre del owner (gimnasio)
+        // 2) Traer nombre del negocio
         const { data: owner, error: ownerError } = await supabase
           .from("owners")
           .select("name")
@@ -176,7 +183,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const ownerName = owner?.name ?? "tu gimnasio"
+        const ownerName = owner?.name ?? "tu negocio"
         const dueDate = periodTo ?? null
 
         await sendPaymentReceiptEmail({

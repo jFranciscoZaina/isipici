@@ -18,22 +18,27 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json()
 
-    if (!email || !password) {
+    if (typeof email !== "string" || typeof password !== "string" || password.length > 256) {
       return NextResponse.json(
         { error: "Faltan campos: email, password" },
         { status: 400 }
       )
     }
 
-    const trimmedEmail = String(email).trim()
+    const trimmedEmail = email.trim()
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("owners")
-      .select("id, name, email, password_hash")
+      .select("id, name, email, password_hash, is_active")
       .eq("email", trimmedEmail)
       .single()
 
-    if (error || !data) {
+    // Conservar cuentas antiguas con mayúsculas; nuevas cuentas se normalizan.
+    if (!data && trimmedEmail !== trimmedEmail.toLowerCase()) {
+      ;({ data, error } = await supabase.from("owners").select("id, name, email, password_hash, is_active").eq("email", trimmedEmail.toLowerCase()).single())
+    }
+
+    if (error || !data || !data.is_active) {
       console.error("Supabase owners select error:", error)
       return NextResponse.json(
         { error: "Credenciales invalidas" },

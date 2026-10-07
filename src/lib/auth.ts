@@ -1,33 +1,26 @@
+import "server-only"
 import { NextRequest } from "next/server"
 import jwt from "jsonwebtoken"
+import { supabase } from "@/lib/supabaseClient"
 
-const rawJwtSecret = process.env.JWT_SECRET
-
-if (!rawJwtSecret) {
-  throw new Error("JWT_SECRET no está definido en .env")
-}
-
-const JWT_SECRET: string = rawJwtSecret
-
-type SessionPayload = {
-  ownerId: string
-  email: string
-  iat: number
-  exp: number
-}
-
-export function getSessionOwnerId(req: NextRequest): string | null {
+export async function getSessionOwnerId(req: NextRequest): Promise<string | null> {
   const token = req.cookies.get("session")?.value
-  if (!token) return null
-
+  const secret = process.env.JWT_SECRET
+  if (!token || !secret) return null
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as SessionPayload
-    return decoded.ownerId
-  } catch (err) {
-    console.error("Error verificando JWT:", err)
-    return null
-  }
+    const decoded = jwt.verify(token, secret, { algorithms: ["HS256"] })
+    if (typeof decoded === "string" || typeof decoded.ownerId !== "string") return null
+    const { data, error } = await supabase.from("owners").select("id, is_active").eq("id", decoded.ownerId).single()
+    return !error && data?.is_active === true ? data.id : null
+  } catch { return null }
 }
-
-// Compatibilidad temporal con imports antiguos
 export const getSessionGymId = getSessionOwnerId
+
+export async function ownedClientColumn(clientId: string, ownerId: string): Promise<"owner_id" | "gym_id" | null> {
+  for (const column of ["owner_id", "gym_id"] as const) {
+    const { data, error } = await supabase.from("clients").select("id").eq("id", clientId).eq(column, ownerId).maybeSingle()
+    if (!error) return data ? column : null
+    if (error.code !== "42703" && error.code !== "PGRST204") return null
+  }
+  return null
+}

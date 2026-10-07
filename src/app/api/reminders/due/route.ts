@@ -15,7 +15,7 @@ type DueClientRow = {
 
 export async function GET(_req: NextRequest) {
   try {
-    void _req
+    if (!process.env.CRON_SECRET || _req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     const now = new Date()
 
     // target = hoy + 5 días
@@ -52,6 +52,8 @@ export async function GET(_req: NextRequest) {
     let sent = 0
 
     for (const row of rows as DueClientRow[]) {
+      const { data: activeOwner } = await supabase.from("owners").select("id").eq("id", row.owner_id).eq("is_active", true).maybeSingle()
+      if (!activeOwner) continue
       const clientEmail = row.email as string
       const clientName = row.name
       const dueDate = row.next_due as string
