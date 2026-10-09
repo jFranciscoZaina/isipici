@@ -14,10 +14,10 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("email_logs")
-    .select("id, sent_at, type, subject, due_date, status")
+    .select("id, sent_at, type, subject, due_date, status, delivery_status, delivered_at, opened_at, clicked_at, bounced_at, failed_at, created_at")
     .eq("client_id", id)
     .eq("owner_id", ownerId)
-    .order("sent_at", { ascending: false })
+    .order("created_at", { ascending: false })
 
   if (error) {
     console.error("Supabase email_logs error:", error)

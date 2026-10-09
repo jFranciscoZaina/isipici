@@ -8,7 +8,9 @@ import { User as UserIcon, DollarSign, Mail as MailIcon } from "react-feather";
 /** Log de emails del cliente */
 type EmailLog = {
   id: string;
-  sent_at: string;
+  sent_at: string | null;
+  created_at?: string;
+  delivery_status?: string | null;
   type: string;
   subject: string;
   due_date: string | null;
@@ -112,6 +114,10 @@ export default function ClientDetailModal({
       setLoadingEmails(true);
       try {
         const res = await fetch(`/api/clients/emails?clientId=${client.id}`);
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
 
         if (!res.ok) {
           const txt = await res.text();
@@ -209,14 +215,17 @@ export default function ClientDetailModal({
 
   const emailLines = useMemo(() => {
     return emails.map((mail) => {
-      const fecha = new Date(mail.sent_at).toLocaleDateString("es-AR");
-      const tipo = mail.type;
+      const timestamp = mail.sent_at ?? mail.created_at;
+      const fecha = timestamp ? new Date(timestamp).toLocaleDateString("es-AR") : "Sin fecha";
+      const tipo = mail.type === "payment_receipt" ? "Comprobante de pago" : mail.type === "upcoming_due" ? "Recordatorio de pago" : mail.type;
+      const labels: Record<string, string> = { pending: "Pendiente", sent: "Enviado", delivered: "Entregado", delivery_delayed: "Entrega demorada", opened: "Abierto", clicked: "Enlace visitado", bounced: "Rebotado", complained: "Marcado como spam", failed: "Fallido" };
+      const status = mail.delivery_status ?? mail.status;
       const vencimiento = mail.due_date
         ? " Vence el " +
           new Date(mail.due_date).toLocaleDateString("es-AR") +
           "."
         : "";
-      return `${fecha} – Envío mail de “${tipo}”.${vencimiento}`;
+      return `${fecha} – ${tipo}: ${labels[status] ?? "Estado desconocido"}. ${mail.subject}.${vencimiento}`;
     });
   }, [emails]);
 
