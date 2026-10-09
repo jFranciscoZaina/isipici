@@ -4,6 +4,7 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
   const clientName = escapeHtml(input.clientName)
   const dueDate = escapeHtml(formatDate(input.dueDate))
   const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt) : null
+  // Logo externo desactivado hasta disponer de una imagen estable en nuestro dominio.
   return { subject: `Recordatorio de pago - ${input.ownerName}`, html: `
       <!doctype html>
 <html lang="es">
@@ -13,6 +14,15 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
     <meta name="x-apple-disable-message-reformatting" />
 <meta name="color-scheme" content="dark" />
 <meta name="supported-color-schemes" content="dark" />
+    <style>
+      /* Base inline legible incluso sin soporte de media queries. */
+      @media screen and (min-width: 480px) {
+        .email-title { font-size: 44px !important; }
+        .email-content { padding-left: 24px !important; padding-right: 24px !important; }
+        .email-copy { font-size: 18px !important; }
+        .email-value { font-size: 22px !important; }
+      }
+    </style>
     <title>Recordatorio de pago</title>
   </head>
 
@@ -25,13 +35,12 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
       color: #ffffff !important;
       -webkit-text-size-adjust: 100%;
       -ms-text-size-adjust: 100%;
-      overflow-x: hidden;
       font-family: Arial, Helvetica, sans-serif;
     "
   >
     <!-- Preheader (hidden) -->
     <div
-      style="
+      style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
         display: none;
         font-size: 1px;
         line-height: 1px;
@@ -54,14 +63,14 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
       bgcolor="#000000"
       style="
         width: 100% !important;
-        border-collapse: collapse;
+        border-collapse: collapse; table-layout: fixed;
         mso-table-lspace: 0pt;
         mso-table-rspace: 0pt;
         background: #000000 !important;
       "
     >
       <tr>
-        <td align="center" bgcolor="#000000" style="padding: 0; margin: 0; background: #000000 !important;">
+        <td align="center" bgcolor="#000000" style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;padding: 0; margin: 0; background: #000000 !important;">
           <!-- Main container -->
           <table
             role="presentation"
@@ -73,18 +82,19 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
             style="
               width: 100%;
               max-width: 600px;
-              border-collapse: collapse;
+              border-collapse: collapse; table-layout: fixed;
               mso-table-lspace: 0pt;
               mso-table-rspace: 0pt;
               background: #000000 !important;
             "
           >
             <tr>
-              <td bgcolor="#000000" style="padding: 40px 24px 18px 24px; color: #ffffff !important; background: #000000 !important;">
+              <td class="email-content" bgcolor="#000000" style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;padding: 28px 16px 18px 16px; color: #ffffff !important; background: #000000 !important;">
                 <!-- Headings -->
                 <div
-                  style="
-                    font-size: 44px;
+                  class="email-title"
+                  style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
+                    font-size: 30px;
                     line-height: 1.05;
                     font-weight: 900;
                     text-transform: uppercase;
@@ -96,8 +106,9 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                   Recordatorio
                 </div>
                 <div
-                  style="
-                    font-size: 44px;
+                  class="email-title"
+                  style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
+                    font-size: 30px;
                     line-height: 1.05;
                     font-weight: 900;
                     text-transform: uppercase;
@@ -110,8 +121,9 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                 </div>
 
                 <div
-                  style="
-                    font-size: 18px;
+                  class="email-copy"
+                  style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
+                    font-size: 16px;
                     line-height: 1.55;
                     color: #d0d0d0 !important;
                     margin: 0 0 26px 0;
@@ -122,12 +134,12 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                 </div>
 
                 <!-- Due date row -->
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; table-layout: fixed;">
                   <tr>
-                    <td style="padding: 0 0 18px 0;">
-                      <div style="border-bottom: 1px solid #333333;">
+                    <td style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;padding: 0 0 18px 0;">
+                      <div style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;border-bottom: 1px solid #333333;">
                         <div
-                          style="
+                          style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
                             font-size: 12px;
                             letter-spacing: 0.08em;
                             text-transform: uppercase;
@@ -138,8 +150,9 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                           Vence el
                         </div>
                         <div
-                          style="
-                            font-size: 22px;
+                          class="email-value"
+                          style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
+                            font-size: 20px;
                             line-height: 1.3;
                             font-weight: 800;
                             color: #ffffff !important;
@@ -157,12 +170,12 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                 ${
                   remainingDebtText
                     ? `
-                <div style="margin-top: 6px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+                <div style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;margin-top: 6px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; table-layout: fixed;">
                     <tr>
                       <td
                         bgcolor="#FF3B30"
-                        style="
+                        style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
                           background: #FF3B30 !important;
                           color: #ffffff !important;
                           padding: 16px 16px;
@@ -170,10 +183,10 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                           border-radius: 4px;
                         "
                       >
-                        <div style="font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 800;">
+                        <div style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 800;">
                           Tenés deuda pendiente: ${remainingDebtText}
                         </div>
-                        <div style="font-size: 14px; margin-top: 6px; font-weight: 400;">
+                        <div style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;font-size: 14px; margin-top: 6px; font-weight: 400;">
                           Podés regularizarla junto con tu próxima cuota.
                         </div>
                       </td>
@@ -185,7 +198,7 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
                 }
 
                 <div
-                  style="
+                  style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;
                     color: #d0d0d0 !important;
                     font-size: 16px;
                     line-height: 1.5;
@@ -198,43 +211,7 @@ export function renderUpcomingPayment(input: ReminderTemplateInput) {
             </tr>
           </table>
 
-          <!-- Full-bleed logo section -->
-          <table
-            role="presentation"
-            width="100%"
-            cellpadding="0"
-            cellspacing="0"
-            border="0"
-            bgcolor="#000000"
-            style="
-              width: 100% !important;
-              border-collapse: collapse;
-              mso-table-lspace: 0pt;
-              mso-table-rspace: 0pt;
-              background: #000000 !important;
-            "
-          >
-            <tr>
-              <td align="center" bgcolor="#000000" style="padding: 16px 0 0 0; margin: 0; background: #000000 !important;">
-                <img
-                  src="https://i.postimg.cc/MGsjFppx/Recurso-9-0-5x.png"
-                  alt="ISIPICI"
-                  width="1200"
-                  style="
-                    width: 100% !important;
-                    max-width: 1200px;
-                    height: auto;
-                    display: block;
-                    border: 0;
-                    outline: none;
-                    text-decoration: none;
-                    -ms-interpolation-mode: bicubic;
-                    background: #000000 !important;
-                  "
-                />
-              </td>
-            </tr>
-          </table>
+          <!-- Logo temporalmente desactivado: imagen externa no disponible. -->
         </td>
       </tr>
     </table>
