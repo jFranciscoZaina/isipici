@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Search as SearchIcon } from "react-feather";
 
-export type ClientStatus = "active" | "inactive";
+export type ClientStatus = "active" | "inactive" | "archived";
 
 export type SearchTabsAndPaginationProps = {
   searchTerm: string;
@@ -13,6 +13,10 @@ export type SearchTabsAndPaginationProps = {
   onStatusChange: (status: ClientStatus) => void;
 
   totalClients: number;
+  currentPage: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 };
 
 export default function SearchTabsAndPagination({
@@ -21,6 +25,10 @@ export default function SearchTabsAndPagination({
   status,
   onStatusChange,
   totalClients,
+  currentPage,
+  itemsPerPage,
+  onPageChange,
+  onPageSizeChange,
 }: SearchTabsAndPaginationProps) {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -37,10 +45,8 @@ export default function SearchTabsAndPagination({
     };
   }, []);
 
-  const itemsPerPage = 50;
-  const currentPage = 1;
-  const totalPages = Math.ceil(totalClients / itemsPerPage);
-  const startCount = (currentPage - 1) * itemsPerPage + 1;
+  const totalPages = Math.max(1, Math.ceil(totalClients / itemsPerPage));
+  const startCount = totalClients === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endCount = Math.min(currentPage * itemsPerPage, totalClients);
 
   return (
@@ -74,6 +80,7 @@ export default function SearchTabsAndPagination({
         >
           Inactivos
         </button>
+        <button onClick={()=>onStatusChange("archived")} className={status === "archived" ? "px-5 fs-14 text-app font-bold" : "px-5 fs-14 text-app-secondary font-medium"}>Dados de baja</button>
       </div>
 
       {/* ================= BUSCADOR ================= */}
@@ -125,12 +132,11 @@ export default function SearchTabsAndPagination({
       </div>
 
       {/* ================= PAGINADOR ================= */}
-      {!isMobile && (
-        <div className="flex items-center gap-4 text-app-secondary fs-12 font-semibold">
+      <div className="flex items-center gap-4 text-app-secondary fs-12 font-semibold">
           <select
             className="border-none rounded-none bg-bg0 text-app fs-12 font-semibold"
             value={itemsPerPage}
-            onChange={() => {}}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >
             <option value={25}>25</option>
             <option value={50}>50</option>
@@ -143,18 +149,21 @@ export default function SearchTabsAndPagination({
 
           <button
             className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
-            disabled={currentPage === 1}
+            aria-label="Página anterior"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
           >
             ‹
           </button>
           <button
             className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold"
-            disabled={currentPage === totalPages}
+            aria-label="Página siguiente"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
           >
             ›
           </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

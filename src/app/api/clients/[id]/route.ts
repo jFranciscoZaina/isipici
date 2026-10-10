@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionOwnerId, ownedClientColumn } from "@/lib/auth"
+import { lifecycleOperation } from "@/lib/payments/lifecycle"
+import { PaymentError } from "@/lib/payments/validation"
 import { supabase } from "@/lib/supabaseClient"
 
 type Context = { params: Promise<{ id: string }> }
@@ -23,7 +25,6 @@ export async function DELETE(req: NextRequest, ctx: Context) {
   const { id } = await ctx.params
   const column = await ownedClientColumn(id, ownerId)
   if (!column) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
-  const { error } = await supabase.from("clients").delete().eq("id", id).eq(column, ownerId)
-  if (error) return NextResponse.json({ error: "Error eliminando cliente" }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  try { return NextResponse.json(await lifecycleOperation(ownerId,id,{action:"archive"})) }
+  catch (e) { return NextResponse.json({error:e instanceof PaymentError?e.message:"No se pudo dar de baja"},{status:e instanceof PaymentError?e.status:503}) }
 }

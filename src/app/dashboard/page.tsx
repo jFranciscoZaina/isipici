@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopBar from "./components/TopBar";
 import SearchTabsAndPagination, {
   ClientStatus,
 } from "./components/SearchBarAndTabs";
 import StatsGrid from "./components/StatsGrid";
 import ClientsTable from "./components/ClientsTable";
-import NewClientModal from "./components/NewClientModal";
-import NewPaymentModal from "./components/NewPaymentModal";
-import ClientDetailModal, { type TabId } from "./components/ClientDetailModal";
+import dynamic from "next/dynamic";
+
+import type { TabId } from "./components/ClientDetailModal";
+
+const NewClientModal = dynamic(() => import("./components/NewClientModal"));
+const NewPaymentModal = dynamic(() => import("./components/NewPaymentModal"));
+const ClientDetailModal = dynamic(() => import("./components/ClientDetailModal"));
 import type { ClientMenuAction } from "./components/ClientContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Snackbar from "./components/Snackbar";
@@ -31,9 +35,11 @@ export type ClientRow = {
   isMonthFullyPaid: boolean;
   currency: Currency;
   hasPayments: boolean;
+  archivedAt?: string | null;
 };
 
 export type Payment = {
+  payment_allocations?: {amount_applied:number;discount_applied:number;installment:{period_from:string;period_to:string}|null}[];
   id: string;
   amount: number;
   plan: string | null;
@@ -75,6 +81,8 @@ export default function DashboardPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortKey, setSortKey] = useState<
     "name" | "plan" | "paid" | "debt" | "due"
   >("name");
@@ -94,10 +102,14 @@ export default function DashboardPage() {
   };
 
   // === Fetch de clientes =========================================================
+  const clientsRequest = useRef<AbortController | null>(null);
   const fetchClients = useCallback(async () => {
+    clientsRequest.current?.abort();
+    const controller = new AbortController();
+    clientsRequest.current = controller;
     try {
       setLoading(true);
-      const res = await fetch(`/api/clients?status=${status}`);
+      const res = await fetch(`/api/clients?status=${status}`, { signal: controller.signal });
 
       if (res.status === 401) {
         if (typeof window !== "undefined") {
@@ -112,18 +124,21 @@ export default function DashboardPage() {
       if (currency !== "ARS" && currency !== "AUD") throw new Error("Configuración de moneda no disponible");
       setOwnerCurrency(currency);
       const data: ClientRow[] = await res.json();
+      if (controller.signal.aborted) return;
       setClients(data);
       setError(null);
     } catch (e: unknown) {
+      if (controller.signal.aborted) return;
       console.error(e);
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [status]);
 
   useEffect(() => {
-    fetchClients();
+    void fetchClients();
+    return () => clientsRequest.current?.abort();
   }, [fetchClients]);
 
   // === Stats =====================================================================
@@ -139,6 +154,7 @@ export default function DashboardPage() {
 
   // === Ordenamiento =============================================================
   const toggleSort = (key: typeof sortKey) => {
+    setCurrentPage(1);
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -232,6 +248,9 @@ export default function DashboardPage() {
     });
   }, [clients, searchTerm, sortKey, sortDir]);
 
+  const visiblePage = Math.min(currentPage, Math.max(1, Math.ceil(sortedClients.length / itemsPerPage)));
+  const pageClients = sortedClients.slice((visiblePage - 1) * itemsPerPage, visiblePage * itemsPerPage);
+
   // === RENDER ===================================================================
   return (
     <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center px-[var(--p0)] py-[var(--p20)] md:p-[var(--p20)]">
@@ -251,16 +270,20 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-p20 h-full min-h-0 flex-1">
           <SearchTabsAndPagination
             searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
+            onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
             status={status}
-            onStatusChange={setStatus}
-            totalClients={clients.length}
+            onStatusChange={(value) => { setStatus(value); setCurrentPage(1); }}
+            totalClients={sortedClients.length}
+            currentPage={visiblePage}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
           />
 
           {/* TABLA */}
           <section className="flex flex-col flex-1 min-h-0">
             <ClientsTable
-              clients={sortedClients}
+              clients={pageClients}
               loading={loading}
               error={error}
               sortKey={sortKey}
@@ -298,6 +321,7 @@ export default function DashboardPage() {
 
         {detailClient && (
           <ClientDetailModal
+            key={detailClient.id}
             client={detailClient}
             onClose={() => setDetailClient(null)}
             onChanged={fetchClients}
@@ -307,9 +331,9 @@ export default function DashboardPage() {
 
         <ConfirmDialog
           open={!!confirmDeleteClient}
-          title="Eliminar cliente"
-          message="Se borrará el cliente y todo su historial de pagos. ¿Continuar?"
-          confirmLabel="Eliminar"
+          title="Dar de baja cliente"
+          message="Se pausarán futuros cobros y vencimientos. Los pagos y deudas existentes se conservarán. ¿Continuar?"
+          confirmLabel="Dar de baja"
           onCancel={() => setConfirmDeleteClient(null)}
           onConfirm={async () => {
             if (!confirmDeleteClient) return;
@@ -317,7 +341,8 @@ export default function DashboardPage() {
               const res = await fetch(`/api/clients/${confirmDeleteClient.id}`, {
                 method: "DELETE",
               });
-              if (!res.ok) throw new Error("Error eliminando cliente");
+              if (res.status === 401) { window.location.href = "/login"; return; }
+              if (!res.ok) throw new Error("Error dando de baja al cliente");
               await fetchClients();
               setDetailClient(null);
             } catch (err) {

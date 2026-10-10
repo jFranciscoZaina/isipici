@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
+import {calendarWindow,type CalendarPeriod,type CalendarStatus} from "@/lib/payments/calendar"
 import { addCalendarDays, getNextRecurringDate, toCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
 
 export type DateRangeValue = {
@@ -9,7 +10,11 @@ export type DateRangeValue = {
 }
 
 type Props = {
-  selectionMode?: "range" | "single"
+  selectionMode?: "range" | "single" | "multiple"
+  periods?: CalendarPeriod[]
+  selectedIds?: string[]
+  onSelectInstallment?: (id:string)=>void
+  onVisibleRangeChange?: (range:{from:string;to:string})=>void
   recurrence?: { frequency: RecurringFrequency; anchorDate: string }
   value: DateRangeValue
   onChange: (next: DateRangeValue) => void
@@ -17,7 +22,7 @@ type Props = {
   numberOfMonths?: 1 | 2
   className?: string
   // YYYY-MM-DD -> estado del día
-  markers?: Record<string, "paid" | "debt">
+  markers?: Record<string, CalendarStatus>
 }
 
 const WEEK_DAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
@@ -93,7 +98,7 @@ export default function RangeCalendar({
   numberOfMonths = 2,
   className = "",
   markers = {},
-  recurrence,
+  recurrence, periods=[], selectedIds=[], onSelectInstallment, onVisibleRangeChange,
 }: Props) {
   const [baseMonth, setBaseMonth] = useState<Date>(() => {
     return value.from ? new Date(value.from) : new Date()
@@ -105,8 +110,11 @@ export default function RangeCalendar({
     )
   }, [baseMonth, numberOfMonths])
 
+  useEffect(()=>{onVisibleRangeChange?.(calendarWindow(baseMonth))},[baseMonth,onVisibleRangeChange])
+
   const handleDayClick = (day: Date) => {
     if (disabled) return
+    if(selectionMode==="multiple"){const key=toCalendarDate(day);const period=periods.find(p=>p.from<=key&&p.to>=key);if(period?.selectable)onSelectInstallment?.(period.id);return}
     const clicked = startOfDay(day)
     const from = value.from ? startOfDay(value.from) : undefined
     const to = value.to ? startOfDay(value.to) : undefined
@@ -150,13 +158,13 @@ export default function RangeCalendar({
         </button>
 
         <div
-          className={`grid ${numberOfMonths === 2 ? "grid-cols-2 gap-8" : ""
+          className={`grid ${numberOfMonths === 2 ? "grid-cols-1 md:grid-cols-2 gap-p20" : ""
             }`}
         >
-          {months.map((m) => (
+          {months.map((m,index) => (
             <div
               key={m.toISOString()}
-              className="text-center font-semibold text-slate-900 fs-14"
+              className={`text-center font-semibold text-slate-900 fs-14 ${index===1?"hidden md:block":""}`}
             >
               {monthLabel(m)}
             </div>
@@ -174,12 +182,12 @@ export default function RangeCalendar({
         </button>
       </div>
 
-      <div className={`grid ${numberOfMonths === 2 ? "grid-cols-2 gap-8" : ""}`}>
-        {months.map((m) => {
+      <div className={`grid ${numberOfMonths === 2 ? "grid-cols-1 md:grid-cols-2 gap-p20" : ""}`}>
+        {months.map((m,index) => {
           const weeks = buildMonthGrid(m)
 
           return (
-            <div key={m.toISOString()}>
+            <div key={m.toISOString()} className={index===1?"hidden md:block":""}>
               {/* week header */}
               <div className="grid grid-cols-7 text-center text-sm text-slate-500 mb-2">
                 {WEEK_DAYS.map((w) => (
@@ -200,13 +208,17 @@ export default function RangeCalendar({
                       if (!day) return <div key={di} />
                       const d0 = startOfDay(day)
 
-                      const isFrom = isSameDay(d0, value.from)
+                      const period=periods.find(p=>p.from<=toCalendarDate(d0)&&p.to>=toCalendarDate(d0))
+                      const isSelected=selectionMode==="multiple"&&Boolean(period&&selectedIds.includes(period.id))
+                      const isFrom = selectionMode!=="multiple"&&isSameDay(d0, value.from)
                       const isTo = selectionMode === "range" && isSameDay(d0, value.to)
                       const isInside = selectionMode === "range" && inRange(d0, value.from, value.to)
                       const isEdge = isFrom || isTo
 
                       const dateKey = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`
-                      const marker = markers[dateKey]
+                      const marker = period?.status??markers[dateKey]
+                      const dotStatuses = Array.from(new Set([marker, markers[dateKey]])).filter(status => status === "paid" || status === "partial" || status === "debt" || status === "payment_debt")
+                      const isDue = period?.dueDate===dateKey
                       const isUpcoming = selectionMode === "single" && recurrence && value.from && dateKey > toCalendarDate(value.from)
                         && getNextRecurringDate({ ...recurrence, currentDate: addCalendarDays(dateKey, -1) }) === dateKey
 
@@ -215,22 +227,23 @@ export default function RangeCalendar({
                           type="button"
                           key={di}
                           onClick={() => handleDayClick(d0)}
-                          disabled={disabled}
-                          aria-pressed={isEdge || isInside}
-                          title={isUpcoming ? "Próximo cobro recurrente" : undefined}
+                          disabled={disabled||selectionMode==="multiple"&&!period?.selectable}
+                          aria-pressed={isSelected || isEdge || isInside}
+                          title={period?`${period.status==="paid"?"Pagada":period.status==="partial"?"Pago parcial":period.status==="debt"?"Vencida":"Pendiente"} · ${period.from} – ${period.to}`:isUpcoming?"Próximo cobro recurrente":undefined}
                           className={[
                             "h-9 w-full max-w-9 rounded-full text-sm flex flex-col items-center justify-center transition",
                             disabled
                               ? "cursor-not-allowed opacity-70"
                               : "hover:bg-slate-200",
                             isInside && !isEdge ? "bg-slate-200" : "",
-                            isEdge ? "bg-black text-white" : isUpcoming ? "bg-[var(--n6)] text-white" : "text-slate-900",
+                            isEdge || isDue || isUpcoming ? "bg-black text-white" : "text-slate-900",
+                            isSelected ? "ring-2 ring-[var(--brand-primary)] ring-inset" : "",
                           ].join(" ")}
                         >
                           <span
                             className={[
-                              isEdge || isUpcoming ? "text-white" : "text-slate-900",
-                              isToday(d0) ? "font-bold" : "",
+                              isEdge || isDue || isUpcoming ? "text-white" : "text-slate-900",
+                              isToday(d0) || period?.dueDate===dateKey ? "font-bold" : "",
                             ].join(" ")}
                           >
                             {d0.getDate()}
@@ -238,16 +251,12 @@ export default function RangeCalendar({
 
 
 
-                          {marker && (
-                            <span
-                              className={[
-                                "mt-0.5 h-1 w-1 rounded-full",
-                                marker === "paid"
-                                  ? "bg-green-700"
-                                  : "bg-yellow-400",
-                              ].join(" ")}
-                            />
-                          )}
+                          {dotStatuses.map(status => (
+                            <span key={status} aria-hidden="true" className={
+                              "mt-0.5 h-1 w-1 rounded-full " +
+                              (status === "paid" ? "bg-[var(--status-paid)]" : status === "payment_debt" ? "bg-[var(--status-payment-debt)]" : "bg-[var(--status-pending)]")
+                            } />
+                          ))}
                         </button>
                       )
                     })}

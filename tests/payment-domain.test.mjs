@@ -118,9 +118,11 @@ test("receipt uses payment currency, escapes notes and omits empty context secti
   }
   await assert.rejects(service({ownerCurrency:"AUD"}).registerConfirmedProviderPayment(owner,{...legacy,provider:"stripe",providerAccountId:account,providerPaymentId:"paid-1",currency:"ARS"},"paid"), e=>e.status===409)
  })
- test("one-off rejects recurrence metadata, agreements and unrelated debt", () => {
-  const base={clientId:client,paymentType:"one_off",concept:"Dinner",amount:50}
-  for(const extra of [{frequency:"weekly",anchorDate:"2026-10-14"},{recurringAgreementId:account},{debt:20}]) assert.throws(()=>parsePayment({...base,...extra}),PaymentError)
+ test("one-off accepts its own balance and rejects recurrence metadata", () => {
+  const base={clientId:client,paymentType:"one_off",concept:"Dinner",amount:50,periodFrom:"2026-11-07"}
+  for(const extra of [{frequency:"weekly",anchorDate:"2026-10-14"},{recurringAgreementId:account}]) assert.throws(()=>parsePayment({...base,...extra}),PaymentError)
+  assert.equal(parsePayment({...base,debt:20}).debt,20)
+  assert.throws(()=>parsePayment({...base,debt:-1}),PaymentError)
   assert.equal(parsePayment({...base,serviceDate:"2026-11-07"}).serviceDate,"2026-11-07")
  })
  test("receipt separates payment date and service date and suppresses recurring context for one-off", () => {
@@ -128,13 +130,13 @@ test("receipt uses payment currency, escapes notes and omits empty context secti
   const base={to:"client@example.test",clientName:"Client",ownerName:"Business",amount:50,currency:"AUD",concept:"<Dinner>",paymentDate:"2026-10-10T12:00:00Z",dueDate:"2026-11-15",remainingDebt:20}
   const unique=render({...base,paymentType:"one_off",serviceDate:"2026-11-07"}).html
   assert.ok(unique.includes("10/10/2026"));assert.ok(unique.includes("07/11/2026"));assert.ok(unique.includes("&lt;Dinner&gt;"));assert.ok(unique.includes("AUD"))
-  assert.equal(unique.includes("Vence el"),false);assert.equal(unique.includes("15/11/2026"),false)
+  assert.ok(unique.includes("Saldo pendiente:"));assert.equal(unique.includes("Vence el"),false);assert.equal(unique.includes("15/11/2026"),false)
   assert.ok(render({...base,paymentType:"recurring"}).html.includes("15/11/2026"))
  })
 
 test("shared calendar single mode replaces the date; range mode still selects from/to and keeps markers", () => {
   const createElement=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)})
-  const Calendar=loader({react:{default:{createElement},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
+  const Calendar=loader({react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
   let value={from:new Date(2026,9,1)}
   const render=mode=>Calendar({value,selectionMode:mode,numberOfMonths:1,onChange:next=>{value=next},markers:{"2026-10-15":"paid"}})
   const find=(tree,day)=> {
@@ -146,7 +148,7 @@ test("shared calendar single mode replaces the date; range mode still selects fr
   find(render("single"),10).props.onClick()
   assert.equal(value.from.getDate(),10);assert.equal(value.to,undefined)
   const day15=find(render("single"),15)
-  assert.ok(day15.children.some(c=>c?.type==="span"&&c.props.className?.includes("bg-green-700")))
+  assert.ok(day15.children.some(c=>c?.type==="span"&&c.props.className?.includes("bg-[var(--status-paid)]")))
   day15.props.onClick()
   assert.equal(value.from.getDate(),15);assert.equal(value.to,undefined)
   value={}
@@ -160,13 +162,21 @@ test("shared calendar single mode replaces the date; range mode still selects fr
 
 test("calendar previews recurring dates in dark gray without selecting them", () => {
   const createElement=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)})
-  const Calendar=loader({react:{default:{createElement},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
+  const Calendar=loader({react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
   const collect=tree=>!tree||typeof tree!=="object"?[]:[...(tree.type==="button"&&tree.props.title==="Próximo cobro recurrente"?[tree]:[]),...(tree.children??[]).flatMap(collect)]
   for(const [frequency,date,expected] of [["weekly",new Date(2026,9,14),[21,28]],["biweekly",new Date(2026,9,14),[28]],["monthly",new Date(2026,0,31),[28]]]) {
     const tree=Calendar({value:{from:date},selectionMode:"single",numberOfMonths:frequency==="monthly"?2:1,onChange:()=>{},recurrence:{frequency,anchorDate:frequency==="monthly"?"2026-01-31":"2026-10-14"}})
     const upcoming=collect(tree)
     assert.deepEqual(upcoming.map(button=>button.children[0].children[0]),expected)
-    assert.ok(upcoming.every(button=>button.props.className.includes("bg-[var(--n6)]")&&!button.props["aria-pressed"]))
+    assert.ok(upcoming.every(button=>button.props.className.includes("bg-black")&&!button.props["aria-pressed"]))
     assert.equal(collect(Calendar({value:{from:date},selectionMode:"range",numberOfMonths:2,onChange:()=>{},recurrence:{frequency,anchorDate:"2026-01-31"}})).length,0)
   }
 })
+
+test('one-off requires a selected date and accepts a day or range',()=>{
+ const base={clientId:client,paymentType:'one_off',concept:'Event',amount:50};
+ assert.throws(()=>parsePayment(base),/Seleccioná una fecha/);
+ assert.throws(()=>parsePayment({...base,periodFrom:'',periodTo:''}),/Seleccioná una fecha/);
+ assert.equal(parsePayment({...base,periodFrom:'2026-11-07'}).periodTo,'2026-11-07');
+ assert.equal(parsePayment({...base,periodFrom:'2026-11-07',periodTo:'2026-11-09'}).periodTo,'2026-11-09');
+});

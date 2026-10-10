@@ -56,6 +56,7 @@ test("client mutations and email endpoints deny anonymous and foreign owners bef
         "@/lib/auth": { getSessionOwnerId: async () => ownerId, ownedClientColumn: async () => null },
         "@/lib/supabaseClient": { supabase: db }, "@/lib/email": {},
         "@/lib/payments/validation": { PaymentError },
+        "@/lib/payments/lifecycle": { lifecycleOperation:async()=>{throw new PaymentError("Cliente no encontrado",404)} },
         "@/lib/payments/service": { registerManualPayment: async () => { throw new PaymentError("Cliente no encontrado",404) } },
       })
       for (const method of methods) {
@@ -98,12 +99,18 @@ test("authorized client mutations scope both id and owner, including legacy colu
       const route = load("src/app/api/clients/[id]/route.ts", {
         "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
         "@/lib/auth": { getSessionOwnerId: async () => "owner-a", ownedClientColumn: async () => column },
+        "@/lib/payments/validation": {PaymentError},
+        "@/lib/payments/lifecycle": {lifecycleOperation:async(owner,id)=>{db.calls.push(["archive",owner,id]);return {ok:true}}},
         "@/lib/supabaseClient": { supabase: db },
       })
       const res = await route[method]({ json: async () => ({ phone: "123" }) }, { params: Promise.resolve({ id: "client-a" }) })
       assert.equal(res.status, 200)
-      assert.ok(db.calls.some(([name, key, value]) => name === "eq" && key === column && value === "owner-a"))
-      assert.ok(db.calls.some(([name, key, value]) => name === "eq" && key === "id" && value === "client-a"))
+      if (method === "DELETE") {
+        assert.deepEqual(db.calls, [["archive","owner-a","client-a"]])
+      } else {
+        assert.ok(db.calls.some(([name,key,value])=>name === "eq"&&key === column&&value === "owner-a"))
+        assert.ok(db.calls.some(([name,key,value])=>name === "eq"&&key === "id"&&value === "client-a"))
+      }
     }
   }
 })
@@ -129,7 +136,7 @@ test("cron endpoints fail closed without configured bearer secret", async () => 
     const route = load("src/lib/emails/reminders.ts", {
       "server-only": {},
       "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
-      "@/lib/supabaseClient": {}, "./service": {},
+      "@/lib/supabaseClient": {}, "./service": {}, "./installment-reminders": {},
     })
     assert.equal((await route.handleUpcomingReminders({ headers: { get: () => "Bearer undefined" } })).status, 401)
   }

@@ -4,7 +4,7 @@ import vm from "node:vm"
 import ts from "typescript"
 import { fileURLToPath } from "node:url"
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
-export function loader(mocks = {}) {
+export function loader(mocks = {}, environment = {}) {
   const cache = new Map()
   function load(file) {
     file = path.resolve(root, file)
@@ -17,7 +17,7 @@ export function loader(mocks = {}) {
       if (name.startsWith("@/")) return load(path.join(root, "src", name.slice(2)) + ".ts")
       if (name.startsWith(".")) return load(path.resolve(path.dirname(file), name) + ".ts")
       throw new Error(`Import no simulado: ${name}`)
-    }, Date, URL, Buffer, console, process: { env: {} } })
+    }, Date, URL, Buffer, AbortSignal, console, process: { env: environment } })
     return exports
   }
   return load

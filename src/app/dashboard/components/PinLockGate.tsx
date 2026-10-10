@@ -1,22 +1,17 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 
 const UNLOCK_KEY = "isipici_unlocked"
 
 export default function PinLockGate({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false)
   const [authorized, setAuthorized] = useState(false)
-  const [unlockTick, setUnlockTick] = useState(0)
+  const [isUnlocked, setIsUnlocked] = useState(false)
 
   const [pin, setPin] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const isUnlocked = useMemo(() => {
-    if (typeof window === "undefined") return false
-    return window.sessionStorage.getItem(UNLOCK_KEY) === "1"
-  }, [authChecked, unlockTick])
 
   useEffect(() => {
     const run = async () => {
@@ -27,6 +22,8 @@ export default function PinLockGate({ children }: { children: React.ReactNode })
           window.location.href = "/login"
           return
         }
+        if (!res.ok) throw new Error("No se pudo validar la sesión")
+        setIsUnlocked(sessionStorage.getItem(UNLOCK_KEY) === "1")
         setAuthorized(true)
       } catch {
         sessionStorage.removeItem(UNLOCK_KEY)
@@ -59,7 +56,7 @@ export default function PinLockGate({ children }: { children: React.ReactNode })
         sessionStorage.setItem(UNLOCK_KEY, "1")
         setPin("")
         setError(null)
-        setUnlockTick((v) => v + 1) // fuerza re-evaluar isUnlocked
+        setIsUnlocked(true)
         return
       }
 

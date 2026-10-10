@@ -18,7 +18,7 @@ test("client summary uses owner currency and recurring debt even when the latest
  {id:"recurring",amount:100,currency:"AUD",payment_type:"recurring",debt:20,plan:"Monthly",period_to:"2026-11-15",created_at:"2026-09-01T12:00:00Z"},
  {id:"unique",amount:50,currency:"AUD",payment_type:"one_off",debt:0,plan:"Dinner",period_from:"2026-11-07",period_to:"2026-11-09",created_at:now}]}]
  const db={from:table=>query(table==="owners"?{default_currency:"AUD"}:data,calls,table)}
- const route=loader({"next/server":{NextResponse:response},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:db}})("src/app/api/clients/route.ts")
+ const route=loader({"next/server":{NextResponse:response,after:()=>{}},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:{...db,rpc:async()=>({error:{code:"PGRST202"}})}}})("src/app/api/clients/route.ts")
  const result=await route.GET({nextUrl:new URL("https://example.test/api/clients")})
  assert.equal(result.status,200);assert.equal(result.headers["X-Owner-Currency"],"AUD")
  assert.equal(result.body[0].currency,"AUD");assert.equal(result.body[0].currentDebt,20);assert.equal(result.body[0].nextDue,"2026-11-15")
@@ -41,7 +41,7 @@ test("reminders exclude clients with only one-off payments but retain existing r
    }});return q
  }}
  const file="src/lib/emails/reminders.ts",exports={}
- const mocks={"server-only":{},"next/server":{NextResponse:response},"@/lib/supabaseClient":{supabase:db},"./service":{sendUpcomingDueEmail:async input=>{sent.push(input);return {status:"sent",providerEmailId:"email-1"}}}}
+ const mocks={"./installment-reminders":{legacyReminderEligible:async()=>true,sendInstallmentReminders:async()=>[]},"server-only":{},"next/server":{NextResponse:response,after:()=>{}},"@/lib/supabaseClient":{supabase:{...db,rpc:async()=>({error:{code:"PGRST202"}})}},"./service":{sendUpcomingDueEmail:async input=>{sent.push(input);return {status:"sent",providerEmailId:"email-1"}}}}
  const source=ts.transpileModule(readFileSync(new URL("../"+file,import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
  vm.runInNewContext(source,{exports,require:name=>mocks[name],process:{env:{CRON_SECRET:"test-cron"}},Date,Map})
  const result=await exports.handleUpcomingReminders({headers:{get:()=>"Bearer test-cron"}})

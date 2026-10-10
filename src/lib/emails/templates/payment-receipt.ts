@@ -1,16 +1,17 @@
 import { formatPaymentPeriod } from "../../payments/schedule"
 import { escapeHtml, formatDate, formatMoney } from "../format"
 import type { Currency } from "../../payments/types"
-export type ReceiptTemplateInput = { periodFrom?: string | null; periodTo?: string | null; paymentType?: "recurring" | "one_off"; paymentDate?: string; to: string; clientName: string; ownerName: string; amount: number; currency?: Currency; dueDate: string | null; plan?: string | null; remainingDebt?: number | null; concept?: string | null; serviceDate?: string | null; receiptNote?: string | null; }
+export type ReceiptTemplateInput = { allocations?: import("../../payments/types").ReceiptAllocation[]; periodFrom?: string | null; periodTo?: string | null; paymentType?: "recurring" | "one_off"; paymentDate?: string; to: string; clientName: string; ownerName: string; amount: number; currency?: Currency; dueDate: string | null; plan?: string | null; remainingDebt?: number | null; concept?: string | null; serviceDate?: string | null; receiptNote?: string | null; }
 export function renderPaymentReceipt(input: ReceiptTemplateInput) {
   const clientName = escapeHtml(input.clientName)
   const ownerName = escapeHtml(input.ownerName)
   const amountFormatted = formatMoney(input.amount, input.currency)
   const dueDateText = input.dueDate ? escapeHtml(formatDate(input.dueDate)) : "sin fecha de vencimiento registrada"
   const planText = escapeHtml(input.concept ?? input.plan ?? "Pago")
-  const remainingDebtText = input.paymentType !== "one_off" && input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt, input.currency) : null
+  const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt, input.currency) : null
   const periodText = formatPaymentPeriod(input.periodFrom,input.periodTo,input.serviceDate)
   const contextRows = [
+    ...(input.allocations?.length ? [{label:"Cuotas / períodos",value:input.allocations.map(a=>escapeHtml(formatPaymentPeriod(a.periodFrom,a.periodTo)??"")+` · Recibido: ${escapeHtml(formatMoney(a.amountApplied,input.currency))} · Bonificación: ${escapeHtml(formatMoney(a.discountApplied,input.currency))}${a.remaining>0?` · Pendiente: ${escapeHtml(formatMoney(a.remaining,input.currency))}`:""}`).join("<br />")}] : []),
     ...(periodText ? [{ label: input.periodFrom === input.periodTo || !input.periodFrom ? "Fecha del servicio" : "Período cubierto", value: escapeHtml(periodText) }] : []),
     ...(input.paymentDate ? [{ label: "Fecha del pago", value: escapeHtml(formatDate(input.paymentDate)) }] : []),
     ...(input.receiptNote ? [{ label: "Nota del comprobante", value: escapeHtml(input.receiptNote).replace(/\r?\n/g, "<br />") }] : []),

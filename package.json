@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test:security": "node --test tests/authorization.test.mjs",
     "test:email": "node --test tests/email-tracking.test.mjs",
-    "test:payments": "node --test tests/payment-domain.test.mjs tests/payment-domain-db.test.mjs tests/payment-domain-rules.test.mjs tests/payment-schedule.test.mjs tests/payment-schedule-db.test.mjs"
+    "test:payments": "node --test tests/payment-domain.test.mjs tests/payment-domain-db.test.mjs tests/payment-domain-rules.test.mjs tests/payment-schedule.test.mjs tests/payment-schedule-db.test.mjs tests/subscription-lifecycle-db.test.mjs tests/subscription-lifecycle.test.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:performance": "node --test tests/performance.test.mjs tests/performance-db.test.mjs tests/email-dispatch.test.mjs",
+    "test:allocations": "node --test tests/payment-allocations-db.test.mjs tests/payment-calendar.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

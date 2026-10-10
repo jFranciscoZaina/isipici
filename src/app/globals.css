@@ -74,6 +74,9 @@
 
   /* Status */
   --status-danger: #e50000;
+  --status-paid: #22a447;
+  --status-pending: #ed931b;
+  --status-payment-debt: #e5bf00;
 
   /* Shadows base (por si las querés usar en CSS custom) */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10);

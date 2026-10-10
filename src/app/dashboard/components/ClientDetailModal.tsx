@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { ClientRow, Payment } from "../page";
 import Modal from "./Modal";
+import SubscriptionPanel from "./SubscriptionPanel";
 import { formatCalendarDate, formatPaymentPeriod } from "@/lib/payments/schedule";
 import { formatPaymentMoney } from "@/lib/payments/format";
 import { User as UserIcon, DollarSign, Mail as MailIcon } from "react-feather";
@@ -111,12 +112,14 @@ export default function ClientDetailModal({
     loadPayments();
   }, [activeTab, paymentsLoaded, client.id]);
 
-  // === Load email history (siempre, es liviano) =====================
+  // Consultar emails solo al abrir su pestaña; se refrescan al volver a ella.
   useEffect(() => {
+    if (activeTab !== "emails") return;
+    const controller = new AbortController();
     const loadEmails = async () => {
       setLoadingEmails(true);
       try {
-        const res = await fetch(`/api/clients/emails?clientId=${client.id}`);
+        const res = await fetch(`/api/clients/emails?clientId=${client.id}`, { signal: controller.signal });
         if (res.status === 401) {
           window.location.href = "/login";
           return;
@@ -129,19 +132,21 @@ export default function ClientDetailModal({
         }
 
         const data: EmailLog[] = await res.json();
-        setEmails(data);
+        if (!controller.signal.aborted) setEmails(data);
       } catch (e) {
+        if (controller.signal.aborted) return;
         console.error(e);
         alert(
           e instanceof Error ? e.message : "Error cargando historial de emails"
         );
       } finally {
-        setLoadingEmails(false);
+        if (!controller.signal.aborted) setLoadingEmails(false);
       }
     };
 
-    loadEmails();
-  }, [client.id]);
+    void loadEmails();
+    return () => controller.abort();
+  }, [activeTab, client.id]);
 
   // === Save changes ===================================================
   const handleSave = async () => {
@@ -193,6 +198,7 @@ export default function ClientDetailModal({
       return (
         <div key={p.id ?? p.created_at} className=" pb-p10">
           {fecha} – Pagó {monto} por {plan}.{p.payment_type === "one_off" ? " Pago único." : ""}
+          {p.payment_allocations?.map((allocation,index)=><React.Fragment key={index}><br />Cuota: {formatPaymentPeriod(allocation.installment?.period_from,allocation.installment?.period_to)} · Aplicado: {formatPaymentMoney(allocation.amount_applied,p.currency)} · Bonificación: {formatPaymentMoney(allocation.discount_applied,p.currency)}</React.Fragment>)}
           {periodText && <><br />{p.period_from && p.period_to && p.period_from !== p.period_to ? "Período" : "Servicio"}: {periodText}.</>}
           {p.receipt_note && <p className="fs-12 text-app-secondary whitespace-pre-wrap break-words">{p.receipt_note}</p>}
           {/* Bloque Condicional para 'deuda' */}
@@ -281,6 +287,7 @@ export default function ClientDetailModal({
       secondaryAction={secondaryAction}
       primaryAction={primaryAction}
     >
+      {activeTab === "data" && <SubscriptionPanel clientId={client.id} onChanged={onChanged} />}
       {/* TAB: Datos / Perfil */}
       {activeTab === "data" && (
         <div className="flex flex-col gap-p10">

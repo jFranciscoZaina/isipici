@@ -34,9 +34,10 @@ test("canonical recurring period ends the day before the next due date",()=>{
 })
 test("one-off covers one day or an inclusive range with no recurring due date",()=>{
  const base={clientId:client,paymentType:"one_off",amount:200,concept:"Dinner"}
- for(const period of [{periodFrom:"2026-11-07"},{periodFrom:"2026-11-07",periodTo:"2026-11-09"},{}]){
+ for(const period of [{periodFrom:"2026-11-07"},{periodFrom:"2026-11-07",periodTo:"2026-11-09"}]){
   const p=parsePayment({...base,...period});assert.equal(p.periodFrom,period.periodFrom??null);assert.equal(p.periodTo,period.periodTo??period.periodFrom??null);assert.equal(p.nextPaymentDate,null)
  }
+ assert.throws(()=>parsePayment(base),/Seleccioná una fecha/)
  assert.throws(()=>parsePayment({...base,periodTo:"2026-11-09"}),PaymentError)
  assert.throws(()=>parsePayment({...base,periodFrom:"2026-11-09",periodTo:"2026-11-07"}),PaymentError)
 })

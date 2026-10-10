@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import type { ClientRow } from "../page"
 
 type Props = {
@@ -14,7 +14,7 @@ export default function ClientSearchSelect({
   selectedClientId,
   onSelectClient,
 }: Props) {
-  const [search, setSearch] = useState("")
+  const [draft, setDraft] = useState<{clientId: string; text: string} | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
   const selectedLabel = useMemo(() => {
@@ -22,6 +22,8 @@ export default function ClientSearchSelect({
     const c = clients.find((cl) => cl.id === selectedClientId)
     return c ? `${c.name}${c.email ? ` — ${c.email}` : ""}` : ""
   }, [clients, selectedClientId])
+
+  const search = draft?.clientId === selectedClientId ? draft.text : selectedLabel
 
   // Filtrado local por nombre / email (sin llamadas a la API)
   const filteredClients = useMemo(() => {
@@ -38,24 +40,10 @@ export default function ClientSearchSelect({
     onSelectClient(id)
     const c = clients.find((cl) => cl.id === id)
     if (c) {
-      setSearch(`${c.name}${c.email ? ` — ${c.email}` : ""}`)
+      setDraft({clientId: id, text: `${c.name}${c.email ? ` — ${c.email}` : ""}`})
     }
     setIsOpen(false)
   }
-
-  // Sincroniza el input cuando el cliente cambia externamente, pero permite borrar a mano
-  const prevSelectedRef = useRef<string>("")
-  useEffect(() => {
-    if (selectedClientId !== prevSelectedRef.current) {
-      prevSelectedRef.current = selectedClientId
-      if (selectedClientId) {
-        const c = clients.find((cl) => cl.id === selectedClientId)
-        setSearch(c ? `${c.name}${c.email ? ` — ${c.email}` : ""}` : "")
-      } else {
-        setSearch("")
-      }
-    }
-  }, [selectedClientId, clients])
 
   return (
     <div className="flex flex-col gap-p5">
@@ -71,7 +59,7 @@ export default function ClientSearchSelect({
           value={search}
           onChange={(e) => {
             const value = e.target.value
-            setSearch(value)
+            setDraft({clientId: selectedClientId, text: value})
             setIsOpen(value.trim().length > 0) // solo abre si escribe
           }}
           onFocus={() => {

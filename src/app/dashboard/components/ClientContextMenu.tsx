@@ -104,7 +104,7 @@ export function ClientContextMenu({
     { id: "editProfile", label: "Editar perfil", icon: UserPlus },
     { id: "paymentsHistory", label: "Historial de pagos", icon: CreditCard },
     { id: "emailsHistory", label: "Historial de emails", icon: Mail },
-    { id: "delete", label: "Eliminar cliente", icon: Trash2, tone: "danger" },
+    { id: "delete", label: "Dar de baja cliente", icon: Trash2, tone: "danger" },
   ];
 
   const top = adjustedTop ?? position.top;
