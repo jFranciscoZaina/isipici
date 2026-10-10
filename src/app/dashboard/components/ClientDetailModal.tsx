@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { ClientRow, Payment } from "../page";
 import Modal from "./Modal";
+import { formatCalendarDate, formatPaymentPeriod } from "@/lib/payments/schedule";
 import { formatPaymentMoney } from "@/lib/payments/format";
 import { User as UserIcon, DollarSign, Mail as MailIcon } from "react-feather";
 
@@ -179,19 +180,20 @@ export default function ClientDetailModal({
       const monto = formatPaymentMoney(p.amount ?? 0, p.currency);
       const plan = p.concept ?? p.plan ?? "Pago";
       const deuda =
-        p.debt && p.debt > 0
+        p.payment_type !== "one_off" && p.debt && p.debt > 0
           ? " Debe " +
             formatPaymentMoney(p.debt, p.currency) +
             "."
           : "";
-      const vencimiento = p.period_to
-        ? " Vence el " + new Date(p.period_to).toLocaleDateString("es-AR") + "."
+      const periodText = formatPaymentPeriod(p.period_from,p.period_to,p.service_date);
+      const vencimiento = p.payment_type !== "one_off" && p.next_payment_date
+        ? " Próximo vencimiento: " + formatCalendarDate(p.next_payment_date) + "."
         : "";
 
       return (
         <div key={p.id ?? p.created_at} className=" pb-p10">
           {fecha} – Pagó {monto} por {plan}.{p.payment_type === "one_off" ? " Pago único." : ""}
-          {p.service_date && <><br />Servicio: {new Date(`${p.service_date}T12:00:00Z`).toLocaleDateString("es-AR", { timeZone: "UTC" })}.</>}
+          {periodText && <><br />{p.period_from && p.period_to && p.period_from !== p.period_to ? "Período" : "Servicio"}: {periodText}.</>}
           {p.receipt_note && <p className="fs-12 text-app-secondary whitespace-pre-wrap break-words">{p.receipt_note}</p>}
           {/* Bloque Condicional para 'deuda' */}
           {deuda && (
@@ -221,7 +223,7 @@ export default function ClientDetailModal({
       const status = mail.delivery_status ?? mail.status;
       const vencimiento = mail.due_date
         ? " Vence el " +
-          new Date(mail.due_date).toLocaleDateString("es-AR") +
+          formatCalendarDate(mail.due_date) +
           "."
         : "";
       return `${fecha} – ${tipo}: ${labels[status] ?? "Estado desconocido"}. ${mail.subject}.${vencimiento}`;

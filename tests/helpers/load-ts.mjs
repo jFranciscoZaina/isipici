@@ -11,7 +11,7 @@ export function loader(mocks = {}) {
     if (cache.has(file)) return cache.get(file)
     const exports = {}
     cache.set(file, exports)
-    const source = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+    const source = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText
     vm.runInNewContext(source, { exports, require: name => {
       if (name in mocks) return mocks[name]
       if (name.startsWith("@/")) return load(path.join(root, "src", name.slice(2)) + ".ts")

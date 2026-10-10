@@ -2,9 +2,8 @@ import "server-only"
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { sendUpcomingDueEmail } from "./service"
-import type { Currency } from "../payments/types"
 
-type Candidate = { id: string; name: string; email: string; owner_id?: string; gym_id?: string; current_debt: number | null; currency: Currency }
+type Candidate = { id: string; name: string; email: string; owner_id?: string; gym_id?: string; current_debt: number | null }
 const missingColumn = (code?: string) => code === "42703" || code === "PGRST204"
 
 async function candidates(target: string, legacy: boolean, canonicalExists: boolean) {
@@ -12,7 +11,7 @@ async function candidates(target: string, legacy: boolean, canonicalExists: bool
   let ownerColumn = "owner_id"
   for (let offset = 0; ; offset += 100) {
     const query = () => {
-      let builder = supabase.from("clients").select(`id, name, email, ${ownerColumn}, current_debt, currency`).eq(legacy ? "next_due" : "next_payment_date", target).not("email", "is", null).order("id").range(offset, offset + 99)
+      let builder = supabase.from("clients").select(`id, name, email, ${ownerColumn}, current_debt`).eq(legacy ? "next_due" : "next_payment_date", target).not("email", "is", null).order("id").range(offset, offset + 99)
       if (legacy && canonicalExists) builder = builder.is("next_payment_date", null)
       return builder
     }
@@ -41,12 +40,16 @@ export async function handleUpcomingReminders(req: NextRequest) {
     for (const client of clients.values()) {
       const ownerId = client.owner_id ?? client.gym_id
       if (!ownerId) continue
-      const { data: owner, error } = await supabase.from("owners").select("id, name").eq("id", ownerId).eq("is_active", true).maybeSingle()
+      const { data: owner, error } = await supabase.from("owners").select("id, name, default_currency").eq("id", ownerId).eq("is_active", true).maybeSingle()
       if (error) throw new Error("No se pudo consultar la cuenta")
       if (!owner) continue
+      // NULL conserva pagos legacy recurrentes; los únicos no generan elegibilidad.
+      const { data: recurring, error: scheduleError } = await supabase.from("payments").select("id").eq("owner_id", ownerId).eq("client_id", client.id).or("payment_type.eq.recurring,payment_type.is.null").limit(1)
+      if (scheduleError) throw new Error("No se pudo consultar el período recurrente")
+      if (!recurring?.length) continue
       const result = await sendUpcomingDueEmail({
         ownerId, clientId: client.id, to: client.email, clientName: client.name,
-        ownerName: owner.name ?? "Tu negocio", dueDate: target, remainingDebt: client.current_debt, currency: client.currency,
+        ownerName: owner.name ?? "Tu negocio", dueDate: target, remainingDebt: client.current_debt, currency: owner.default_currency,
         deduplicationKey: `upcoming-due:${ownerId}:${client.id}:${target}`,
       })
       if (result.status === "sent") sent++

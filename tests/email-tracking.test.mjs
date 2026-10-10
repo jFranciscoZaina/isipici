@@ -188,7 +188,7 @@ test("payment API preserves the canonical service result when the email fails", 
 test("templates escape client data, use generic copy and format dates without timezone shifts", () => {
   const format = loader()("src/lib/emails/format.ts")
   const reminder = load("src/lib/emails/templates/upcoming-payment.ts", { "../format": format })
-  const receipt = load("src/lib/emails/templates/payment-receipt.ts", { "../format": format })
+  const receipt = load("src/lib/emails/templates/payment-receipt.ts", { "../format": format, "../../payments/schedule": loader()("src/lib/payments/schedule.ts") })
   const input = { to: "client@example.test", clientName: '<img src=x onerror="alert(1)">', ownerName: "Business", dueDate: "2026-10-07", amount: 100, remainingDebt: 30, plan: "<script>bad</script>" }
   for (const template of [reminder.renderUpcomingPayment(input), receipt.renderPaymentReceipt(input)]) {
     assert.equal(template.html.includes(input.clientName), false)

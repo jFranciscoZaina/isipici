@@ -7,7 +7,8 @@ import RangeCalendar, { type DateRangeValue } from "./RangeCalendar"
 import ClientSearchSelect from "./ClientSearchSelect"
 import Modal from "./Modal"
 import { DollarSign } from "react-feather"
-import type { Currency, PaymentType } from "@/lib/payments/types"
+import { FREQUENCY_LABELS, RECURRING_FREQUENCIES, frequencyFromInterval, getRecurringPeriod, formatPaymentPeriod, toCalendarDate, fromCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
+import type { PaymentType, RecurringAgreementSummary } from "@/lib/payments/types"
 import { formatPaymentMoney } from "@/lib/payments/format"
 
 type Props = {
@@ -21,6 +22,10 @@ type Props = {
 
 type PaymentRow = {
   id: string
+  payment_type?: PaymentType | null
+  provider?: string
+  next_payment_date?: string | null
+  recurring_agreement?: RecurringAgreementSummary | null
   amount: number
   plan: string | null
   discount: number | null
@@ -30,13 +35,8 @@ type PaymentRow = {
   created_at: string
 }
 
-const toISO = (d?: Date) =>
-  d
-    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-    : ""
-
-const parseISO = (s?: string | null) =>
-  s ? new Date(s + "T00:00:00") : undefined
+const toISO = toCalendarDate
+const parseISO = fromCalendarDate
 
 export default function NewPaymentModal({
   clients,
@@ -53,9 +53,11 @@ export default function NewPaymentModal({
   const [debt, setDebt] = useState<number | "">("")
   const [loading, setLoading] = useState(false)
   const [paymentType, setPaymentType] = useState<PaymentType>("recurring")
-  const [currency, setCurrency] = useState<Currency>("ARS")
   const [concept, setConcept] = useState("")
-  const [serviceDate, setServiceDate] = useState("")
+  const [frequency, setFrequency] = useState<RecurringFrequency>("monthly")
+  const [cycleDate, setCycleDate] = useState("")
+  const [agreement, setAgreement] = useState<RecurringAgreementSummary | null>(null)
+  const [debtPaymentId, setDebtPaymentId] = useState<string | null>(null)
   const [receiptNote, setReceiptNote] = useState("")
 
   const [selectedClientDebt, setSelectedClientDebt] = useState(0)
@@ -67,7 +69,7 @@ export default function NewPaymentModal({
   const [calendarLocked, setCalendarLocked] = useState(false)
 
   const periodFrom = toISO(dateRange.from)
-  const periodTo = toISO(dateRange.to)
+  const periodTo = toISO(dateRange.to ?? dateRange.from)
 
   const selectedClient = clients.find((c) => c.id === clientId)
   const hasDebt = paymentType === "recurring" && (selectedClient?.currentDebt ?? 0) > 0
@@ -78,9 +80,9 @@ export default function NewPaymentModal({
 
   const handleClientChange = async (id: string, type: PaymentType = paymentType) => {
     setClientId(id)
+    setDebtPaymentId(null); setAgreement(null); setCycleDate(""); setFrequency("monthly")
 
     const c = clients.find((cl) => cl.id === id)
-    setCurrency(c?.currency ?? "ARS")
     const d = c ? Number(c.currentDebt || 0) : 0
     setSelectedClientDebt(d)
 
@@ -105,7 +107,7 @@ export default function NewPaymentModal({
       const to = new Date(p.period_to + "T00:00:00")
 
       for (let t = new Date(from); t <= to; t.setDate(t.getDate() + 1)) {
-        const key = t.toISOString().slice(0, 10)
+        const key = toISO(t)
         nextMarkers[key] = Number(p.debt || 0) > 0 ? "debt" : "paid"
       }
     })
@@ -117,18 +119,27 @@ export default function NewPaymentModal({
     }
 
     setMarkers(nextMarkers)
+    const currentAgreement = pays.find(p => p.provider === "manual" && p.recurring_agreement?.status === "active" && p.recurring_agreement.billing_anchor_date)?.recurring_agreement ?? null
+    if (type === "recurring" && currentAgreement) {
+      const currentFrequency = frequencyFromInterval(currentAgreement.interval_unit,currentAgreement.interval_count)
+      if (currentFrequency) {
+        setAgreement(currentAgreement);setFrequency(currentFrequency)
+        setCycleDate(currentAgreement.next_charge_at?.slice(0,10) ?? "")
+      }
+    } else if (type === "recurring") setCycleDate(c?.nextDue ?? "")
 
     if (d > 0 && type === "recurring") {
       setPlan("Pago deuda")
       setDiscount(0)
 
-      const withDebt = pays.filter((p) => Number(p.debt || 0) > 0)
+      const withDebt = pays.filter((p) => p.payment_type !== "one_off" && Number(p.debt || 0) > 0)
       const lastDebt = withDebt.sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
 
-      if (lastDebt?.period_from && lastDebt?.period_to) {
+      if (lastDebt) {
+        setDebtPaymentId(lastDebt.id)
         const from = parseISO(lastDebt.period_from)
         const to = parseISO(lastDebt.period_to)
 
@@ -196,16 +207,15 @@ export default function NewPaymentModal({
     return () => window.removeEventListener("resize", update)
   }, [])
 
-  const rangeLabel = useMemo(() => {
-    if (!dateRange.from || !dateRange.to) return "Selecciona un rango de fechas"
-    const f = dateRange.from.toLocaleDateString("es-AR")
-    const t = dateRange.to.toLocaleDateString("es-AR")
-    return `Este pago cubre del ${f} al ${t}`
-  }, [dateRange])
+  const rangeLabel = formatPaymentPeriod(periodFrom || null,periodTo || null)
+  const schedulePreview = useMemo(() => {
+    if (!cycleDate || debtPaymentId) return null
+    try { return getRecurringPeriod({frequency,anchorDate:agreement?.billing_anchor_date ?? cycleDate,cycleDate}) } catch { return null }
+  }, [cycleDate,frequency,agreement,debtPaymentId])
 
   const canSave =
     !!clientId &&
-    (paymentType === "one_off" ? !!concept.trim() : !!(plan || concept.trim()) && !!dateRange.from && !!dateRange.to) &&
+    (paymentType === "one_off" ? !!concept.trim() : Boolean(debtPaymentId || schedulePreview)) &&
     (Number(amount) > 0 || Number(debt) > 0)
 
   const handleSave = async () => {
@@ -213,12 +223,12 @@ export default function NewPaymentModal({
       onError?.("Selecciona un cliente")
       return
     }
-    if (!concept.trim() && !plan) {
+    if (paymentType === "one_off" && !concept.trim()) {
       onError?.("Indicá un concepto o seleccioná un plan")
       return
     }
-    if (paymentType === "recurring" && (!periodFrom || !periodTo)) {
-      onError?.("Selecciona desde y hasta cuando cubre el pago")
+    if (paymentType === "recurring" && !debtPaymentId && !schedulePreview) {
+      onError?.("Seleccioná un vencimiento válido para la frecuencia")
       return
     }
 
@@ -240,14 +250,17 @@ export default function NewPaymentModal({
           plan,
           provider: "manual",
           paymentType,
-          currency,
           concept: concept.trim() || undefined,
-          serviceDate: paymentType === "one_off" ? serviceDate || undefined : undefined,
+          frequency: paymentType === "recurring" && !debtPaymentId ? frequency : undefined,
+          anchorDate: paymentType === "recurring" && !debtPaymentId ? agreement?.billing_anchor_date ?? cycleDate : undefined,
+          cycleDate: paymentType === "recurring" && !debtPaymentId ? cycleDate : undefined,
+          recurringAgreementId: paymentType === "recurring" && !debtPaymentId ? agreement?.id : undefined,
+          debtPaymentId: paymentType === "recurring" ? debtPaymentId || undefined : undefined,
           receiptNote: receiptNote.trim() || undefined,
           discount: numericDiscount,
-          debt: paymentType === "one_off" && debt === "" ? undefined : numericDebt,
-          periodFrom: paymentType === "recurring" ? periodFrom : undefined,
-          periodTo: paymentType === "recurring" ? periodTo : undefined,
+          debt: paymentType === "recurring" ? numericDebt : undefined,
+          periodFrom: paymentType === "one_off" ? periodFrom || undefined : undefined,
+          periodTo: paymentType === "one_off" ? periodTo || undefined : undefined,
         }),
       })
 
@@ -317,28 +330,26 @@ export default function NewPaymentModal({
                 if (clientId) void handleClientChange(clientId, type)
               }}>
               <option value="recurring">Recurrente</option>
-              <option value="one_off">Único</option>
+              <option value="one_off">Pago único</option>
             </select>
           </Field>
-          <Field label="Moneda">
-            <select className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={currency}
-              disabled={Boolean(selectedClient?.hasPayments || selectedClient?.currentDebt)} onChange={e => setCurrency(e.target.value as Currency)}>
-              <option value="ARS">ARS — Peso argentino</option>
-              <option value="AUD">AUD — Dólar australiano</option>
+          {paymentType === "recurring" && <Field label="Frecuencia">
+            <select className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={frequency}
+              disabled={Boolean(agreement || calendarLocked)} onChange={e => setFrequency(e.target.value as RecurringFrequency)}>
+              {RECURRING_FREQUENCIES.map(f => <option key={f} value={f}>{FREQUENCY_LABELS[f]}</option>)}
             </select>
-          </Field>
-          <Field label="Concepto">
+          </Field>}
+          <Field label={paymentType === "one_off" ? "Concepto" : "Concepto (opcional)"}>
             <input className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={concept}
               onChange={e => setConcept(e.target.value)} maxLength={200} placeholder="Ej. Servicio mensual o cena de fin de año" />
           </Field>
-          {paymentType === "recurring" && <Field label="Plan (opcional si indicás concepto)">
+          {paymentType === "recurring" && <Field label="Plan (opcional)">
             <select
               className={`w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app appearance-none pr-p30 ${
                 hasDebt ? "opacity-70 cursor-not-allowed" : ""
               }`}
               value={plan}
               onChange={(e) => handlePlanChange(e.target.value as PlanType)}
-              required
               disabled={hasDebt}
             >
               <option value="">Seleccionar plan...</option>
@@ -351,7 +362,7 @@ export default function NewPaymentModal({
 
             {hasDebt && selectedClientDebt > 0 && (
               <p className="fs-12 text-app-secondary mt-p5">
-                Deuda actual: {formatPaymentMoney(selectedClientDebt, currency)}
+                Deuda actual: {formatPaymentMoney(selectedClientDebt, selectedClient?.currency)}
               </p>
             )}
           </Field>}
@@ -382,7 +393,7 @@ export default function NewPaymentModal({
             />
           </Field>
 
-          <Field label="Deuda total despues de este pago">
+          {paymentType === "recurring" && <Field label="Deuda total despues de este pago">
             <input
               type="number"
               className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
@@ -390,10 +401,10 @@ export default function NewPaymentModal({
               onChange={(e) =>
                 setDebt(e.target.value ? Number(e.target.value) : "")
               }
-              placeholder={paymentType === "one_off" ? "Vacío conserva la deuda actual" : "0 si queda saldado"}
+              placeholder="0 si queda saldado"
               min={0}
             />
-          </Field>
+          </Field>}
           <Field label="Nota del comprobante (opcional)">
             <textarea className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" rows={3}
               maxLength={1000} value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="Ej. Mesa para dos personas" />
@@ -402,24 +413,21 @@ export default function NewPaymentModal({
 
         <div className="space-y-p20">
           {paymentType === "recurring" ? <>
-          <RangeCalendar
-            value={dateRange}
-            onChange={setDateRange}
-            disabled={calendarLocked}
-            numberOfMonths={isMobile ? 1 : 2}
-            markers={markers}
-          />
-
-          <p className="fs-14 text-app-secondary text-center">{rangeLabel}</p>
-
-          {calendarLocked && (
-            <p className="fs-12 text-app-secondary">
-              Este rango pertenece a una deuda previa y no puede modificarse.
-            </p>
-          )}
-          </> : <Field label="Fecha del servicio / evento (opcional)">
-            <input type="date" className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={serviceDate}
-              onChange={e => setServiceDate(e.target.value)} min="1900-01-01" max="9999-12-31" />
+            <Field label={calendarLocked ? "Período de la deuda" : agreement ? "Vencimiento del ciclo" : "Primer vencimiento"}>
+              <RangeCalendar key={`${clientId}:${debtPaymentId ?? cycleDate}`} selectionMode={calendarLocked ? "range" : "single"}
+                value={calendarLocked ? dateRange : {from:parseISO(cycleDate)}}
+                recurrence={schedulePreview ? {frequency,anchorDate:agreement?.billing_anchor_date ?? cycleDate} : undefined}
+                onChange={next => setCycleDate(toISO(next.from))} disabled={calendarLocked}
+                numberOfMonths={isMobile ? 1 : 2} markers={markers} />
+            </Field>
+            {calendarLocked ? <p className="fs-14 text-app-secondary text-center">{rangeLabel ? `Período: ${rangeLabel}` : "Deuda de un pago anterior"}. Su vencimiento se conserva.</p>
+              : schedulePreview ? <p className="fs-14 text-app-secondary text-center">Período: {formatPaymentPeriod(schedulePreview.periodFrom,schedulePreview.periodTo)}. Próximo vencimiento: {formatPaymentPeriod(schedulePreview.nextPaymentDate,schedulePreview.nextPaymentDate)}.</p>
+              : <p className="fs-14 text-app-secondary text-center">{cycleDate ? "Elegí una fecha correspondiente a esta recurrencia" : "Seleccioná el primer vencimiento"}</p>}
+          </> : <Field label="Período del servicio / evento (opcional)">
+            <RangeCalendar selectionMode="range" value={dateRange} onChange={setDateRange}
+              numberOfMonths={isMobile ? 1 : 2} markers={markers} />
+            <p className="fs-14 text-app-secondary text-center">{rangeLabel ? `Período: ${rangeLabel}` : "Seleccioná un día o un rango si corresponde"}</p>
+            {dateRange.from && <button type="button" className="btn-secondary" onClick={() => setDateRange({})}>Quitar período</button>}
           </Field>}
         </div>
       </div>

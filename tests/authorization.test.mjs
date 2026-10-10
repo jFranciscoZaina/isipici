@@ -88,7 +88,7 @@ test("admin mutations reauthorize direct calls", async () => {
     "@/lib/admin-auth": { requireAdmin: async () => { throw new Error("unauthorized") } },
     "@/lib/owner-registration": {}, "@/lib/supabaseClient": {},
   })
-  for (const method of ["addOwner", "setOwnerStatus", "logoutAdmin"]) await assert.rejects(actions[method](new FormData()), /unauthorized/)
+  for (const method of ["addOwner", "setOwnerStatus", "setOwnerCurrency", "logoutAdmin"]) await assert.rejects(actions[method](new FormData()), /unauthorized/)
 })
 
 test("authorized client mutations scope both id and owner, including legacy column", async () => {
@@ -152,11 +152,15 @@ test("registration validates credentials, hashes password and PIN, and selects o
     assert.equal((await registration.createOwner(input)).status, 400)
   }
   assert.equal(calls.length, 0)
-  const result = await registration.createOwner({ name: "Business", email: "OWNER@example.test", password: "a-long-password", pin: "1234", is_active: false })
+  const result = await registration.createOwner({ name: "Business", email: "OWNER@example.test", password: "a-long-password", pin: "1234", is_active: false, default_currency: "AUD" })
   assert.deepEqual(Object.keys(result.data).sort(), ["email", "id", "name"])
   const payload = calls.find(([operation]) => operation === "insert")[1]
+  assert.equal(payload.default_currency, "ARS")
   assert.equal(payload.password_hash, "hashed:a-long-password")
   assert.equal(payload.pin_hash, "hashed:1234")
   assert.equal("is_active" in payload, false)
   assert.ok(calls.some(([operation, fields]) => operation === "select" && fields === "id, name, email"))
+  calls.length = 0
+  await registration.createOwner({ name: "Business", email: "owner@example.test", password: "a-long-password" }, { defaultCurrency: "AUD" })
+  assert.equal(calls.find(([operation]) => operation === "insert")[1].default_currency, "AUD")
 })

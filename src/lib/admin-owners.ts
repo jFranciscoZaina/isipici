@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient"
 
 export async function ownerSummary(id: string) {
   await requireAdmin()
-  const { data, error } = await supabase.from("owners").select("id, name, email, created_at, is_active").eq("id", id).maybeSingle()
+  const { data, error } = await supabase.from("owners").select("id, name, email, created_at, is_active, default_currency").eq("id", id).maybeSingle()
   if (error) throw new Error("No se pudo consultar la cuenta")
   if (!data) return null
   const optional: Record<string, string | null> = {}

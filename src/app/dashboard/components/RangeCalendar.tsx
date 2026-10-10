@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useMemo, useState } from "react"
+import { addCalendarDays, getNextRecurringDate, toCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
 
 export type DateRangeValue = {
   from?: Date
@@ -8,6 +9,8 @@ export type DateRangeValue = {
 }
 
 type Props = {
+  selectionMode?: "range" | "single"
+  recurrence?: { frequency: RecurringFrequency; anchorDate: string }
   value: DateRangeValue
   onChange: (next: DateRangeValue) => void
   disabled?: boolean
@@ -50,6 +53,7 @@ function inRange(d: Date, from?: Date, to?: Date) {
 }
 function addMonths(d: Date, n: number) {
   const next = new Date(d)
+  next.setDate(1)
   next.setMonth(next.getMonth() + n)
   return next
 }
@@ -62,7 +66,7 @@ function buildMonthGrid(monthDate: Date) {
   const month = monthDate.getMonth()
   const first = new Date(year, month, 1)
   const last = new Date(year, month + 1, 0)
-  const startWeekday = first.getDay()
+  const startWeekday = (first.getDay() + 6) % 7
   const daysInMonth = last.getDate()
 
   const cells: (Date | null)[] = []
@@ -83,11 +87,13 @@ function buildMonthGrid(monthDate: Date) {
 
 export default function RangeCalendar({
   value,
+  selectionMode = "range",
   onChange,
   disabled = false,
   numberOfMonths = 2,
   className = "",
   markers = {},
+  recurrence,
 }: Props) {
   const [baseMonth, setBaseMonth] = useState<Date>(() => {
     return value.from ? new Date(value.from) : new Date()
@@ -104,6 +110,11 @@ export default function RangeCalendar({
     const clicked = startOfDay(day)
     const from = value.from ? startOfDay(value.from) : undefined
     const to = value.to ? startOfDay(value.to) : undefined
+
+    if (selectionMode === "single") {
+      onChange({ from: clicked, to: undefined })
+      return
+    }
 
     // no range yet
     if (!from && !to) {
@@ -190,12 +201,14 @@ export default function RangeCalendar({
                       const d0 = startOfDay(day)
 
                       const isFrom = isSameDay(d0, value.from)
-                      const isTo = isSameDay(d0, value.to)
-                      const isInside = inRange(d0, value.from, value.to)
+                      const isTo = selectionMode === "range" && isSameDay(d0, value.to)
+                      const isInside = selectionMode === "range" && inRange(d0, value.from, value.to)
                       const isEdge = isFrom || isTo
 
-                      const dateKey = d0.toISOString().slice(0, 10)
+                      const dateKey = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`
                       const marker = markers[dateKey]
+                      const isUpcoming = selectionMode === "single" && recurrence && value.from && dateKey > toCalendarDate(value.from)
+                        && getNextRecurringDate({ ...recurrence, currentDate: addCalendarDays(dateKey, -1) }) === dateKey
 
                       return (
                         <button
@@ -203,18 +216,20 @@ export default function RangeCalendar({
                           key={di}
                           onClick={() => handleDayClick(d0)}
                           disabled={disabled}
+                          aria-pressed={isEdge || isInside}
+                          title={isUpcoming ? "Próximo cobro recurrente" : undefined}
                           className={[
-                            "h-9 w-9 rounded-full text-sm flex flex-col items-center justify-center transition",
+                            "h-9 w-full max-w-9 rounded-full text-sm flex flex-col items-center justify-center transition",
                             disabled
                               ? "cursor-not-allowed opacity-70"
                               : "hover:bg-slate-200",
                             isInside && !isEdge ? "bg-slate-200" : "",
-                            isEdge ? "bg-black text-white" : "text-slate-900",
+                            isEdge ? "bg-black text-white" : isUpcoming ? "bg-[var(--n6)] text-white" : "text-slate-900",
                           ].join(" ")}
                         >
                           <span
                             className={[
-                              isEdge ? "text-white" : "text-slate-900",
+                              isEdge || isUpcoming ? "text-white" : "text-slate-900",
                               isToday(d0) ? "font-bold" : "",
                             ].join(" ")}
                           >

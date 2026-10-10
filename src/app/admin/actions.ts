@@ -37,7 +37,9 @@ export async function logoutAdmin() {
 
 export async function addOwner(form: FormData) {
   await requireAdmin()
-  const result = await createOwner({ name: form.get("name"), email: form.get("email"), password: form.get("password"), pin: form.get("pin") })
+  const currency = form.get("currency")
+  if (currency !== "ARS" && currency !== "AUD") redirect("/admin?error=Seleccioná%20una%20moneda")
+  const result = await createOwner({ name: form.get("name"), email: form.get("email"), password: form.get("password"), pin: form.get("pin") }, { defaultCurrency: currency })
   if ("error" in result) redirect(`/admin?error=${encodeURIComponent(result.error)}`)
   redirect(`/admin/owners/${result.data.id}`)
 }
@@ -49,5 +51,15 @@ export async function setOwnerStatus(form: FormData) {
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) || (active !== "true" && active !== "false")) redirect("/admin?error=Datos%20inválidos")
   const { data, error } = await supabase.from("owners").update({ is_active: active === "true" }).eq("id", id).select("id").maybeSingle()
   if (error || !data) redirect("/admin?error=No%20se%20pudo%20actualizar%20la%20cuenta")
+  redirect(`/admin/owners/${id}`)
+}
+
+export async function setOwnerCurrency(form: FormData) {
+  await requireAdmin()
+  const id = form.get("id")
+  const currency = form.get("currency")
+  if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) || (currency !== "ARS" && currency !== "AUD")) redirect("/admin?error=Datos%20inválidos")
+  const { data, error } = await supabase.from("owners").update({ default_currency: currency }).eq("id", id).select("id").maybeSingle()
+  if (error || !data) redirect("/admin?error=No%20se%20puede%20cambiar%20la%20moneda%20con%20pagos,%20deuda%20o%20configuración%20de%20proveedores")
   redirect(`/admin/owners/${id}`)
 }

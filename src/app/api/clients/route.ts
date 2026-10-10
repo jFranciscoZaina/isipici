@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabaseClient"
 import { getSessionOwnerId } from "@/lib/auth"
 import type { PostgrestError } from "@supabase/supabase-js"
+import { fromCalendarDate } from "@/lib/payments/schedule"
 import type { Currency, PaymentType } from "@/lib/payments/types"
 
 export const runtime = "nodejs"
@@ -61,6 +62,8 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    const { data: owner, error: ownerError } = await supabase.from("owners").select("default_currency").eq("id", ownerId).single()
+    if (ownerError || !owner || !["ARS", "AUD"].includes(owner.default_currency)) return NextResponse.json({ error: "Configuración de moneda no disponible" }, { status: 503 })
     const statusParam = req.nextUrl.searchParams.get("status") // active | inactive | null
 
     const selectClause = `
@@ -71,7 +74,6 @@ export async function GET(req: NextRequest) {
       address,
       address_number,
       plan,
-      currency,
       current_debt,
       last_payment_amount,
       last_payment_date,
@@ -134,13 +136,14 @@ export async function GET(req: NextRequest) {
       const lastRecurring = [...payments].filter(p => p.payment_type !== "one_off").sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
-      const currentDebt = Number(lastPayment?.debt ?? 0)
-      const nextDue = lastRecurring?.period_to ?? null
+      const currentDebt = Number(client.current_debt ?? lastRecurring?.debt ?? 0)
+      const nextDue = client.next_payment_date ?? lastRecurring?.next_payment_date ?? lastRecurring?.period_to ?? null
 
       // calcular status: inactivo si nunca pagó o si pasó el umbral desde el ultimo pago/vencimiento
       let computedStatus: "active" | "inactive" = "active"
-      const lastPaymentDate = lastPayment?.created_at
-        ? new Date(lastPayment.created_at)
+      const activityPayment = lastRecurring ?? lastPayment
+      const lastPaymentDate = activityPayment?.created_at
+        ? new Date(activityPayment.created_at)
         : null
       if (lastPaymentDate) lastPaymentDate.setHours(0, 0, 0, 0)
 
@@ -155,7 +158,7 @@ export async function GET(req: NextRequest) {
       }
 
       if (nextDue) {
-        const due = new Date(nextDue)
+        const due = fromCalendarDate(nextDue)!
         due.setHours(0, 0, 0, 0)
         const inactiveThreshold = new Date(due)
         inactiveThreshold.setDate(
@@ -167,7 +170,7 @@ export async function GET(req: NextRequest) {
       const totalPaidThisMonth = payments.reduce((sum, p) => {
         if (!p.created_at) return sum
         const created = new Date(p.created_at)
-        if (created >= monthStart && created < monthEnd) {
+        if (p.currency === owner.default_currency && created >= monthStart && created < monthEnd) {
           return sum + Number(p.amount ?? 0)
         }
         return sum
@@ -181,7 +184,7 @@ export async function GET(req: NextRequest) {
         address: client.address,
         addressNumber: client.address_number,
         currentPlan: lastRecurring?.plan ?? null,
-        currency: client.currency,
+        currency: owner.default_currency as Currency,
         hasPayments: payments.length > 0,
         currentDebt,
         totalPaidThisMonth,
@@ -196,7 +199,7 @@ export async function GET(req: NextRequest) {
         ? mapped.filter((c) => c.computedStatus === statusParam)
         : mapped
 
-    return NextResponse.json(filtered)
+    return NextResponse.json(filtered, { headers: { "X-Owner-Currency": owner.default_currency } })
   } catch (err) {
     console.error("Unexpected GET error:", err)
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 })

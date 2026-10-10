@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 })
     if (!await ownedClientColumn(clientId, ownerId)) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
     const { data, error } = await supabase.from("payments")
-      .select("id, amount, plan, discount, debt, next_payment_date, period_from, period_to, created_at, provider, currency, payment_type, concept, service_date, receipt_note, recurring_agreement_id")
-      .eq("client_id", clientId).eq("owner_id", ownerId).order("created_at", { ascending: false })
+      .select("id, amount, plan, discount, debt, next_payment_date, period_from, period_to, created_at, provider, currency, payment_type, concept, service_date, receipt_note, recurring_agreement_id, recurring_agreement:recurring_agreements!payments_agreement_context_fk(id, interval_unit, interval_count, billing_anchor_date, next_charge_at, status)")
+      .eq("client_id", clientId).eq("owner_id", ownerId).eq("recurring_agreement.owner_id", ownerId).order("created_at", { ascending: false })
     if (error) return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 503 })
     return NextResponse.json(data ?? [])
   } catch { return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 503 }) }

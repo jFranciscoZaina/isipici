@@ -27,6 +27,8 @@ test("real PostgreSQL: migration, ledger, snapshots, ownership, currencies, idem
       GRANT ALL ON owners,clients,payments TO service_role;
     `)
     await db.exec(readFileSync(new URL("../supabase/migrations/20261010_payment_domain.sql",import.meta.url),"utf8"))
+    await db.exec(readFileSync(new URL("../supabase/migrations/20261011_owner_payment_rules.sql",import.meta.url),"utf8"))
+    await db.exec(readFileSync(new URL("../supabase/migrations/20261012_payment_schedule_rules.sql",import.meta.url),"utf8"))
     const legacy = (await db.query("SELECT * FROM payments LIMIT 1")).rows[0]
     assert.equal(legacy.provider,"manual"); assert.equal(legacy.currency,"ARS"); assert.equal(legacy.payment_type,null); assert.equal(legacy.concept,null)
     await db.exec("SET ROLE service_role")
@@ -42,8 +44,18 @@ test("real PostgreSQL: migration, ledger, snapshots, ownership, currencies, idem
     assert.equal(snapshot.due,"2026-10-31"); assert.equal(Number(snapshot.current_debt),100)
     await assert.rejects(register({ ...base, clientId: otherClient }), /PAYMENT_OWNER_DENIED/)
     await assert.rejects(register({ ...base, currency: "AUD" }), /PAYMENT_CURRENCY_CONFLICT/)
-    const aud = await register({ ...base, clientId: newClient, currency: "AUD", debt: 0 })
+    await assert.rejects(register({ ...base, clientId: newClient, currency: "AUD", debt: 0 }), /PAYMENT_CURRENCY_CONFLICT/)
+    await db.exec(`UPDATE owners SET default_currency='AUD' WHERE id='${other}';`)
+    const aud = await register({ ...base, clientId: otherClient, currency: "AUD", debt: 0 },other)
     assert.equal(aud.payment.currency,"AUD")
+    await assert.rejects(db.exec(`UPDATE owners SET default_currency='AUD' WHERE id='${owner}'`),/OWNER_CURRENCY_LOCKED/)
+    await assert.rejects(db.exec(`UPDATE payments SET currency='AUD' WHERE owner_id='${owner}'`),/PAYMENT_CURRENCY_IMMUTABLE/)
+    assert.equal(oneOff.payment.period_from,null);assert.equal(oneOff.payment.period_to,null);assert.equal(oneOff.payment.next_payment_date,null)
+    assert.equal(Number(oneOff.payment.debt),0)
+    const emptyUnique=await register({...base,clientId:newClient,paymentType:"one_off",periodFrom:null,periodTo:null,debt:null,concept:"Event"})
+    assert.equal(emptyUnique.payment.next_payment_date,null)
+    assert.equal((await db.query("SELECT next_payment_date FROM clients WHERE id=$1",[newClient])).rows[0].next_payment_date,null)
+    await assert.rejects(register({...base,paymentType:"one_off",periodFrom:null,periodTo:null,debt:20}),/PAYMENT_INPUT_INVALID/)
     await db.exec(`INSERT INTO payment_provider_accounts(id,owner_id,provider,status,default_currency) VALUES ('${account}','${owner}','stripe','connected','ARS');
       INSERT INTO recurring_agreements(id,owner_id,client_id,payment_provider_account_id,provider,status,amount,currency,interval_unit)
       VALUES ('${agreement}','${owner}','${client}','${account}','stripe','active',5000,'ARS','month');`)

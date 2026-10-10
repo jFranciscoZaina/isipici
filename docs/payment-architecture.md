@@ -1,93 +1,137 @@
-# Hito 5: dominio común de pagos
+# Arquitectura de pagos y agenda — ISIPICI
 
-## Auditoría y alcance
+## Modelo e invariantes
 
-Antes, `POST /api/payments` validaba importes, insertaba el ledger, actualizaba al cliente en otra operación y enviaba el email. Las métricas sumaban importes sin moneda. El último pago reemplazaba período/plan aunque fuera un servicio único. Las migraciones existentes cubren owner activo, RLS, admin y tracking de emails; no contienen el DDL original de owners/clients/payments. No se consultó ni modificó el esquema remoto.
+PaymentType es recurring o one_off. Provider es manual, stripe o mercadopago, independientemente del tipo de pago. payments sigue siendo el ledger de pagos registrados/cobrados correctamente: eventos pending/failed, autorizaciones revocadas y acuerdos pendientes no son ingresos.
 
-Ahora `src/lib/payments/service.ts` concentra el registro y el comprobante. `validation.ts` valida entradas; `types.ts` define el contrato neutral y las acciones futuras; `format.ts` se comparte con UI y emails. No se instaló ningún SDK de pagos ni se crearon conexiones, cobros o webhooks externos.
+La moneda operativa es owners.default_currency (ARS/AUD), controlada desde admin. El servicio la obtiene del owner autenticado; se rechaza currency del navegador. payments.currency conserva un snapshot inmutable. No puede cambiarse la moneda de un owner con pagos, deuda, acuerdos o cuentas de proveedor. clients.currency permanece legacy, sin configurar moneda. Historial/comprobantes usan la moneda del pago; dashboard/deuda usan la cuenta. No hay conversiones ni variables de entorno nuevas.
 
-## Proveedor y tipo son independientes
+registerManualPayment y registerConfirmedProviderPayment siguen usando register_canonical_payment. El segundo es solo servidor y exige paid tras verificar el proveedor. El registro verifica owner activo, cliente propietario, cuenta conectada y acuerdo compatible con owner/cliente/proveedor/moneda. RLS, revokes, SECURITY INVOKER, FKs compuestas, índices únicos y advisory lock siguen vigentes. Los emails se envían después del commit; sus fallos no revierten el pago.
 
-- `provider`: cómo se procesa (`manual`, `stripe`, `mercadopago`).
-- `payment_type`: qué se paga (`recurring`, `one_off`).
+## Cuatro fechas diferentes
 
-`payments` sigue siendo el ledger canónico de pagos registrados. No agrega un campo de estado que permita confundir cargos pendientes/fallidos con ingresos. `registerManualPayment` sirve a la API actual. `registerConfirmedProviderPayment` es exclusivamente server-side y exige resultado `paid`; nunca se llama desde una ruta externa en este hito. Los futuros estados pendientes/fallidos y autorización revocada se tratarán fuera del ledger. No se creó un dominio Events.
+- created_at: timestamp real del registro/cobro del pago.
+- period_from / period_to: período de servicio cubierto, inclusivo.
+- next_payment_date: próximo vencimiento de ese pago recurrente y snapshot operativo del cliente.
+- recurring_agreements.billing_anchor_date: primer vencimiento original, estable, del que se deriva la agenda. next_charge_at conserva el siguiente ciclo operativo del acuerdo como timestamp UTC.
 
-## Datos y operación transaccional
+started_at ya existía pero es un timestamp del acuerdo, no un día de facturación. Se agrega únicamente billing_anchor_date DATE; no se inventan anchors para acuerdos/pagos históricos. No se agrega otro campo frequency a la base: se reutilizan interval_unit e interval_count.
 
-- `payments`: agrega provider, currency, payment_type, concept (200), service_date, receipt_note (1000), provider_payment_id, recurring_agreement_id y payment_provider_account_id.
-- `payment_provider_accounts`: cuenta por owner/proveedor, estado, país, moneda e identificación externa. Sin secretos, tokens ni credenciales.
-- `recurring_agreements`: owner/cliente/cuenta, IDs neutrales de customer/acuerdo, estado, importe/moneda, intervalo, próximas fechas y timestamps.
-- `clients.currency`: moneda del snapshot de deuda y pagos. No agrega otra relación `payments → clients`, evitando ambigüedad en el embed actual de PostgREST.
+## Recurrencias
 
-La RPC `register_canonical_payment` verifica owner activo, propiedad del cliente (owner_id o gym_id legacy), cuenta, moneda y acuerdo. Bloquea el cliente, inserta el pago y actualiza el snapshot en una transacción. Un error de snapshot revierte la inserción, evitando éxito parcial. El envío ocurre después del commit y jamás revierte un pago. Errores del proveedor, SMTP o de logs no deben mostrarse como fallo del registro.
+| Frecuencia UI | interval_unit | interval_count | Ejemplo |
+| --- | --- | --- | --- |
+| Semanal / weekly | week | 1 | 14/10 → 21/10 → 28/10 |
+| Quincenal / biweekly | week | 2 | 14/10 → 28/10 → 11/11 |
+| Mensual / monthly | month | 1 | 10/10 → 10/11 → 10/12 |
 
-Los acuerdos tienen guard de ownership y FKs compuestas que vinculan cuenta/owner/proveedor/moneda. Los pagos ligados a acuerdos usan FK compuesta para impedir otro owner/cliente/proveedor/moneda. Los servicios futuros con service_role deben utilizar la RPC y no hacer inserts directos en el ledger.
+No se ofrecen daily/yearly en UI. El schema neutral previo conserva otras unidades para el futuro; el contrato de agenda de este hito acepta solo estas tres.
 
-## Pagos únicos y recurrentes
+El usuario elige frecuencia y primer vencimiento. No elige día de semana ni billing day: se derivan de esa fecha. El pago cubre desde el vencimiento del ciclo hasta el día anterior al siguiente vencimiento. Ejemplos:
 
-Un pago único requiere concepto o el plan legacy, pero no acuerdo ni período. Ejemplo: concepto «Cena de fin de año», fecha 2026-11-07, importe ARS 50000, nota «Mesa para dos». La UI pide concepto para los únicos y permite omitir fecha/nota. Nunca borra el próximo vencimiento recurrente. Si se omite deuda, conserva la deuda total existente del cliente; si se especifica, es el saldo total posterior al pago (mismo contrato legacy), no una deuda por evento.
+- Mensual: 10/10/2026–09/11/2026; siguiente 10/11/2026.
+- Quincenal: 14/10/2026–27/10/2026; siguiente 28/10/2026.
+- Semanal: 14/10/2026–20/10/2026; siguiente 21/10/2026.
 
-Un recurrente puede utilizar el plan actual o un concepto y opcionalmente un acuerdo. La UI conserva el calendario y la operación de Pago deuda. La API sigue admitiendo pagos legacy sin fechas, como antes. Los registros anteriores con payment_type NULL se consideran legacy para derivar su vencimiento, sin afirmar retrospectivamente que eran subscriptions. El dashboard deriva plan/vencimiento del último pago recurrente o legacy y el saldo del último pago; incluye servicios únicos en los ingresos.
+Fin de mes: el día original se conserva siempre. Anchor 31/01/2026 → 28/02 → 31/03 → 30/04 → 31/05. En 2028, febrero es 29 y marzo vuelve a 31. No se calcula marzo tomando el día ajustado de febrero como nuevo anchor.
 
-No se administra el ciclo de vida de acuerdos desde la UI ni se conecta una cuenta en este hito. La fecha del servicio es metadata: no genera automáticamente deuda ni recordatorios de un evento.
+El helper puro src/lib/payments/schedule.ts centraliza validación, fechas de calendario, mapping, siguiente vencimiento, período y presentación. getNextRecurringDate devuelve el vencimiento estrictamente posterior a currentDate; getRecurringPeriod exige que cycleDate sea un vencimiento válido de la agenda original. UI y servidor usan el mismo helper; comprobantes/historial solo presentan fechas canónicas. La autoridad transaccional SQL payment_next_recurring_date replica ese contrato para verificar datos dentro del bloqueo de owner/cliente/acuerdo; las pruebas comparan resultados TS/PostgreSQL en varias zonas horarias.
 
-## Monedas
+## Acuerdos y pagos manuales
 
-ARS conserva el formato y la suposición histórica anterior. AUD usa código explícito; comprobante, deuda, recordatorio e historial reciben su moneda. Los ingresos se muestran separados por moneda, sin conversión. Las métricas mantienen el filtro actual de clientes activos/inactivos; no se modificó su alcance.
+El primer pago manual con frecuencia crea, dentro de la misma transacción, un recurring_agreement manual activo con anchor e intervalo. Esto registra una agenda; no cobra automáticamente ni crea una subscription externa. Su importe inicial representa pago + bonificación + saldo declarado del ciclo. No es una configuración final de precios/autocobro.
 
-Cada cliente tiene una moneda porque el modelo legacy tiene una sola deuda. Puede elegirse AUD en el primer pago si no hay ledger/deuda; después queda bloqueada, con verificación transaccional. Un owner puede tener clientes ARS y AUD. Multimoneda dentro de un mismo cliente requiere un futuro saldo por moneda; no sumar ni convertir monedas a ciegas. Antes de migrar, confirmar que los datos históricos efectivamente sean ARS.
+Pagos siguientes reutilizan el acuerdo activo del cliente y mantienen su anchor original; el formulario precarga el próximo vencimiento. Un índice parcial permite solo una agenda manual activa con anchor por owner/cliente. Frecuencia/anchor establecidos no se editan implícitamente desde un pago. Cambiar la agenda exige un flujo explícito de cancelación/nuevo acuerdo, pendiente de la administración de acuerdos; no se implementa silenciosamente en este hito.
 
-## Idempotencia
+Para pagos de proveedor con agenda, el adapter deberá resolver un acuerdo existente confiable. El registro no crea acuerdos Stripe/Mercado Pago a partir de IDs del navegador. Un acuerdo legacy sin anchor puede inicializarse explícitamente con el primer vencimiento conocido, sin reinterpretar pagos históricos.
 
-Índice único parcial `(provider, provider_payment_id)` y advisory lock por esa identidad. Un replay devuelve el mismo pago con duplicate=true sin actualizar nuevamente el snapshot. Si cambia owner/cliente/cuenta/acuerdo/importe/moneda/contexto/período/deuda explícita, falla con conflicto. La propiedad se vuelve a verificar. El email conserva su clave `payment-receipt:<owner>:<payment>` y la deduplicación de email_logs. Dos pagos manuales sin ID externo son registros distintos; no hay deduplicación por importe o fecha. No se prometen transacciones distribuidas con providers.
+Cada pago conserva su período y siguiente vencimiento propios. El acuerdo conserva el máximo próximo ciclo confirmado, para que un evento atrasado no retroceda la agenda. Replay del mismo provider/provider_payment_id devuelve duplicate=true y el mismo pago sin modificar snapshot/agenda ni enviar otro comprobante. Replays también pueden reconocerse si el acuerdo pasó a pausado/cancelado; un pago nuevo de ese acuerdo se rechaza. La cuenta de proveedor debe seguir pasando la verificación de conexión existente.
 
-## Seguridad y compatibilidad
+## Deuda y snapshot del cliente
 
-API exige sesión de owner activo. El servicio vuelve a validar ownership y la RPC también. Browser no puede elegir proveedor externo ni suministrar identificadores externos/owner/status. UUIDs, tipos, monedas, fechas calendario reales, rangos, importes no negativos de hasta dos decimales, longitudes y caracteres de control se validan en servidor. Notas y conceptos se escapan al renderizar HTML; saltos de línea de notas se conservan. No secciones vacías en el comprobante. La UI usa tokens/clases existentes sin nuevos estilos ni rediseño.
+Recurrente normal: conserva el contrato de saldo total posterior al pago y actualiza current_debt, último importe/fecha y siguiente vencimiento calculado. Período cubierto y vencimiento son diferentes.
 
-RLS y revocación de privilegios bloquean anon/authenticated en tablas nuevas; RPC SECURITY INVOKER ejecutable solo por service_role. Service role continúa bypassing RLS: es responsabilidad de cada futuro servicio verificar ownership. No hay env vars nuevas.
+Pago deuda: el formulario identifica el último pago recurrente adeudado. La RPC comprueba propietario/cliente/moneda, saldo pendiente y vigencia del registro antes de copiar su período. Actualiza el saldo y último pago, pero conserva la agenda actual; no inicia otro ciclo ni vuelve a avanzar next_charge_at. El ID de ese pago es contexto validado, no un identificador externo.
 
-Los nombres owners/clients/payments, campos de plan/deuda/período y respuesta de POST (objeto de pago + receipt_status) se conservan. Históricos reciben manual/ARS por la semántica anterior; concepto/nota/fecha del servicio/acuerdo/tipo permanecen NULL. No se crean cuentas/acuerdos artificiales. Deploy anterior seguirá escribiendo pagos legacy manual/ARS; desplegar la versión nueva solo después de la migración.
+Los callers legacy sin frequency conservan su comportamiento original y sus fechas declaradas. No se recalculan pagos históricos ni se les asignan anchors automáticamente. Un acuerdo que ya tiene anchor exige la agenda coherente para pagos nuevos; no se permite eludirla enviando un período arbitrario.
 
-## Migración y pasos manuales de Supabase
+## Pagos únicos
 
-Archivo: `supabase/migrations/20261010_payment_domain.sql`. No aplicado automáticamente. Usa transacción, CHECKs de texto, FKs, índices, RLS y triggers de updated_at/ownership. Antes de ejecutar:
+Pueden cubrir un día, un rango de días o ningún período:
 
-1. Respaldar y revisar el esquema real: ids UUID; payments plan/amount/discount/debt/period_from/period_to/next_payment_date/created_at; clients current_debt/last_payment_amount/last_payment_date/next_payment_date y owner_id o gym_id; owners.is_active.
-2. Revisar CHECKs/triggers antiguos de plan y fechas: deben permitir conceptos genéricos en plan y períodos NULL para servicios únicos. No se eliminan constraints desconocidos a ciegas.
-3. Confirmar moneda histórica ARS, permisos de service_role y migraciones anteriores. Inspeccionar conteos/anomalías y ensayar en una copia antes de producción.
-4. Ejecutar el SQL una sola vez en SQL Editor o migrador autorizado. No renombra ni elimina tablas/datos legacy.
-5. Verificar cuentas/acuerdos vacíos, ledger histórico intacto, defaults y permisos. Luego publicar código y probar manual recurrente, único sin fechas, nota, AUD en cliente nuevo e historial/email.
+- primer clic y guardar: period_from=period_to=fecha elegida;
+- dos clics: un solo pago cubre todo el rango inclusivo;
+- sin fechas: ambos NULL, manteniendo la posibilidad actual de un servicio sin fecha.
 
-Consulta inicial sin secretos:
+No tienen recurring_agreement_id ni next_payment_date. No modifican current_debt, período/último pago recurrente ni next_payment_date del cliente. Tienen debt=0 propio y no aceptan deuda recurrente. Suman ingresos, incluso si period_to es futuro. No crean eventos diarios ni pagos por cada día.
+
+service_date permanece para compatibilidad. Nuevos formularios usan períodos; historial/receipt priorizan period_from/to y, si faltan, muestran service_date legacy. No se elimina ni migra agresivamente esa columna.
+
+## Calendario, dashboard, recordatorios y comprobantes
+
+Se reutiliza RangeCalendar: recurrente single; único range; deuda previa range bloqueado. En single un segundo clic reemplaza el día. En range un solo clic puede guardarse como un día, y el segundo completa el intervalo. Mantiene marcadores, uno/dos meses según pantalla, clases/tokens existentes y navegación correcta desde días 29–31. No se agrega calendario ni selector de moneda.
+
+Fechas de negocio viajan YYYY-MM-DD y se calculan con componentes UTC; el puente con el calendario usa componentes locales explícitos. No se parsea DATE como timestamp UTC para compararla/mostrarla localmente. Se corrigieron los consumidores de vencimientos del dashboard/historial. created_at sigue siendo timestamp.
+
+El dashboard incluye pagos únicos en ingresos y toma la deuda del snapshot, plan/actividad recurrente del último recurrente/legacy y vencimiento de clients.next_payment_date. El fallback del pago prioriza next_payment_date sobre period_to. Un único no reactiva ni modifica la actividad de una recurrencia existente; clientes con solo servicios únicos conservan la lógica de actividad general. Las métricas mantienen el filtro active/inactive existente.
+
+/upcoming y /due siguen delegando al mismo servicio y agenda del cliente. No se rediseña el cron: requiere un pago recurrente/legacy del owner y usa next_payment_date, no period_to de un evento. El fallback next_due legacy solo se usa si falta el vencimiento canónico. Un único con rango futuro nunca genera recordatorio ni suprime el de una recurrencia existente. Conserva owner activo y deduplicación cuenta/cliente/día.
+
+Comprobante: concepto/plan, período (si from=to, una sola fecha), fecha real de pago, nota/monto/moneda; próximo vencimiento solo recurrente, tomado del campo canónico next_payment_date. Nota y concepto escapados, saltos de línea conservados, logo externo desactivado y HTML responsive anterior. email_logs y webhooks Resend firmados/idempotentes no cambian.
+
+## Migración nueva y pasos manuales exactos
+
+Las migraciones 20261010_payment_domain.sql y 20261011_owner_payment_rules.sql ya fueron aplicadas según confirmación del usuario y NO se modifican en este ajuste. Ejecutar únicamente la nueva supabase/migrations/20261012_payment_schedule_rules.sql, después de ambas.
+
+La nueva migración:
+
+1. reemplaza el CHECK que impedía períodos en one_off, conservando acuerdo/vencimiento NULL;
+2. valida pares de fechas únicos ordenados;
+3. agrega billing_anchor_date nullable, su guard de estabilidad y el índice de agenda manual activa;
+4. agrega el helper SQL y reemplaza la RPC transaccional;
+5. conserva moneda/ownership/cuenta/provider, idempotencia, privilegios y RLS;
+6. no cambia importes, monedas, períodos, anchors ni datos de pagos históricos.
+
+Pasos del usuario en Supabase:
+
+1. Hacer respaldo y revisar que ambas migraciones anteriores están aplicadas. Confirmar UUIDs, nombres/constraints originales y acceso service_role.
+2. Abrir SQL Editor en el proyecto correcto. Crear una consulta nueva y pegar el archivo 20261012_payment_schedule_rules.sql completo, incluido BEGIN/COMMIT. Ejecutarlo una sola vez. No volver a ejecutar 20261010/20261011.
+3. Verificar la nueva columna billing_anchor_date y los constraints/función usando las consultas siguientes. Si el API reporta schema cache desactualizada tras aplicarlo, ejecutar NOTIFY pgrst, 'reload schema'; y volver a probar.
+4. Antes de publicar este código, comprobar manualmente: recurrente semanal; quincenal; mensual con día 31; pago único de un día/rango; mismo cliente con deuda/agenda previa; historial/recibo/vencimiento y tracking de emails. Revisar que no haya otras rutas/escrituras directas legacy que eviten el servicio central.
 
 ```sql
-select table_name, column_name, data_type, is_nullable
-from information_schema.columns
-where table_schema='public' and table_name in ('owners','clients','payments')
-order by table_name, ordinal_position;
-select conrelid::regclass as tabla, conname, pg_get_constraintdef(oid)
-from pg_constraint
-where conrelid in ('public.clients'::regclass,'public.payments'::regclass);
+select column_name,data_type from information_schema.columns
+where table_schema='public' and table_name='recurring_agreements' and column_name='billing_anchor_date';
+select conname,pg_get_constraintdef(oid) from pg_constraint
+where conrelid='public.payments'::regclass and conname like 'payments_one_off%';
+select public.payment_next_recurring_date('monthly','2026-01-31'::date,'2026-02-28'::date);
+-- Resultado esperado: 2026-03-31
 ```
 
-## Stripe 6 / Mercado Pago 7: decisiones pendientes
+La nueva migración debe preceder a la publicación del código. No se ejecutó contra Supabase, no hubo commit/push/deploy y no se leyó ni editó .env.local. Las pruebas SQL usan PostgreSQL local aislado (PGlite). Datos/snapshots legacy inconsistentes requieren conciliación manual, sin conversión/limpieza automática.
 
-Ambos adapters deben verificar firmas usando raw body, resolver cuenta y owner desde IDs persistidos (sin confiar en metadata enviada por el browser), normalizar importes a unidades mayores con reglas de moneda y llamar al mismo servicio solo ante confirmación. Estados de acuerdos y revocación deben actualizar relaciones propias con ownership y eventos idempotentes, sin escribir un pago por fallos/pendientes.
+## Validación y preparación de proveedores
 
-Antes de Stripe: definir Connect/cuentas Australia, políticas de fees, importe bruto/neto, impuestos, refunds/chargebacks, eventos y su idempotencia, tokens cifrados con rotación, monedas de cuentas, cambios/cancelaciones de acuerdos y qué hacer con un pago confirmado después de revocar la conexión. La RPC actualmente exige cuenta connected; esa política debe revisarse para esos casos. Definir cola/reintentos de email y recuperación de un pago manual ante timeout HTTP para evitar doble registro.
+Pruebas existentes y nuevas: weekly/biweekly/monthly, clamp de fin de mes/bisiesto preservando anchor, paridad TS/SQL, zonas Argentina/Australia/UTC/Honolulu, único sin fecha/día/rango e ingresos, deuda/snapshot/agenda intactos, Pago deuda, replays/ownership/owner inactivo, monedas ARS/AUD, snapshot inmutable y currency lock, receipt/legacy service_date, tracking Resend y recordatorios solo recurrentes.
 
-Antes de Mercado Pago: flujo de conexión de owners Argentina, almacenamiento cifrado de tokens, verificación de notificaciones/consulta server-to-server y normalización de preapproval/pagos. Confirmar que IDs externos sean globales por proveedor; si un producto requiere IDs locales por cuenta, ampliar la clave única con cuenta antes de conectarlo.
+Comandos: npm run test:payments, npm run test:security, npm run test:email, npm run typecheck, npm run build y lint de archivos tocados. No se agregan dependencias. El lint legacy fuera de este alcance se informa por separado.
 
-Validación y límites de esta entrega se reportan junto al cambio. No se aplicó SQL remoto, no se enviaron emails de pruebas automáticamente, no se hizo commit/push/deploy.
+Mapping neutral preparado para Stripe Australia y Mercado Pago Argentina. Pendientes: conexión/autorización de cuentas, verificación de eventos de pagos, adapters a los contratos de provider, configuración real de precios/cobros, refunds/disputes, reconciliación y edición/cancelación explícita de acuerdos. No hay cobros automáticos implementados.
 
-## Archivos y validación
+## Archivos de este ajuste
 
-- Nuevos: `src/lib/payments/{types,validation,format,service}.ts`, migración, este documento, `tests/payment-domain{,-db}.test.mjs` y `tests/helpers/{load-ts,postgres}.mjs`.
-- Modificados: `package.json`; API `payments/route.ts`, `clients/route.ts`; dashboard `page.tsx`, `NewPaymentModal`, `ClientDetailModal`, `ClientsTable`, `StatsGrid`; emails `format`, `reminders`, ambas plantillas; tests de autorización y tracking.
-- `npm run typecheck` y `npm run build`: pasan. Sin SDKs ni dependencias nuevas de producción/desarrollo.
-- `npm run test:payments`: 12 pruebas; `test:email`: 7; `test:security`: 8. Incluyen ejecución real de SQL local, legacy con gym_id, aislamiento de acuerdos/cuentas, rollback por CHECK, idempotencia sin reescribir deuda y permisos anon denegados.
-- `npm run lint`: conserva 5 errores/4 advertencias preexistentes en ClientSearchSelect, ClientsTable, Dither y PinLockGate. No se ocultaron ni se desactivaron reglas. Lint del código nuevo y restantes archivos cambiados pasa.
-- Fue necesario restaurar la copia local dañada del paquete de tests PGlite 0.5.8 desde un artefacto oficial de la misma versión. No cambia package-lock ni versiones. El helper permite un `PGLITE_TEST_DATA_DIR` opcional solo para tests si se dispone de un snapshot oficial de igual versión; no es una variable de la aplicación ni se configura en Vercel.
-- No reemplaza QA del formulario/email en un cliente real ni el ensayo sobre una copia del esquema real. Hacer ambas verificaciones antes de publicar. Ninguna configuración de Stripe/Mercado Pago corresponde todavía.
+Creados:
+- src/lib/payments/schedule.ts
+- supabase/migrations/20261012_payment_schedule_rules.sql
+- tests/payment-schedule.test.mjs
+- tests/payment-schedule-db.test.mjs
+
+Modificados:
+- src/lib/payments/{types,validation,service}.ts
+- src/app/api/{payments,clients}/route.ts
+- src/app/dashboard/components/{NewPaymentModal,RangeCalendar,ClientDetailModal,ClientsTable}.tsx
+- src/lib/emails/templates/payment-receipt.ts
+- tests/{payment-domain,payment-domain-db,payment-domain-rules,email-tracking}.test.mjs
+- package.json y este documento
+
+Otros cambios presentes en git status provienen del ajuste anterior y se conservaron.

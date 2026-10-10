@@ -57,6 +57,7 @@ export type PlanType = (typeof PLANS)[number];
 // === ROOT DASHBOARD ===============================================================
 
 export default function DashboardPage() {
+  const [ownerCurrency, setOwnerCurrency] = useState<Currency>("ARS");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +108,9 @@ export default function DashboardPage() {
 
       if (!res.ok) throw new Error("Error cargando clientes");
 
+      const currency = res.headers.get("X-Owner-Currency");
+      if (currency !== "ARS" && currency !== "AUD") throw new Error("Configuración de moneda no disponible");
+      setOwnerCurrency(currency);
       const data: ClientRow[] = await res.json();
       setClients(data);
       setError(null);
@@ -127,10 +131,10 @@ export default function DashboardPage() {
     () => ({
       totalClients: clients.length,
       clientsWithDebt: clients.filter((c) => (c.currentDebt ?? 0) > 0).length,
-      monthlyIncome: clients.filter(c => c.currency === "ARS").reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
-      monthlyIncomeAUD: clients.filter(c => c.currency === "AUD").reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
+      currency: ownerCurrency,
+      monthlyIncome: clients.reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
     }),
-    [clients]
+    [clients, ownerCurrency]
   );
 
   // === Ordenamiento =============================================================

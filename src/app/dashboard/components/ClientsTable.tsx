@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
+import { fromCalendarDate } from "@/lib/payments/schedule";
 import { formatPaymentMoney } from "@/lib/payments/format";
 import { Check, Minus, X } from "react-feather";
 import { ClientContextMenu, type ClientMenuAction } from "./ClientContextMenu";
@@ -39,7 +40,7 @@ export default function ClientsTable({
 
   const openMenu = (
     client: ClientRow,
-    e: React.MouseEvent<HTMLButtonElement>
+    e: React.MouseEvent<HTMLButtonElement | HTMLTableRowElement>
   ) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuClient(client);
@@ -207,7 +208,7 @@ export default function ClientsTable({
             {!loading &&
               !error &&
               clients.map((client) => {
-                const due = client.nextDue ? new Date(client.nextDue) : null;
+                const due = fromCalendarDate(client.nextDue) ?? null;
                 if (due) due.setHours(0, 0, 0, 0);
                 const isOverdue = !!due && due < today;
 
@@ -218,7 +219,7 @@ export default function ClientsTable({
                     onClick={(e) => {
                       if (window.innerWidth < 450) {
                         e.stopPropagation();
-                        openMenu(client, e as any);
+                        openMenu(client, e);
                       }
                     }}
                   >

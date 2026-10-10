@@ -1,3 +1,4 @@
+import type { RecurringFrequency } from "./schedule"
 export const PAYMENT_PROVIDERS = ["manual", "stripe", "mercadopago"] as const
 export const PAYMENT_TYPES = ["recurring", "one_off"] as const
 export const CURRENCIES = ["ARS", "AUD"] as const
@@ -10,8 +11,12 @@ export type PaymentInput = {
   clientId: string; provider: PaymentProvider; paymentType: PaymentType; currency: Currency
   amount: number; discount: number; debt: number | null; plan: string | null
   concept: string | null; serviceDate: string | null; receiptNote: string | null
-  periodFrom: string | null; periodTo: string | null
+  periodFrom: string | null; periodTo: string | null; nextPaymentDate: string | null
+  frequency: RecurringFrequency | null; anchorDate: string | null; cycleDate: string | null; debtPaymentId: string | null
   recurringAgreementId: string | null; providerAccountId: string | null; providerPaymentId: string | null
+}
+export type RecurringAgreementSummary = {
+  id: string; interval_unit: string; interval_count: number; billing_anchor_date: string | null; next_charge_at: string | null; status: RecurringAgreementStatus
 }
 export type CanonicalPayment = {
   id: string; owner_id: string; client_id: string; amount: number; discount: number; debt: number
