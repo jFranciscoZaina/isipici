@@ -1,12 +1,17 @@
 import { escapeHtml, formatDate, formatMoney } from "../format"
-export type ReceiptTemplateInput = { to: string; clientName: string; ownerName: string; amount: number; dueDate: string | null; plan?: string | null; remainingDebt?: number | null; }
+import type { Currency } from "../../payments/types"
+export type ReceiptTemplateInput = { to: string; clientName: string; ownerName: string; amount: number; currency?: Currency; dueDate: string | null; plan?: string | null; remainingDebt?: number | null; concept?: string | null; serviceDate?: string | null; receiptNote?: string | null; }
 export function renderPaymentReceipt(input: ReceiptTemplateInput) {
   const clientName = escapeHtml(input.clientName)
   const ownerName = escapeHtml(input.ownerName)
-  const amountFormatted = formatMoney(input.amount)
+  const amountFormatted = formatMoney(input.amount, input.currency)
   const dueDateText = input.dueDate ? escapeHtml(formatDate(input.dueDate)) : "sin fecha de vencimiento registrada"
-  const planText = escapeHtml(input.plan ?? "tu plan")
-  const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt) : null
+  const planText = escapeHtml(input.concept ?? input.plan ?? "Pago")
+  const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt, input.currency) : null
+  const contextRows = [
+    ...(input.serviceDate ? [{ label: "Fecha del servicio", value: escapeHtml(formatDate(input.serviceDate)) }] : []),
+    ...(input.receiptNote ? [{ label: "Nota del comprobante", value: escapeHtml(input.receiptNote).replace(/\r?\n/g, "<br />") }] : []),
+  ].map(row => `<tr><td style="padding: 0 0 18px; overflow-wrap: anywhere; word-wrap: break-word;"><div style="border-bottom: 1px solid #333333;"><div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #c9c9c9; margin-bottom: 6px;">${row.label}</div><div style="font-size: 16px; line-height: 1.5; color: #ffffff; padding-bottom: 12px;">${row.value}</div></div></td></tr>`).join("")
   // Logo externo desactivado hasta disponer de una imagen estable en nuestro dominio.
   return { subject: `Pago registrado - ${input.ownerName}`, html: `
       <!doctype html>
@@ -213,6 +218,7 @@ export function renderPaymentReceipt(input: ReceiptTemplateInput) {
                     </td>
                   </tr>
 
+                  ${input.dueDate ? `
                   <tr>
                     <td style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;padding: 0 0 18px 0;">
                       <div style="overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word;border-bottom: 1px solid #333333;">
@@ -242,6 +248,9 @@ export function renderPaymentReceipt(input: ReceiptTemplateInput) {
                       </div>
                     </td>
                   </tr>
+                  ` : ""}
+
+                  ${contextRows}
                 </table>
 
                 <div

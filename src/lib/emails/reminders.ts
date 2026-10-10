@@ -2,8 +2,9 @@ import "server-only"
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { sendUpcomingDueEmail } from "./service"
+import type { Currency } from "../payments/types"
 
-type Candidate = { id: string; name: string; email: string; owner_id?: string; gym_id?: string; current_debt: number | null }
+type Candidate = { id: string; name: string; email: string; owner_id?: string; gym_id?: string; current_debt: number | null; currency: Currency }
 const missingColumn = (code?: string) => code === "42703" || code === "PGRST204"
 
 async function candidates(target: string, legacy: boolean, canonicalExists: boolean) {
@@ -11,7 +12,7 @@ async function candidates(target: string, legacy: boolean, canonicalExists: bool
   let ownerColumn = "owner_id"
   for (let offset = 0; ; offset += 100) {
     const query = () => {
-      let builder = supabase.from("clients").select(`id, name, email, ${ownerColumn}, current_debt`).eq(legacy ? "next_due" : "next_payment_date", target).not("email", "is", null).order("id").range(offset, offset + 99)
+      let builder = supabase.from("clients").select(`id, name, email, ${ownerColumn}, current_debt, currency`).eq(legacy ? "next_due" : "next_payment_date", target).not("email", "is", null).order("id").range(offset, offset + 99)
       if (legacy && canonicalExists) builder = builder.is("next_payment_date", null)
       return builder
     }
@@ -45,7 +46,7 @@ export async function handleUpcomingReminders(req: NextRequest) {
       if (!owner) continue
       const result = await sendUpcomingDueEmail({
         ownerId, clientId: client.id, to: client.email, clientName: client.name,
-        ownerName: owner.name ?? "Tu negocio", dueDate: target, remainingDebt: client.current_debt,
+        ownerName: owner.name ?? "Tu negocio", dueDate: target, remainingDebt: client.current_debt, currency: client.currency,
         deduplicationKey: `upcoming-due:${ownerId}:${client.id}:${target}`,
       })
       if (result.status === "sent") sent++

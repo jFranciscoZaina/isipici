@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { ClientRow, Payment } from "../page";
 import Modal from "./Modal";
+import { formatPaymentMoney } from "@/lib/payments/format";
 import { User as UserIcon, DollarSign, Mail as MailIcon } from "react-feather";
 
 /** Log de emails del cliente */
@@ -87,6 +88,7 @@ export default function ClientDetailModal({
       setLoadingPayments(true);
       try {
         const res = await fetch(`/api/payments?clientId=${client.id}`);
+        if (res.status === 401) { window.location.href = "/login"; return; }
 
         if (!res.ok) {
           const txt = await res.text();
@@ -174,17 +176,12 @@ export default function ClientDetailModal({
   const paymentLines = useMemo(() => {
     return payments.map((p) => {
       const fecha = new Date(p.created_at).toLocaleDateString("es-AR");
-      const monto =
-        "$" +
-        (p.amount ?? 0).toLocaleString("es-AR", {
-          maximumFractionDigits: 0,
-        });
-      const plan = p.plan ?? "sin plan";
+      const monto = formatPaymentMoney(p.amount ?? 0, p.currency);
+      const plan = p.concept ?? p.plan ?? "Pago";
       const deuda =
         p.debt && p.debt > 0
           ? " Debe " +
-            "$" +
-            p.debt.toLocaleString("es-AR", { maximumFractionDigits: 0 }) +
+            formatPaymentMoney(p.debt, p.currency) +
             "."
           : "";
       const vencimiento = p.period_to
@@ -193,7 +190,9 @@ export default function ClientDetailModal({
 
       return (
         <div key={p.id ?? p.created_at} className=" pb-p10">
-          {fecha} – Pagó {monto} por el plan {plan}.
+          {fecha} – Pagó {monto} por {plan}.{p.payment_type === "one_off" ? " Pago único." : ""}
+          {p.service_date && <><br />Servicio: {new Date(`${p.service_date}T12:00:00Z`).toLocaleDateString("es-AR", { timeZone: "UTC" })}.</>}
+          {p.receipt_note && <p className="fs-12 text-app-secondary whitespace-pre-wrap break-words">{p.receipt_note}</p>}
           {/* Bloque Condicional para 'deuda' */}
           {deuda && (
             <>

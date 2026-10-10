@@ -1,9 +1,10 @@
 import { escapeHtml, formatDate, formatMoney } from "../format"
-export type ReminderTemplateInput = { to: string; clientName: string; ownerName: string; dueDate: string; remainingDebt?: number | null; }
+import type { Currency } from "../../payments/types"
+export type ReminderTemplateInput = { to: string; clientName: string; ownerName: string; dueDate: string; remainingDebt?: number | null; currency?: Currency; }
 export function renderUpcomingPayment(input: ReminderTemplateInput) {
   const clientName = escapeHtml(input.clientName)
   const dueDate = escapeHtml(formatDate(input.dueDate))
-  const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt) : null
+  const remainingDebtText = input.remainingDebt && input.remainingDebt > 0 ? formatMoney(input.remainingDebt, input.currency) : null
   // Logo externo desactivado hasta disponer de una imagen estable en nuestro dominio.
   return { subject: `Recordatorio de pago - ${input.ownerName}`, html: `
       <!doctype html>

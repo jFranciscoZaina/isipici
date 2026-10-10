@@ -1,9 +1,8 @@
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!)
 }
-export function formatMoney(value: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value)
-}
+import { formatPaymentMoney } from "../payments/format"
+export const formatMoney = formatPaymentMoney
 export function formatDate(value: string): string {
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value
   const date = new Date(value.length === 10 ? `${value}T12:00:00Z` : value)

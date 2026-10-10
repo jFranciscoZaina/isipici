@@ -7,6 +7,8 @@ import RangeCalendar, { type DateRangeValue } from "./RangeCalendar"
 import ClientSearchSelect from "./ClientSearchSelect"
 import Modal from "./Modal"
 import { DollarSign } from "react-feather"
+import type { Currency, PaymentType } from "@/lib/payments/types"
+import { formatPaymentMoney } from "@/lib/payments/format"
 
 type Props = {
   clients: ClientRow[]
@@ -30,9 +32,7 @@ type PaymentRow = {
 
 const toISO = (d?: Date) =>
   d
-    ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
-        .toISOString()
-        .slice(0, 10)
+    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
     : ""
 
 const parseISO = (s?: string | null) =>
@@ -52,6 +52,11 @@ export default function NewPaymentModal({
   const [discount, setDiscount] = useState<number | "">("")
   const [debt, setDebt] = useState<number | "">("")
   const [loading, setLoading] = useState(false)
+  const [paymentType, setPaymentType] = useState<PaymentType>("recurring")
+  const [currency, setCurrency] = useState<Currency>("ARS")
+  const [concept, setConcept] = useState("")
+  const [serviceDate, setServiceDate] = useState("")
+  const [receiptNote, setReceiptNote] = useState("")
 
   const [selectedClientDebt, setSelectedClientDebt] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
@@ -65,16 +70,17 @@ export default function NewPaymentModal({
   const periodTo = toISO(dateRange.to)
 
   const selectedClient = clients.find((c) => c.id === clientId)
-  const hasDebt = (selectedClient?.currentDebt ?? 0) > 0
+  const hasDebt = paymentType === "recurring" && (selectedClient?.currentDebt ?? 0) > 0
   const availablePlans = useMemo(
     () => (hasDebt ? PLANS : PLANS.filter((p) => p !== "Pago deuda")),
     [hasDebt]
   )
 
-  const handleClientChange = async (id: string) => {
+  const handleClientChange = async (id: string, type: PaymentType = paymentType) => {
     setClientId(id)
 
     const c = clients.find((cl) => cl.id === id)
+    setCurrency(c?.currency ?? "ARS")
     const d = c ? Number(c.currentDebt || 0) : 0
     setSelectedClientDebt(d)
 
@@ -82,6 +88,7 @@ export default function NewPaymentModal({
 
     try {
       const res = await fetch(`/api/payments?clientId=${id}`)
+      if (res.status === 401) { window.location.href = "/login"; return }
       if (res.ok) {
         pays = await res.json()
       }
@@ -111,7 +118,7 @@ export default function NewPaymentModal({
 
     setMarkers(nextMarkers)
 
-    if (d > 0) {
+    if (d > 0 && type === "recurring") {
       setPlan("Pago deuda")
       setDiscount(0)
 
@@ -152,7 +159,7 @@ export default function NewPaymentModal({
   }
 
   useEffect(() => {
-    if (plan !== "Pago deuda") return
+    if (paymentType !== "recurring" || plan !== "Pago deuda") return
 
     const baseDebt = selectedClientDebt || 0
     const disc =
@@ -173,7 +180,7 @@ export default function NewPaymentModal({
 
     const newDebt = Math.max(baseDebt - aNum - disc, 0)
     setDebt((prev) => (prev === newDebt ? prev : newDebt))
-  }, [plan, amount, discount, selectedClientDebt])
+  }, [plan, amount, discount, selectedClientDebt, paymentType])
 
   useEffect(() => {
     if (preselectedClientId) {
@@ -198,9 +205,7 @@ export default function NewPaymentModal({
 
   const canSave =
     !!clientId &&
-    !!plan &&
-    !!dateRange.from &&
-    !!dateRange.to &&
+    (paymentType === "one_off" ? !!concept.trim() : !!(plan || concept.trim()) && !!dateRange.from && !!dateRange.to) &&
     (Number(amount) > 0 || Number(debt) > 0)
 
   const handleSave = async () => {
@@ -208,11 +213,11 @@ export default function NewPaymentModal({
       onError?.("Selecciona un cliente")
       return
     }
-    if (!plan) {
-      onError?.("Selecciona un plan")
+    if (!concept.trim() && !plan) {
+      onError?.("Indicá un concepto o seleccioná un plan")
       return
     }
-    if (!periodFrom || !periodTo) {
+    if (paymentType === "recurring" && (!periodFrom || !periodTo)) {
       onError?.("Selecciona desde y hasta cuando cubre el pago")
       return
     }
@@ -233,18 +238,28 @@ export default function NewPaymentModal({
           clientId,
           amount: numericAmount,
           plan,
+          provider: "manual",
+          paymentType,
+          currency,
+          concept: concept.trim() || undefined,
+          serviceDate: paymentType === "one_off" ? serviceDate || undefined : undefined,
+          receiptNote: receiptNote.trim() || undefined,
           discount: numericDiscount,
-          debt: numericDebt,
-          periodFrom,
-          periodTo,
+          debt: paymentType === "one_off" && debt === "" ? undefined : numericDebt,
+          periodFrom: paymentType === "recurring" ? periodFrom : undefined,
+          periodTo: paymentType === "recurring" ? periodTo : undefined,
         }),
       })
 
-      if (!res.ok) throw new Error("Error registrando pago")
+      if (res.status === 401) { window.location.href = "/login"; return }
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error ?? "Error registrando pago")
 
       onCreated()
       onSuccess?.(
-        "Pago registrado y notificado al cliente por email con los detalles."
+        result.receipt_status === "sent" || result.receipt_status === "already_recorded"
+          ? "Pago registrado. Comprobante enviado al proveedor de email."
+          : "Pago registrado. El comprobante no se pudo confirmar; revisá el historial."
       )
       onClose()
     } catch (err) {
@@ -293,7 +308,30 @@ export default function NewPaymentModal({
             onSelectClient={handleClientChange}
           />
 
-          <Field label="Plan">
+          <Field label="Tipo de pago">
+            <select className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={paymentType}
+              onChange={e => {
+                const type = e.target.value as PaymentType
+                setPaymentType(type)
+                setPlan(""); setDateRange({}); setCalendarLocked(false); setAmount(""); setDebt("")
+                if (clientId) void handleClientChange(clientId, type)
+              }}>
+              <option value="recurring">Recurrente</option>
+              <option value="one_off">Único</option>
+            </select>
+          </Field>
+          <Field label="Moneda">
+            <select className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={currency}
+              disabled={Boolean(selectedClient?.hasPayments || selectedClient?.currentDebt)} onChange={e => setCurrency(e.target.value as Currency)}>
+              <option value="ARS">ARS — Peso argentino</option>
+              <option value="AUD">AUD — Dólar australiano</option>
+            </select>
+          </Field>
+          <Field label="Concepto">
+            <input className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={concept}
+              onChange={e => setConcept(e.target.value)} maxLength={200} placeholder="Ej. Servicio mensual o cena de fin de año" />
+          </Field>
+          {paymentType === "recurring" && <Field label="Plan (opcional si indicás concepto)">
             <select
               className={`w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app appearance-none pr-p30 ${
                 hasDebt ? "opacity-70 cursor-not-allowed" : ""
@@ -313,13 +351,10 @@ export default function NewPaymentModal({
 
             {hasDebt && selectedClientDebt > 0 && (
               <p className="fs-12 text-app-secondary mt-p5">
-                Deuda actual: $
-                {selectedClientDebt.toLocaleString("es-AR", {
-                  maximumFractionDigits: 0,
-                })}
+                Deuda actual: {formatPaymentMoney(selectedClientDebt, currency)}
               </p>
             )}
-          </Field>
+          </Field>}
 
           <Field label="Pago">
             <input
@@ -355,13 +390,18 @@ export default function NewPaymentModal({
               onChange={(e) =>
                 setDebt(e.target.value ? Number(e.target.value) : "")
               }
-              placeholder="0 si queda saldado"
+              placeholder={paymentType === "one_off" ? "Vacío conserva la deuda actual" : "0 si queda saldado"}
               min={0}
             />
+          </Field>
+          <Field label="Nota del comprobante (opcional)">
+            <textarea className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" rows={3}
+              maxLength={1000} value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="Ej. Mesa para dos personas" />
           </Field>
         </div>
 
         <div className="space-y-p20">
+          {paymentType === "recurring" ? <>
           <RangeCalendar
             value={dateRange}
             onChange={setDateRange}
@@ -377,6 +417,10 @@ export default function NewPaymentModal({
               Este rango pertenece a una deuda previa y no puede modificarse.
             </p>
           )}
+          </> : <Field label="Fecha del servicio / evento (opcional)">
+            <input type="date" className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app" value={serviceDate}
+              onChange={e => setServiceDate(e.target.value)} min="1900-01-01" max="9999-12-31" />
+          </Field>}
         </div>
       </div>
     </Modal>

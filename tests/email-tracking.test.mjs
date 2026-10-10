@@ -5,7 +5,8 @@ import { createHmac, createHash } from "node:crypto"
 import vm from "node:vm"
 import ts from "typescript"
 import { Resend } from "resend"
-import { PGlite } from "@electric-sql/pglite"
+import { testPostgres } from "./helpers/postgres.mjs"
+import { loader } from "./helpers/load-ts.mjs"
 
 function load(path, mocks, env = {}) {
   const exports = {}
@@ -79,7 +80,7 @@ test("email history scopes successful queries by owner and client and exposes no
 })
 
 test("PostgreSQL migration handles replays, out-of-order states, early events and isolation", async () => {
-  const db = new PGlite()
+  const db = testPostgres()
   try {
     await db.exec(`
       CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
@@ -162,7 +163,7 @@ test("service persists provider ids, does not throw on failures, and never resen
   }
 })
 
-test("payment remains recorded when the email service fails", async () => {
+test("payment API preserves the canonical service result when the email fails", async () => {
   const payment = { id: "payment-a" }
   const db = { from: table => {
     const query = new Proxy({}, { get: (_, method) => {
@@ -176,6 +177,8 @@ test("payment remains recorded when the email service fails", async () => {
     "@/lib/auth": { getSessionOwnerId: async () => "owner-a", ownedClientColumn: async () => "owner_id" },
     "@/lib/supabaseClient": { supabase: db },
     "@/lib/email": { sendPaymentReceiptEmail: async () => { throw new Error("provider unavailable") } },
+    "@/lib/payments/validation": loader()("src/lib/payments/validation.ts"),
+    "@/lib/payments/service": { registerManualPayment: async () => ({ payment, duplicate: false, receiptStatus: "failed" }) },
   })
   const result = await route.POST({ json: async () => ({ clientId: "client-a", plan: "Service", amount: 100 }) })
   assert.equal(result.status, 201)
@@ -183,7 +186,7 @@ test("payment remains recorded when the email service fails", async () => {
 })
 
 test("templates escape client data, use generic copy and format dates without timezone shifts", () => {
-  const format = load("src/lib/emails/format.ts", {})
+  const format = loader()("src/lib/emails/format.ts")
   const reminder = load("src/lib/emails/templates/upcoming-payment.ts", { "../format": format })
   const receipt = load("src/lib/emails/templates/payment-receipt.ts", { "../format": format })
   const input = { to: "client@example.test", clientName: '<img src=x onerror="alert(1)">', ownerName: "Business", dueDate: "2026-10-07", amount: 100, remainingDebt: 30, plan: "<script>bad</script>" }

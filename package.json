@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:security": "node --test tests/authorization.test.mjs",
-    "test:email": "node --test tests/email-tracking.test.mjs"
+    "test:email": "node --test tests/email-tracking.test.mjs",
+    "test:payments": "node --test tests/payment-domain.test.mjs tests/payment-domain-db.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

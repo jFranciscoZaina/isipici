@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabaseClient"
 import { getSessionOwnerId } from "@/lib/auth"
 import type { PostgrestError } from "@supabase/supabase-js"
+import type { Currency, PaymentType } from "@/lib/payments/types"
 
 export const runtime = "nodejs"
 
@@ -11,6 +12,8 @@ export const runtime = "nodejs"
 const INACTIVE_AFTER_DAYS = 21
 
 type SupabasePaymentRow = {
+  currency: Currency
+  payment_type: PaymentType | null
   id: string
   amount: number | null
   plan: string | null
@@ -23,6 +26,7 @@ type SupabasePaymentRow = {
 }
 
 type SupabaseClientRow = {
+  currency: Currency
   id: string
   name: string
   email: string | null
@@ -67,6 +71,7 @@ export async function GET(req: NextRequest) {
       address,
       address_number,
       plan,
+      currency,
       current_debt,
       last_payment_amount,
       last_payment_date,
@@ -75,6 +80,8 @@ export async function GET(req: NextRequest) {
         id,
         amount,
         plan,
+        currency,
+        payment_type,
         discount,
         debt,
         next_payment_date,
@@ -124,8 +131,11 @@ export async function GET(req: NextRequest) {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
 
+      const lastRecurring = [...payments].filter(p => p.payment_type !== "one_off").sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0]
       const currentDebt = Number(lastPayment?.debt ?? 0)
-      const nextDue = lastPayment?.period_to ?? null
+      const nextDue = lastRecurring?.period_to ?? null
 
       // calcular status: inactivo si nunca pagó o si pasó el umbral desde el ultimo pago/vencimiento
       let computedStatus: "active" | "inactive" = "active"
@@ -170,7 +180,9 @@ export async function GET(req: NextRequest) {
         phone: client.phone,
         address: client.address,
         addressNumber: client.address_number,
-        currentPlan: lastPayment?.plan ?? null,
+        currentPlan: lastRecurring?.plan ?? null,
+        currency: client.currency,
+        hasPayments: payments.length > 0,
         currentDebt,
         totalPaidThisMonth,
         nextDue,

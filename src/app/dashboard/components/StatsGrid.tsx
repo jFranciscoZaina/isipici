@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, ChevronUp, ChevronDown } from "react-feather";
+import { formatPaymentMoney } from "@/lib/payments/format";
 
 type Props = {
   totalClients: number;
   clientsWithDebt: number;
   monthlyIncome: number;
+  monthlyIncomeAUD?: number;
 };
 
 type HiddenState = {
@@ -19,6 +21,7 @@ export default function StatsGrid({
   totalClients,
   clientsWithDebt,
   monthlyIncome,
+  monthlyIncomeAUD = 0,
 }: Props) {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -93,9 +96,9 @@ export default function StatsGrid({
 
             <StatCard
               title="Ingresos Mensuales"
-              value={monthlyIncome.toLocaleString("es-AR", {
-                maximumFractionDigits: 0,
-              })}
+              value={monthlyIncomeAUD > 0
+                ? `ARS ${formatPaymentMoney(monthlyIncome)} / ${formatPaymentMoney(monthlyIncomeAUD, "AUD")}`
+                : formatPaymentMoney(monthlyIncome)}
               isHidden={hidden.monthlyIncome}
               onToggleHidden={() => toggleHidden("monthlyIncome")}
             />
@@ -142,7 +145,7 @@ function StatCard({ title, value, isHidden, onToggleHidden }: StatCardProps) {
         </button>
       </div>
 
-      <div className="mt-4 fs-48 leading-none text-app">{displayValue}</div>
+      <div className={`mt-4 ${value.includes(" / ") ? "fs-20" : "fs-48"} leading-none text-app`}>{displayValue}</div>
     </div>
   );
 }

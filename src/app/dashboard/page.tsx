@@ -13,6 +13,7 @@ import ClientDetailModal, { type TabId } from "./components/ClientDetailModal";
 import type { ClientMenuAction } from "./components/ClientContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Snackbar from "./components/Snackbar";
+import type { Currency, PaymentProvider, PaymentType } from "@/lib/payments/types";
 
 // === TYPES =======================================================================
 
@@ -28,6 +29,8 @@ export type ClientRow = {
   totalPaidThisMonth: number;
   nextDue: string | null;
   isMonthFullyPaid: boolean;
+  currency: Currency;
+  hasPayments: boolean;
 };
 
 export type Payment = {
@@ -40,6 +43,12 @@ export type Payment = {
   period_from: string | null;
   period_to: string | null;
   created_at: string;
+  currency?: Currency;
+  provider?: PaymentProvider;
+  payment_type?: PaymentType | null;
+  concept?: string | null;
+  service_date?: string | null;
+  receipt_note?: string | null;
 };
 
 export const PLANS = ["Starter", "Plus", "Premium","Pro","total", "Pago deuda"] as const;
@@ -118,10 +127,8 @@ export default function DashboardPage() {
     () => ({
       totalClients: clients.length,
       clientsWithDebt: clients.filter((c) => (c.currentDebt ?? 0) > 0).length,
-      monthlyIncome: clients.reduce(
-        (sum, c) => sum + (c.totalPaidThisMonth || 0),
-        0
-      ),
+      monthlyIncome: clients.filter(c => c.currency === "ARS").reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
+      monthlyIncomeAUD: clients.filter(c => c.currency === "AUD").reduce((sum, c) => sum + (c.totalPaidThisMonth || 0), 0),
     }),
     [clients]
   );

@@ -1,219 +1,35 @@
-// src/app/api/payments/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { getSessionOwnerId, ownedClientColumn } from "@/lib/auth"
-import { sendPaymentReceiptEmail } from "@/lib/email"
+import { registerManualPayment } from "@/lib/payments/service"
+import { PaymentError } from "@/lib/payments/validation"
 
 export const runtime = "nodejs"
-
-// GET /api/payments?clientId=uuid
 export async function GET(req: NextRequest) {
   try {
     const ownerId = await getSessionOwnerId(req)
-
-    if (!ownerId) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      )
-    }
-
-    const { searchParams } = new URL(req.url)
-    const clientId = searchParams.get("clientId")
-
-    if (!clientId) {
-      return NextResponse.json(
-        { error: "clientId is required" },
-        { status: 400 }
-      )
-    }
-
+    if (!ownerId) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    const clientId = new URL(req.url).searchParams.get("clientId")
+    if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 })
     if (!await ownedClientColumn(clientId, ownerId)) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
-
-    const { data, error } = await supabase
-      .from("payments")
-      .select(`
-        id,
-        amount,
-        plan,
-        discount,
-        debt,
-        next_payment_date,
-        period_from,
-        period_to,
-        created_at
-      `)
-      .eq("client_id", clientId)
-      .eq("owner_id", ownerId)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Supabase GET payments error:", error)
-      return NextResponse.json(
-        { error: "Error fetching payments" },
-        { status: 500 }
-      )
-    }
-
+    const { data, error } = await supabase.from("payments")
+      .select("id, amount, plan, discount, debt, next_payment_date, period_from, period_to, created_at, provider, currency, payment_type, concept, service_date, receipt_note, recurring_agreement_id")
+      .eq("client_id", clientId).eq("owner_id", ownerId).order("created_at", { ascending: false })
+    if (error) return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 503 })
     return NextResponse.json(data ?? [])
-  } catch (e) {
-    console.error("GET payments unexpected error:", e)
-    return NextResponse.json(
-      { error: "Unexpected error fetching payments" },
-      { status: 500 }
-    )
-  }
+  } catch { return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 503 }) }
 }
-
-// POST /api/payments
 export async function POST(req: NextRequest) {
   try {
     const ownerId = await getSessionOwnerId(req)
-
-    if (!ownerId) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      )
-    }
-
-    const body = await req.json()
-    const {
-      clientId,
-      amount,
-      plan,
-      discount = 0,
-      debt = 0,
-      periodFrom,
-      periodTo,
-    } = body
-
-    if (!clientId || !plan) {
-      return NextResponse.json(
-        { error: "clientId and plan are required" },
-        { status: 400 }
-      )
-    }
-
-    const ownerColumn = await ownedClientColumn(clientId, ownerId)
-    if (!ownerColumn) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
-
-    const numericAmount = Number(amount || 0)
-    const numericDiscount = Number(discount || 0)
-    const numericDebt = Number(debt || 0)
-
-    if (![numericAmount, numericDiscount, numericDebt].every(n => Number.isFinite(n) && n >= 0)) return NextResponse.json({ error: "Importes inválidos" }, { status: 400 })
-
-    // Insert payment (atado al owner)
-    const { data: payment, error: paymentError } = await supabase
-      .from("payments")
-      .insert([
-        {
-          client_id: clientId,
-          owner_id: ownerId,
-          amount: numericAmount,
-          plan,
-          discount: numericDiscount,
-          debt: numericDebt,
-          period_from: periodFrom ?? null,
-          period_to: periodTo ?? null,
-          next_payment_date: periodTo ?? null, // lo usamos como "vencimiento"
-        },
-      ])
-      .select()
-      .single()
-
-    if (paymentError) {
-      console.error("Supabase POST payments error:", paymentError)
-      return NextResponse.json(
-        { error: "Error registrando pago" },
-        { status: 500 }
-      )
-    }
-
-    // Update client snapshot (deuda actual + próximo vencimiento)
-    const { error: clientError } = await supabase
-      .from("clients")
-      .update({
-        current_debt: numericDebt,
-        last_payment_amount: numericAmount,
-        last_payment_date: new Date().toISOString().slice(0, 10),
-        next_payment_date: periodTo ?? null,
-      })
-      .eq("id", clientId)
-      .eq(ownerColumn, ownerId)
-
-    if (clientError) {
-      console.error("Supabase updating client after payment:", clientError)
-      // no cortamos el flujo, porque el pago ya quedó guardado
-    }
-
-    // ===== NUEVO: Enviar comprobante de pago por email =====
-    try {
-      // 1) Traer datos del cliente (nombre + email)
-      const { data: client, error: clientFetchError } = await supabase
-        .from("clients")
-        .select("name, email")
-        .eq("id", clientId)
-        .eq(ownerColumn, ownerId)
-        .single()
-
-      if (clientFetchError || !client?.email) {
-        if (clientFetchError) {
-          console.error(
-            "Error obteniendo cliente para email de pago:",
-            clientFetchError,
-          )
-        }
-        // si no hay email, no mandamos nada y seguimos
-      } else {
-        // 2) Traer nombre del negocio
-        const { data: owner, error: ownerError } = await supabase
-          .from("owners")
-          .select("name")
-          .eq("id", ownerId)
-          .single()
-
-        if (ownerError || !owner?.name) {
-          if (ownerError) {
-            console.error(
-              "Error obteniendo owner para email de pago:",
-              ownerError,
-            )
-          }
-        }
-
-        const ownerName = owner?.name ?? "tu negocio"
-        const dueDate = periodTo ?? null
-
-        const emailResult = await sendPaymentReceiptEmail({
-          ownerId,
-          clientId,
-          deduplicationKey: `payment-receipt:${ownerId}:${payment.id}`,
-          to: client.email,
-          clientName: client.name,
-          ownerName,
-          amount: numericAmount,
-          dueDate,
-          plan,
-          remainingDebt: numericDebt,
-        })
-        if (emailResult.status !== "sent" && emailResult.status !== "already_recorded" || emailResult.loggingError) {
-          console.warn("Comprobante pendiente de revisión", { code: emailResult.error?.code, loggingError: emailResult.loggingError === true })
-        }
-      }
-    } catch (emailError) {
-      console.error("Error enviando email de comprobante de pago:", emailError)
-      // nunca rompemos la respuesta al cliente por un fallo de email
-    }
-    // ===== FIN BLOQUE NUEVO =====
-
-    return NextResponse.json(payment, { status: 201 })
-  } catch (e) {
-    console.error("POST payments unexpected error:", e)
-    return NextResponse.json(
-      { error: "Unexpected error registering payment" },
-      { status: 500 }
-    )
+    if (!ownerId) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    let input: unknown
+    try { input = await req.json() } catch { return NextResponse.json({ error: "Datos de pago inválidos" }, { status: 400 }) }
+    const result = await registerManualPayment(ownerId, input)
+    // Conserva el objeto de pago anterior, con metadata adicional y resultado honesto del email.
+    return NextResponse.json({ ...result.payment, receipt_status: result.receiptStatus }, { status: result.duplicate ? 200 : 201 })
+  } catch (error) {
+    if (error instanceof PaymentError) return NextResponse.json({ error: error.message }, { status: error.status })
+    return NextResponse.json({ error: "No se pudo registrar el pago" }, { status: 503 })
   }
 }

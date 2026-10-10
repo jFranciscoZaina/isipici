@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 import vm from "node:vm"
 import ts from "typescript"
 import jwt from "jsonwebtoken"
+import { loader } from "./helpers/load-ts.mjs"
+const { PaymentError } = loader()("src/lib/payments/validation.ts")
 
 const secret = "test-owner-secret-with-at-least-32-characters"
 const adminSecret = "test-admin-secret-with-at-least-32-characters"
@@ -53,6 +55,8 @@ test("client mutations and email endpoints deny anonymous and foreign owners bef
         "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
         "@/lib/auth": { getSessionOwnerId: async () => ownerId, ownedClientColumn: async () => null },
         "@/lib/supabaseClient": { supabase: db }, "@/lib/email": {},
+        "@/lib/payments/validation": { PaymentError },
+        "@/lib/payments/service": { registerManualPayment: async () => { throw new PaymentError("Cliente no encontrado",404) } },
       })
       for (const method of methods) {
         const res = await route[method]({ url: "https://example.test/api?clientId=foreign", json: async () => ({ clientId: "foreign", plan: "Plan" }) }, { params: Promise.resolve({ id: "foreign" }) })

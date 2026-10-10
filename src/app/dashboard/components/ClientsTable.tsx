@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
+import { formatPaymentMoney } from "@/lib/payments/format";
 import { Check, Minus, X } from "react-feather";
 import { ClientContextMenu, type ClientMenuAction } from "./ClientContextMenu";
 import React from 'react';
@@ -243,10 +244,7 @@ export default function ClientsTable({
 
                     <td className="px-p20 py-p10 fs-12 font-normal">
                       {client.currentDebt > 0
-                        ? "$" +
-                          client.currentDebt.toLocaleString("es-AR", {
-                            maximumFractionDigits: 0,
-                          })
+                        ? formatPaymentMoney(client.currentDebt, client.currency)
                         : ""}
                     </td>
 
