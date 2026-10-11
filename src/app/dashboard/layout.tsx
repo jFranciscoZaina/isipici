@@ -1,4 +1,5 @@
 import React from "react"
+import { ToastProvider } from "./components/ToastProvider"
 import PinLockGate from "./components/PinLockGate"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
@@ -13,5 +14,5 @@ export default async function DashboardLayout({
   const token = (await cookies()).get("session")?.value
   const req = new NextRequest("http://localhost/dashboard", { headers: { cookie: `session=${token ?? ""}` } })
   if (!await getSessionOwnerId(req)) redirect("/login")
-  return <PinLockGate>{children}</PinLockGate>
+  return <ToastProvider><PinLockGate>{children}</PinLockGate></ToastProvider>
 }

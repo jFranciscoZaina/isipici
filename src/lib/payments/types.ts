@@ -8,7 +8,7 @@ export type Currency = typeof CURRENCIES[number]
 export type RecurringAgreementStatus = "pending" | "active" | "paused" | "cancelled" | "failed"
 export type ProviderConnectionStatus = "disconnected" | "pending" | "connected" | "restricted"
 export type PaymentInput = {
-  clientId: string; provider: PaymentProvider; paymentType: PaymentType; currency: Currency
+  planId?:string|null; clientId: string; provider: PaymentProvider; paymentType: PaymentType; currency: Currency
   amount: number; discount: number; debt: number | null; plan: string | null
   concept: string | null; serviceDate: string | null; receiptNote: string | null
   periodFrom: string | null; periodTo: string | null; nextPaymentDate: string | null
@@ -16,7 +16,7 @@ export type PaymentInput = {
   recurringAgreementId: string | null; providerAccountId: string | null; providerPaymentId: string | null
 }
 export type RecurringAgreementSummary = {
-  id: string; plan_name?: string | null; amount: number; currency: Currency; provider: PaymentProvider; installments_enabled: boolean; interval_unit: string; interval_count: number; billing_anchor_date: string | null; next_charge_at: string | null; status: RecurringAgreementStatus
+  id: string; plan_id?:string|null; cancel_at_period_end?:boolean;cancellation_boundary?:string|null; plan_name?: string | null; amount: number; currency: Currency; provider: PaymentProvider; installments_enabled: boolean; interval_unit: string; interval_count: number; billing_anchor_date: string | null; next_charge_at: string | null; status: RecurringAgreementStatus
 }
 export type CanonicalPayment = {
   id: string; owner_id: string; client_id: string; amount: number; discount: number; debt: number
@@ -37,4 +37,4 @@ export type RecurringInstallment = {
  status: "open" | "paid" | "waived" | "cancelled"; covered_amount: number; remaining: number; overdue: boolean; partially_paid: boolean
 }
 export type ReceiptAllocation = {periodFrom:string;periodTo:string;amountApplied:number;discountApplied:number;remaining:number}
-export type SubscriptionState = { editEffectiveDate?: string; current: RecurringAgreementSummary | null; agreements: RecurringAgreementSummary[]; installments: RecurringInstallment[]; archivedAt: string | null; legacyDebt: number; legacyDebtPaymentId: string | null }
+export type SubscriptionState = {scheduledChange?:import("./plan-types").SubscriptionChange|null;  editEffectiveDate?: string; current: RecurringAgreementSummary | null; agreements: RecurringAgreementSummary[]; installments: RecurringInstallment[]; archivedAt: string | null; legacyDebt: number; legacyDebtPaymentId: string | null }

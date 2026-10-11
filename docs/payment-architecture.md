@@ -1,113 +1,86 @@
-# Suscripciones, cuotas y pagos — ISIPICI
+# Arquitectura de pagos y suscripciones — ISIPICI (estado local 5.4)
 
-```text
-Cliente
- ├── Suscripción vigente (0..1): pending/active/paused
- │    ├── Cuota → uno o varios pagos
- │    └── Cuotas siguientes, aunque la anterior siga impaga
- ├── Suscripciones terminales y deuda conservada
- └── N pagos únicos, con fechas iguales/superpuestas permitidas
-```
+Este documento describe el modelo vigente después de las migraciones 10–18. Los reportes de hitos anteriores conservan contexto histórico, pero no sustituyen estas reglas.
 
-agreements = reglas recurrentes. installments = obligaciones. payments = dinero confirmado; un intento fallido o deuda no crea un pago ficticio. Stripe Australia/Mercado Pago Argentina no están integrados: charge_paid se normalizará a canonical payment, charge_failed conserva cuota open sin cambiar el acuerdo a failed.
+## Entidades
 
-## Fechas y moneda
+- Owner: cuenta activa y moneda ARS/AUD definida en servidor.
+- Plan: catálogo reusable de nombre + frecuencia (weekly=7 días, biweekly=14 días, monthly=mes calendario), sin provider.
+- Plan price: precio inmutable con effective_from; último precio cuya vigencia no supera la fecha de inicio relevante.
+- Agreement: un cliente concreto, proveedor de cobro y snapshot de nombre, importe, moneda, cadencia y anchor. plan_id es origen opcional, no una referencia para recalcular precios en tiempo real.
+- Installment: obligación de un ciclo con importe/período/moneda congelados.
+- Payment: dinero confirmado. Deuda/bonificación no cuentan como ingreso.
+- Allocation: cash y bonificación de un pago aplicados a una cuota. Un payment puede cubrir N cuotas y una cuota puede recibir N payments.
+- Subscription change: una nueva configuración explícita para un acuerdo; scheduled/applied/cancelled. Máximo un scheduled por acuerdo.
 
-created_at es la fecha real del pago; period_from/to es el período de servicio inclusive; billing_anchor_date conserva la fecha original de la cadencia; next_charge_at es el cursor operativo de cuotas aún no generadas. clients.next_payment_date incluye las cuotas abiertas de un acuerdo activo. El recibo de cuota utiliza ese vencimiento operativo tras confirmar el pago, sin anunciar cobros de acuerdos pausados/terminales.
+No hay Mercado Pago, Stripe, prorrateo, impuestos, promociones, invoices ni catálogo complejo. Los identificadores futuros de proveedores pertenecen a acuerdos/pagos, nunca a Plan.
 
-weekly → week x1 (7 días), biweekly → week x2 (14 días), monthly → month x1. schedule.ts y SQL conservan el día original: 31/01 → 28/02 o 29/02 → 31/03 → 30/04. YYYY-MM-DD es fecha de calendario sin desplazamiento UTC/local. RangeCalendar se reutiliza: single en agenda, range para únicos, próximas fechas gris oscuro con n6. No se pide frecuencia/anchor al pagar una cuota existente.
+## Catálogo, precios y moneda
 
-Owner activo determina ARS/AUD en servidor; payments.currency es snapshot inmutable. No hay conversión, variables nuevas ni dependencias. Se mantienen ownership explícito, cuenta de proveedor conectada, RLS/revokes/service_role, locks e idempotencia externa. Los IDs del browser nunca sustituyen la cuenta autenticada.
+Planes en TopBar/menú abre un modal simple. Permite crear con precio inicial y fecha, renombrar, versionar precio y archivar. Frecuencia solo cambia si el plan jamás fue asociado a un acuerdo/cambio. Precios no se editan ni eliminan: se agrega otra versión con fecha distinta. Una fecha ya registrada se rechaza, salvo replay idéntico del aumento masivo.
 
-## Lifecycle
+Archivar no elimina precios, pagos ni suscripciones. No permite nuevas asignaciones; cambios previamente autorizados conservan su snapshot. Moneda server-derived desde owner activo, sin selector. La moneda del Owner se bloquea también con planes/precios, además de pagos/deuda/acuerdos/cuentas de proveedor.
 
-Un índice único parcial owner/client impide dos acuerdos pending/active/paused, incluso de proveedores diferentes. cancelled/failed permiten crear otro. La migración da REVIEW_REQUIRED si ya hay duplicados; no elige qué borrar.
+Catálogo/historial son owner-scoped. Su RPC devuelve planes, precios, uso histórico y cantidad de suscripciones actuales sin truncar por el límite de filas de REST.
 
-- Crear: acuerdo manual active + primera cuota, transaccional. Sin payment ni ingreso hasta recibir dinero. El formulario también permite crear y pagar parcialmente la primera cuota en una transacción.
-- Pausar: paused, conserva configuración/historia/deuda. Cancela futuras open sin cobertura; conserva vencidas y parcialmente pagadas.
-- Reanudar: acción explícita y vencimiento >= hoy válido en la cadencia original. No cambia anchor ni crea ciclos retroactivos de la pausa. Una cuota terminal no se reabre: elegir otra fecha válida.
-- Cancelar: cancelled + cancelled_at, definitivo; conserva deuda. No admite resume.
-- Cambiar plan: cancela anterior y crea otro active con importe/frecuencia/anchor nuevos, en una transacción que revierte completa si falla. Deuda anterior no se transfiere.
-- failed: fallo estructural del acuerdo; un cobro individual fallido no lo provoca.
+## Acuerdos, legacy y Personalizado
 
-DB bloquea cambios de configuración histórica y reactivación de terminales. Lifecycle ordinario admite manual; no hace llamadas a providers. Archive pausa también acuerdos externos en el dominio local; la futura sincronización real con providers requiere un adapter.
+Un índice parcial mantiene como máximo un acuerdo pending/active/paused por cliente. Cancelled/failed son terminales; se puede crear otro acuerdo sin borrar el anterior.
 
-## Cuotas y parciales
+Creación desde Plan: servidor resuelve plan_id + anchorDate; ignora precio/cadencia enviados por browser para definir la suscripción. Creación personalizada: plan_id=null, nombre/importe/frecuencia explícitos validados. Acuerdos anteriores conservan plan_id=null sin inferencias desde payments.plan. No se crea un plan global automáticamente para condiciones especiales.
 
-recurring_installments: owner/client/agreement, due_date, período, amount_due, currency, status open/paid/waived/cancelled y timestamps. Unique(agreement,due_date), FKs compuestas de contexto sin cascadas que destruyan cuotas. Importe/fechas/contexto son inmutables.
+Nueva suscripción crea acuerdo + primera cuota, sin dinero ficticio. Registrar primer pago puede hacerlo en una sola transacción con rollback total si falla/sobrepaga. Método actual: Manual. Reanudar/adoptar legacy mantiene validación de agenda original; un legacy sin cuotas debe adoptar antes de programar cambios.
 
-payments.recurring_installment_id es nullable para legacy y siempre null en one_off. Muchos payments cubren una cuota; un payment no se distribuye entre varias.
+## Cambio individual y aumentos masivos
 
-covered = SUM(amount + discount); remaining = MAX(amount_due - covered,0); ingreso = SUM(amount). Cuota100, pagos60 y20+descuento20: paid, ingreso80. Locks + guard impiden sobreaplicación concurrente. Paid se establece al cubrir todo. Los pagos vinculados no se editan/borran.
+Cambiar suscripción en ficha es distinto de Editar plan en catálogo. Selecciona otro Plan o Personalizado + fecha efectiva. Se congela el target autorizado al programar, manteniendo agreement.id.
 
-partially_paid y overdue se derivan: open con cobertura parcial, u open con due_date<hoy y saldo. Deuda operativa incluye due_date<=hoy. Futuras no cuentan; paid/waived/cancelled tampoco. Condonar saldo es explícito, sin ingreso.
+Solo nuevas suscripciones (default) agrega precio al catálogo sin alterar acuerdos actuales. También suscripciones actuales crea un scheduled por acuerdo elegible. Omite acuerdos con cambios pendientes, baja programada, clientes archivados o estado/proveedor incompatible. La operación devuelve programadas/omitidas. price_id y un índice único hacen idempotente su replay; no sobrescribe un cambio individual.
 
-## Generación y legacy
+Editar un scheduled requiere replaceChangeId explícito: cancela la fila anterior e inserta otra, conservando historia. Cancelar scheduled no cambia acuerdo ni cuotas. Applied no puede cancelarse retroactivamente.
 
-ensure_recurring_installments_through genera fechas faltantes en active + installments_enabled, independiente del pago anterior. Usa anchor/cursor/unique. Máximo horizonte hoy UTC+90 días y 400 iteraciones por transacción; backlog mayor requiere revisión/catch-up con horizontes menores. La primera cuota se crea explícitamente, sin generar años anticipados.
+## Aplicación, protección y no prorrateo
 
-Consulta de ficha/formulario y cron existente aseguran horizonte de cinco días. Paused/cancelled/failed/archived no generan ciclos. Snapshots se refrescan en operaciones/lecturas/cron; dashboard deriva saldo vencido adicionalmente. Sin lecturas ni cron un snapshot puede quedar desactualizado al cambiar el día.
+Cambio empieza en la primera fecha de la cadencia original >= effective_from, futura, posterior a todos los períodos protegidos. Protegidas: vencidas/actuales consolidadas, paid, waived, partial o con cualquier cobertura/allocation. Se conservan IDs, fechas, importes, pagos y allocations. Un anticipo puede posponer el inicio; la UI informa starts_on.
 
-clients.legacy_debt_amount separa el saldo histórico: se inicializa desde current_debt al empezar operaciones nuevas, sin inventar cuotas. Deuda total = legacy + remaining de cuotas open vencidas. Pago deuda legacy sigue disponible después de pagos modernos y con cliente archivado.
+No se divide un período entre viejo/nuevo precio. Al aplicar, solo se cancelan cuotas futuras open sin cobertura desde el boundary, se actualiza el snapshot del mismo acuerdo y se generan reemplazos con la nueva cadencia/anchor. Las filas canceladas quedan en historia y el índice parcial permite reemplazar su fecha.
 
-Acuerdos anteriores reciben installments_enabled=false, sin backfill. “Empezar cuotas” pide fecha futura explícita en la agenda de un legacy activo con anchor. Sin anchor/cadencia compatible, revisar o Cambiar plan; pagos/deuda quedan intactos. Reanudar un acuerdo con anchor adopta cuotas desde la fecha elegida. pending bloquea crear otro; archivo lo deja paused.
+ensure_recurring_installments_through revisa el cambio dentro de la transacción y con locks. Antes de effective_from, navegar un calendario futuro no activa el aumento: limita nuevas cuotas al boundary anterior; cuotas ya creadas conservan condiciones y anticipos pueden postergar el cambio. Desde la vigencia, la generación puede materializar el primer ciclo futuro y marcar applied. Applied significa configuración confirmada para el siguiente ciclo, no cobro realizado.
 
-register_legacy_payment es adaptador privado de servidor, no API pública. Mantiene llamadas legacy sin cuota cuando no generan obligaciones sobre un acuerdo moderno. Historial sin recurring_installment_id y service_date fallback siguen funcionando. One-off opcional día/rango no toca deuda/agreement/cuota/agenda; permite superposición y cuenta ingreso.
+El cron de reminders existente ejecuta generación; no se depende exclusivamente de abrir la UI ni se agregó otro scheduler. En paused no se genera/aplica hasta reanudar. Mantener el cron diario operativo.
 
-## Archivo, UI y emails
+## Pausa, baja y archivo
 
-DELETE HTTP ahora archiva transaccionalmente: archived_at + pausa vigente + cancelación de futuras sin cobertura. Un trigger prohíbe DELETE físico de clients, incluso ante cascadas legacy. Payments, agreements, cuotas, email_logs y deuda permanecen.
+Pause es temporal: cancela futuras open sin cobertura, conserva deuda y configuración. Resume explícito elige un vencimiento válido en agenda; no genera ciclos omitidos durante la pausa. Cancel ahora es terminal y conserva deuda/pagos.
 
-Reactivar solo limpia archived_at; NO reanuda suscripción. Se requiere Resume explícito. Archivado no admite nuevos únicos/obligaciones; sí pago explícito de deuda legacy o cuota vencida. El filtro Dados de baja permite consultar/reactivar/pagar deuda.
+Cancel al final del período: acuerdo active con cancel_at_period_end y cancellation_boundary. Boundary conserva también períodos pagados por adelantado. Cancela futuras open sin cobertura posteriores al límite, no genera después y se vuelve terminal cuando la fecha de negocio supera el último día permitido. La baja programada se puede deshacer antes de ejecutarse; no admite fechas arbitrarias. El cron también finaliza una baja programada si luego se pausó.
 
-SubscriptionPanel en ficha: estado, cuotas, crear/pausar/reanudar/cancelar/cambiar/condonar y archive/reactivate. NewPaymentModal elige cuota pendiente, usa importe/moneda/agenda guardados y permite parcial/bonificación; sin acuerdo muestra Crear suscripción y registrar primera cuota.
+Archivar cliente conserva todo, pausa acuerdo, cancela futuros sin cobertura y cancela cambios pendientes. Reactivar cliente no reanuda acuerdo automáticamente. Cliente archivado puede pagar deuda existente, no registrar nuevas obligaciones/pagos únicos. No hard delete.
 
-Reminders upcoming/due conservan servicio compartido: due sigue siendo alias del reminder a cinco días; no se agregó otro cron. Generan cuotas y envían solo para active + open con saldo/fecha objetivo. Paused/terminales/archivados/paid/waived/cancelled quedan fuera. Legacy solo sin acuerdo o con active legacy. Nunca se usa período de únicos.
+## Pagos y calendarios
 
-Dedup por installment-id + due-date, mismo Resend/logging. Se revalida estado antes de enviar; un envío de red ya iniciado no puede retirarse si se pausa simultáneamente. Una futura outbox puede coordinar providers con mayor rigor. Fallos de email no revierten pago. Receipt conserva fecha real, período, moneda histórica, dinero recibido, nota escapada y saldo de cuota; no anuncia cobro futuro de pausadas.
+Dinero/bonificación se distribuyen en orden oldest-first; seleccionar una cuota incluye las pendientes anteriores del mismo acuerdo. Bloqueo, FKs compuestas y constraint diferido impiden sobrecobertura/contextos ajenos y exigen cash/discount totales exactos. Pagos/allocations vinculados son inmutables. Legacy pointer sigue disponible, con fallback solo cuando no existen allocations, sin contar dos veces.
 
-## Migración manual y smoke tests
+Pago único exige fecha (día/rango, o serviceDate confiable de API), concepto y dinero/bonificación válidos. Su deuda queda en payments.debt, no modifica legacy_debt_amount ni deuda/cuotas recurrentes; saldo aparece en comprobante y puntos amarillos. Períodos superpuestos se permiten. No se implementaron recordatorios de deuda de únicos.
 
-Nueva y única: supabase/migrations/20261013_subscription_lifecycle.sql, BEGIN/COMMIT. 10/11/12 intactas. No aplicada a Supabase. No se editó .env.local ni se hizo commit/push/PR/branch/worktree/deploy.
+Calendario: desktop dos meses, mobile uno; negro en vencimientos/selección de fechas, puntos verdes para pagados, naranjas para cuotas pendientes/parciales y amarillos para únicos con deuda. Futuras sin punto. Selección recurrente con borde. Se conserva historial de únicos en ambos modos. Inputs numéricos no cambian con rueda.
 
-1. Respaldar y confirmar proyecto correcto y migraciones 10/11/12 aplicadas.
-2. En SQL Editor revisar duplicados:
+Default del formulario: active/paused/pending → recurring; sin acuerdo/cancelled/failed → one_off. Se determina solo en la primera carga por cliente. Elección manual no cambia al navegar/refresh; otro cliente recalcula default.
 
-```sql
-select owner_id,client_id,count(*) from public.recurring_agreements
-where status in ('pending','active','paused')
-group by owner_id,client_id having count(*)>1;
-```
+## Fechas, generación y límites
 
-Debe dar cero filas. Si hay duplicados, reconciliar manualmente cuál es vigente, conservando historia; la migración falla REVIEW_REQUIRED hasta resolverlos.
-3. New query: pegar íntegra 20261013_subscription_lifecycle.sql y ejecutar una vez. No repetir anteriores.
-4. Verificar archived_at/legacy_debt_amount, recurring_installments, recurring_one_current y permisos. Si PostgREST conserva cache: NOTIFY pgrst, 'reload schema';
-5. Publicar solo después de verificar schema. No se realizó publicación.
+Fechas DATE no se convierten en instantes. Meses conservan día original (31 → 28/29 → 31). Fecha de negocio SQL sigue convención existente UTC; no se agregó timezone de Owner. next_charge_at es cursor operativo, no necesariamente próxima cuota impaga. Snapshot de deuda suma legacy + saldo vencido/actual; anticipos no son deuda.
 
-Smoke manual con cliente propio de prueba:
+Generación: hasta hoy+180 días, máximo 400 iteraciones; selección máximo 100 cuotas. Consultas de calendario usan ventana de hasta 70 días más deuda anterior abierta. No generar futuros ilimitados. Cambio de frecuencia reancla solo desde el primer ciclo nuevo, sin cambiar historia.
 
-- Crear mensual31: cuota, cero ingresos. Pagar60 y luego20+20bonificación: paid, ingreso80. Probar sobrepago: rechazo.
-- Semanal/quincenal impaga: siguiente cuota igualmente generada al consultar/cron; repetir no duplica.
-- Pausar con deuda/futura/parcial: deuda y parcial conservadas, futura sin cobertura cancelada, sin reminders. Resume válido: no ciclos de pausa. Fecha inválida: sin cambios.
-- Cambiar plan con deuda: anterior cancelled, uno nuevo active, deuda anterior intacta; cancelada no admite resume.
-- Dar de baja: historial/deuda/email intactos, suscripción paused. Reactivar: sigue paused. Deuda archivada cobrable; nuevos únicos/suscripciones rechazados.
-- Únicos de mismo día/rangos superpuestos + recurring: agenda/deuda iguales, ingresos correctos, receipt sin vencimiento recurrente.
-- Legacy: historial/service_date intactos, saldo anterior cobrable, adopción explícita sin cuotas retroactivas. Owner ajeno/inactivo y moneda incorrecta rechazados.
-- Verificar embeds reales de PostgREST de historial/cuotas y resultados del cron. PostgreSQL aislado y mocks no sustituyen esta prueba remota.
+## Seguridad, emails y operación
 
-## Archivos y validación
+Todas las APIs usan cookie/session de Owner y ownership explícito, incluyendo Owner activo, cliente, acuerdo y plan. service_role bypassa RLS: la seguridad depende también de filtros/RPC verificados. Tablas plans/plan_prices/subscription_changes tienen RLS enabled, revokes PUBLIC/anon/authenticated y grants service_role. SQL errors se traducen a mensajes seguros; 401 redirige login. Contextos compuestos owner/client/moneda, locks de Owner/client/acuerdo y unique índices protegen carreras. No secretos en browser.
 
-Creados: migración13; src/lib/payments/lifecycle.ts; src/lib/emails/installment-reminders.ts; API clients/[id]/subscription/route.ts; SubscriptionPanel.tsx; tests/subscription-lifecycle*.test.mjs.
-Modificados: types/validation/service; APIs payments/clients/clients[id]; NewPaymentModal/ClientDetailModal/ClientContextMenu/SearchBarAndTabs/dashboardpage; reminders; package; tests autorización/regresión y documento. Reutiliza schedule y RangeCalendar.
+Un pago genera un comprobante/email con N períodos, sin un email por allocation. Cola durable de 15 separa confirmación del ledger del transporte; fallo de Resend no revierte pago. Webhook firmado e idempotente mantiene tracking. Reminders solo cuotas active/open con saldo; legacy compatible; no deuda de únicos. Optimización de dashboard y cola: [reporte](performance-audit.md).
 
-48 tests aprobados; typecheck, build y lint de modificados. SQL10/11/12/13 probado secuencialmente solo en PGlite. Cobertura: unicidad/carreras en cola, cuotas impagas/idempotencia/mes31/bisiesto, parciales/descuento/sobreaplicación, deuda/futuras, lifecycle/archivo, replay externo/legacy/monedas/permisos. PGlite no simula dos conexiones PostgreSQL simultáneas; índice y locks protegen la concurrencia real.
+## Activación y validación
 
-## Despacho de comprobantes (optimización posterior)
+Migraciones 10–17 ya existentes no se editaron. Nuevo SQL exacto: [20261018_plans_and_subscription_changes.sql](../supabase/migrations/20261018_plans_and_subscription_changes.sql). Ejecutar manualmente completo después de backup y confirmar previas aplicadas. Nunca repetir fragmentos ni modificar guards ante error. No se ejecutó SQL remoto, commit/push/deploy, branch/worktree ni cambios de env/dependencias.
 
-Las migraciones 14 y 15 agregan resumen SQL del dashboard e intención/cola durable de comprobantes. La API de pagos puede responder `receipt_status: queued`; envío y recuperación suceden después de confirmar el ledger. El flujo legacy permanece hasta aplicar estas migraciones. Ver [activación y límites](performance-audit.md), especialmente scheduler, leases e idempotencia.
-
-## Milestone 5.3: allocations y edición del plan
-
-Esta revisión reemplaza la regla 5.2 de cancelar y crear un agreement al cambiar de plan: ahora se conserva el mismo id. El pago es una transacción real y puede aplicarse a N cuotas mediante payment_allocations. Los snapshots históricos de cuotas pagadas, vencidas, parciales o con allocations permanecen intactos.
-
-Ver [entrega 5.3 y pasos manuales](milestone-5.3.md) para schema, calendario, algoritmo, compatibilidad, validaciones y pruebas de humo. Las migraciones 13, 14 (dashboard) y 15 (emails) ya existentes no se modifican; la nueva es 20261016_payment_allocations.sql.
+Reporte, archivos, pruebas y smoke tests: [milestone 5.4](milestone-5.4.md). PGlite verifica transacciones/constraints; no simula dos conexiones PostgreSQL reales. UI autenticada y fechas del cron deben comprobarse manualmente antes de publicar.

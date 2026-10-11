@@ -27,6 +27,10 @@ export async function POST(req: NextRequest) {
     if (!ownerId) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     let input: unknown
     try { input = await req.json() } catch { return NextResponse.json({ error: "Datos de pago inválidos" }, { status: 400 }) }
+    if(input && typeof input === "object" && !Array.isArray(input)){
+      const payment = input as Record<string, unknown>
+      if(payment.frequency && !payment.planId && !payment.recurringInstallmentId && !payment.selectedInstallmentIds && !payment.debtPaymentId)throw new PaymentError("Seleccioná un plan del catálogo")
+    }
     const result = await registerManualPayment(ownerId, input, {queueReceipt:true})
     if (result.receiptJobId) {
       const jobId = result.receiptJobId

@@ -16,7 +16,8 @@ const NewPaymentModal = dynamic(() => import("./components/NewPaymentModal"));
 const ClientDetailModal = dynamic(() => import("./components/ClientDetailModal"));
 import type { ClientMenuAction } from "./components/ClientContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
-import Snackbar from "./components/Snackbar";
+import {useToast} from "./components/ToastProvider";
+import {LOADER_DELAY} from "@/lib/ui/toast-state";
 import type { Currency, PaymentProvider, PaymentType } from "@/lib/payments/types";
 
 // === TYPES =======================================================================
@@ -57,12 +58,14 @@ export type Payment = {
   receipt_note?: string | null;
 };
 
-export const PLANS = ["Starter", "Plus", "Premium","Pro","total", "Pago deuda"] as const;
-export type PlanType = (typeof PLANS)[number];
+
 
 // === ROOT DASHBOARD ===============================================================
 
 export default function DashboardPage() {
+  const toast=useToast();
+  const [loaded,setLoaded]=useState(false);
+  const [deleting,setDeleting]=useState(false);
   const [ownerCurrency, setOwnerCurrency] = useState<Currency>("ARS");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +81,6 @@ export default function DashboardPage() {
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null);
   const [detailInitialTab, setDetailInitialTab] = useState<TabId>("data");
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<ClientRow | null>(null);
-  const [snackbar, setSnackbar] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +94,7 @@ export default function DashboardPage() {
 
   // Helpers para el modal de pago
   const openNewPayment = (clientId?: string) => {
+    if(!loaded)return;
     setPaymentClientId(clientId);
     setIsNewPaymentOpen(true);
   };
@@ -107,6 +110,8 @@ export default function DashboardPage() {
     clientsRequest.current?.abort();
     const controller = new AbortController();
     clientsRequest.current = controller;
+    const operation=toast.start("Actualizando clientes...",LOADER_DELAY);
+    controller.signal.addEventListener("abort",()=>operation.close(),{once:true});
     try {
       setLoading(true);
       const res = await fetch(`/api/clients?status=${status}`, { signal: controller.signal });
@@ -114,6 +119,7 @@ export default function DashboardPage() {
       if (res.status === 401) {
         if (typeof window !== "undefined") {
           window.location.href = "/login";
+          operation.close();
         }
         return;
       }
@@ -122,19 +128,19 @@ export default function DashboardPage() {
 
       const currency = res.headers.get("X-Owner-Currency");
       if (currency !== "ARS" && currency !== "AUD") throw new Error("Configuración de moneda no disponible");
-      setOwnerCurrency(currency);
+
       const data: ClientRow[] = await res.json();
       if (controller.signal.aborted) return;
-      setClients(data);
+      setOwnerCurrency(currency);setLoaded(true);setClients(data);operation.close();
       setError(null);
     } catch (e: unknown) {
       if (controller.signal.aborted) return;
       console.error(e);
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError("No se pudieron cargar los clientes.");operation.error("No se pudieron cargar los clientes.");
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      operation.close();if (!controller.signal.aborted) setLoading(false);
     }
-  }, [status]);
+  }, [status,toast]);
 
   useEffect(() => {
     void fetchClients();
@@ -257,13 +263,14 @@ export default function DashboardPage() {
       <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg flex flex-col gap-p20 overflow-hidden grain-surface p-p20 pt-p10">
         {/* HEADER */}
         <TopBar
+          paymentReady={loaded}
           onNewPayment={() => openNewPayment()}
           onNewClient={() => setShowNewClient(true)}
         />
 
         {/* STATS */}
         <section className="flex-shrink-0">
-          <StatsGrid {...stats} />
+          <StatsGrid {...stats} available={loaded} />
         </section>
 
         {/* Tabs + buscador + paginador */}
@@ -273,6 +280,7 @@ export default function DashboardPage() {
             onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
             status={status}
             onStatusChange={(value) => { setStatus(value); setCurrentPage(1); }}
+            available={loaded}
             totalClients={sortedClients.length}
             currentPage={visiblePage}
             itemsPerPage={itemsPerPage}
@@ -280,12 +288,13 @@ export default function DashboardPage() {
             onPageSizeChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
           />
 
+          {error&&<button className="btn-secondary" disabled={loading} onClick={()=>void fetchClients()}>Reintentar carga de clientes</button>}
           {/* TABLA */}
           <section className="flex flex-col flex-1 min-h-0">
             <ClientsTable
               clients={pageClients}
-              loading={loading}
-              error={error}
+              loading={loading&&(!loaded||clients.length===0)}
+              error={loaded?null:error}
               sortKey={sortKey}
               sortDir={sortDir}
               onToggleSort={toggleSort}
@@ -300,8 +309,6 @@ export default function DashboardPage() {
           <NewClientModal
             onClose={() => setShowNewClient(false)}
             onCreated={fetchClients}
-            onSuccess={(msg) => setSnackbar({ message: msg, type: "success" })}
-            onError={(msg) => setSnackbar({ message: msg, type: "error" })}
           />
         )}
 
@@ -314,8 +321,6 @@ export default function DashboardPage() {
               await fetchClients();
               closeNewPayment();
             }}
-            onSuccess={(msg) => setSnackbar({ message: msg, type: "success" })}
-            onError={(msg) => setSnackbar({ message: msg, type: "error" })}
           />
         )}
 
@@ -333,36 +338,30 @@ export default function DashboardPage() {
           open={!!confirmDeleteClient}
           title="Dar de baja cliente"
           message="Se pausarán futuros cobros y vencimientos. Los pagos y deudas existentes se conservarán. ¿Continuar?"
+          busy={deleting}
           confirmLabel="Dar de baja"
-          onCancel={() => setConfirmDeleteClient(null)}
+          onCancel={() => {if(!deleting)setConfirmDeleteClient(null)}}
           onConfirm={async () => {
-            if (!confirmDeleteClient) return;
+            if (!confirmDeleteClient||deleting) return;
+            setDeleting(true);const operation=toast.start("Dando de baja cliente...");
             try {
               const res = await fetch(`/api/clients/${confirmDeleteClient.id}`, {
                 method: "DELETE",
               });
-              if (res.status === 401) { window.location.href = "/login"; return; }
+              if (res.status === 401) { window.location.href = "/login"; operation.close();return; }
               if (!res.ok) throw new Error("Error dando de baja al cliente");
+              operation.success("Cliente dado de baja.");
               await fetchClients();
               setDetailClient(null);
             } catch (err) {
               console.error(err);
-              alert(
-                err instanceof Error ? err.message : "Error eliminando cliente"
-              );
+              operation.error("No se pudo dar de baja al cliente.");
             } finally {
-              setConfirmDeleteClient(null);
+              operation.close();setDeleting(false);setConfirmDeleteClient(null);
             }
           }}
         />
 
-        {snackbar && (
-          <Snackbar
-            message={snackbar.message}
-            type={snackbar.type}
-            onClose={() => setSnackbar(null)}
-          />
-        )}
       </div>
     </div>
   );

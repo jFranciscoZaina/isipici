@@ -26,3 +26,5 @@ export function paymentHistoryMarkers(rows:CalendarPayment[],window:{from:string
  }
  return result;
 }
+
+export function defaultPaymentType(current:{status:string}|null|undefined):"recurring"|"one_off" {return current&&["active","paused","pending"].includes(current.status)?"recurring":"one_off"}

@@ -20,8 +20,9 @@ test("lifecycle service uses authenticated owner and rejects browser authority f
  const service=loader({"server-only":{},"@/lib/auth":{ownedClientColumn:async()=>"owner_id"},"@/lib/supabaseClient":{supabase:db}})("src/lib/payments/lifecycle.ts")
  for(const key of ["ownerId","owner_id","currency","status","provider","installments_enabled"])await assert.rejects(()=>service.lifecycleOperation(owner,client,{action:"create",frequency:"monthly",anchorDate:"2026-11-10",amount:100,[key]:"fake"}))
  assert.equal(calls.length,0)
- await service.lifecycleOperation(owner,client,{action:"create",frequency:"monthly",anchorDate:"2026-11-10",amount:0.29})
- assert.equal(calls[0][1].p_owner,owner);assert.equal(calls[0][1].p_client,client);assert.equal(calls[0][1].p_input.amount,0.29)
+ await assert.rejects(()=>service.lifecycleOperation(owner,client,{action:"create",frequency:"monthly",anchorDate:"2026-11-10",amount:0.29}));
+ await service.lifecycleOperation(owner,client,{action:"create",planId:agreement,anchorDate:"2026-11-10"})
+ assert.equal(calls[0][1].p_owner,owner);assert.equal(calls[0][1].p_client,client);assert.equal(calls[0][1].p_input.planId,agreement);assert.equal(calls[0][1].p_input.amount,undefined)
  await assert.rejects(()=>service.lifecycleOperation(owner,client,{action:"resume",agreementId:agreement,nextDueDate:"2026-02-30"}))
 })
 test("legacy reminders require an active legacy subscription or no agreement",async()=>{

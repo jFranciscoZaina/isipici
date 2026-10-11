@@ -4,12 +4,14 @@ import { useMemo, useState } from "react"
 import type { ClientRow } from "../page"
 
 type Props = {
+  disabled?: boolean
   clients: ClientRow[]
   selectedClientId: string
   onSelectClient: (id: string) => void
 }
 
 export default function ClientSearchSelect({
+  disabled=false,
   clients,
   selectedClientId,
   onSelectClient,
@@ -53,6 +55,7 @@ export default function ClientSearchSelect({
 
       <div className="relative">
         <input
+          disabled={disabled}
           type="text"
           className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
           placeholder="Buscar por nombre o email..."
@@ -76,6 +79,7 @@ export default function ClientSearchSelect({
             ) : (
               filteredClients.map((c) => (
                 <button
+                  disabled={disabled}
                   key={c.id}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}

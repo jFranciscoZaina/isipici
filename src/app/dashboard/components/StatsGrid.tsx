@@ -6,6 +6,7 @@ import type { Currency } from "@/lib/payments/types";
 import { formatPaymentMoney } from "@/lib/payments/format";
 
 type Props = {
+  available?: boolean;
   totalClients: number;
   clientsWithDebt: number;
   monthlyIncome: number;
@@ -19,6 +20,7 @@ type HiddenState = {
 };
 
 export default function StatsGrid({
+  available=true,
   totalClients,
   clientsWithDebt,
   monthlyIncome,
@@ -83,21 +85,21 @@ export default function StatsGrid({
           <div className="grid flex-1 grid-cols-1 gap-p10 md:grid-cols-3">
             <StatCard
               title="Total Clientes"
-              value={totalClients.toString()}
+              value={available?totalClients.toString():"—"}
               isHidden={hidden.totalClients}
               onToggleHidden={() => toggleHidden("totalClients")}
             />
 
             <StatCard
               title="Clientes con deuda"
-              value={clientsWithDebt.toString()}
+              value={available?clientsWithDebt.toString():"—"}
               isHidden={hidden.clientsWithDebt}
               onToggleHidden={() => toggleHidden("clientsWithDebt")}
             />
 
             <StatCard
               title="Ingresos Mensuales"
-              value={formatPaymentMoney(monthlyIncome, currency)}
+              value={available?formatPaymentMoney(monthlyIncome, currency):"—"}
               isHidden={hidden.monthlyIncome}
               onToggleHidden={() => toggleHidden("monthlyIncome")}
             />

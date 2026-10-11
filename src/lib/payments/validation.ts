@@ -40,11 +40,12 @@ export function parsePayment(input: unknown, source: "manual" | "provider" = "ma
   const selectedInstallmentIds = b.selectedInstallmentIds == null ? [] : Array.isArray(b.selectedInstallmentIds) ? b.selectedInstallmentIds.map(id=>paymentId(id,"Cuota")) : (()=>{throw new PaymentError("Cuotas inválidas")})()
   if(selectedInstallmentIds.length>100 || new Set(selectedInstallmentIds).size!==selectedInstallmentIds.length) throw new PaymentError("Selección de cuotas inválida")
   const selected=selectedInstallmentIds.length>0
+  const planId=b.planId?paymentId(b.planId,"Plan"):null
   const concept = text(b.concept, "Concepto", 200)
   const frequency = b.frequency == null ? null : b.frequency
   if (frequency !== null && !(RECURRING_FREQUENCIES as readonly unknown[]).includes(frequency)) throw new PaymentError("Frecuencia inválida")
   const plan = text(b.plan, "Plan", 200) ?? (frequency ? FREQUENCY_LABELS[frequency as RecurringFrequency] : null)
-  if (!concept && !plan && !recurringInstallmentId && !selected) throw new PaymentError("Indicá un concepto o plan")
+  if (!concept && !plan && !planId && !recurringInstallmentId && !selected) throw new PaymentError("Indicá un concepto o plan")
   if(selected && (b.periodFrom||b.periodTo||b.serviceDate||money(b.debt,"Deuda")!==0))throw new PaymentError("Las cuotas existentes usan sus períodos y saldos guardados")
   let periodFrom = date(b.periodFrom, "Fecha desde")
   let periodTo = date(b.periodTo, "Fecha hasta")
@@ -54,7 +55,7 @@ export function parsePayment(input: unknown, source: "manual" | "provider" = "ma
   const anchorDate = date(b.anchorDate, "Primer vencimiento")
   const cycleDate = date(b.cycleDate, "Vencimiento del ciclo") ?? anchorDate
   const debtPaymentId = b.debtPaymentId ? paymentId(b.debtPaymentId, "Pago de la deuda") : null
-  if (paymentType === "one_off" && (b.recurringAgreementId || recurringInstallmentId || selected || frequency || anchorDate || cycleDate || debtPaymentId)) throw new PaymentError("Un pago único no debe incluir recurrencia")
+  if (paymentType === "one_off" && (planId || b.recurringAgreementId || recurringInstallmentId || selected || frequency || anchorDate || cycleDate || debtPaymentId)) throw new PaymentError("Un pago único no debe incluir recurrencia")
   if ((recurringInstallmentId || selected) && (selected && recurringInstallmentId || frequency || anchorDate || cycleDate || debtPaymentId)) throw new PaymentError("Una cuota existente usa la agenda guardada")
   if (debtPaymentId && (frequency || anchorDate || cycleDate || source !== "manual")) throw new PaymentError("Un pago de deuda no debe iniciar otro ciclo")
   let nextPaymentDate = paymentType === "recurring" ? periodTo : null
@@ -65,12 +66,12 @@ export function parsePayment(input: unknown, source: "manual" | "provider" = "ma
       if (periodFrom && (periodFrom !== schedule.periodFrom || periodTo !== schedule.periodTo)) throw new Error("Período incompatible con la frecuencia")
       ;({ periodFrom, periodTo, nextPaymentDate } = schedule)
     } catch { throw new PaymentError("La fecha o el período no corresponden a esta recurrencia") }
-  } else if (anchorDate || cycleDate) throw new PaymentError("Seleccioná una frecuencia")
+  } else if (!planId && (anchorDate || cycleDate)) throw new PaymentError("Seleccioná una frecuencia")
   const providerPaymentId = text(b.providerPaymentId, "ID de pago del proveedor", 200)
   const providerAccountId = b.providerAccountId ? paymentId(b.providerAccountId, "Cuenta") : null
   if (source === "provider" && (provider === "manual" || !providerPaymentId || !providerAccountId)) throw new PaymentError("Pago externo sin identificación confiable")
   return {
-    clientId: paymentId(b.clientId, "Cliente"), provider: provider as PaymentInput["provider"], paymentType: paymentType as PaymentInput["paymentType"], currency: currency as PaymentInput["currency"],
+    planId, clientId: paymentId(b.clientId, "Cliente"), provider: provider as PaymentInput["provider"], paymentType: paymentType as PaymentInput["paymentType"], currency: currency as PaymentInput["currency"],
     amount: money(b.amount, "Importe"), discount: money(b.discount, "Bonificación"),
     debt: paymentType === "one_off" && b.debt == null ? null : money(b.debt, "Deuda"),
     plan, concept, serviceDate: date(b.serviceDate, "Fecha del servicio"), receiptNote: text(b.receiptNote, "Nota del comprobante", 1000), periodFrom, periodTo, nextPaymentDate,

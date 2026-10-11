@@ -13,7 +13,7 @@ export async function sendInstallmentReminders(target:string) {
  const owners=new Map<string,{id:string;name:string|null;default_currency:string}|null>()
  const refreshedClients=new Set<string>()
  for(let offset=0;;offset+=100){
-  const {data:agreements,error}=await supabase.from("recurring_agreements").select("id,owner_id,client_id,status").eq("installments_enabled",true).order("id").range(offset,offset+99)
+  const {data:agreements,error}=await supabase.from("recurring_agreements").select("id,owner_id,client_id,status,cancel_at_period_end").eq("installments_enabled",true).order("id").range(offset,offset+99)
   if(error)throw new Error("No se pudo consultar la agenda")
   for(const a of agreements??[]){
    const column=await ownedClientColumn(a.client_id,a.owner_id);if(!column)throw new Error("Cliente fuera de su cuenta")
@@ -26,6 +26,10 @@ export async function sendInstallmentReminders(target:string) {
    const {data:client,error:clientError}=await supabase.from("clients").select("id,name,email,archived_at").eq("id",a.client_id).eq(column,a.owner_id).single()
    if(clientError)throw new Error("Cliente no disponible")
    const clientKey=a.owner_id+":"+a.client_id
+   if(!client.archived_at&&a.status==="paused"&&a.cancel_at_period_end){
+    const {error}=await supabase.rpc("ensure_recurring_installments_through",{p_owner:a.owner_id,p_client:a.client_id,p_through:target})
+    if(error)throw new Error("No se pudo actualizar la baja programada")
+   }
    if(client.archived_at||a.status!=="active") {
     if(!refreshedClients.has(clientKey)) {
      const {error:snapshotError}=await supabase.rpc("refresh_installment_snapshot",{p_owner:a.owner_id,p_client:a.client_id})

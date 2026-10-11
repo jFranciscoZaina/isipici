@@ -3,6 +3,7 @@
 import Modal from "./Modal";
 
 type Props = {
+  busy?: boolean;
   open: boolean;
   title: string;
   message?: string;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function ConfirmDialog({
+  busy=false,
   open,
   title,
   message,
@@ -26,11 +28,13 @@ export default function ConfirmDialog({
   const secondaryAction = {
     label: cancelLabel,
     onClick: onCancel,
+    disabled:busy,
   };
 
   const primaryAction = {
     label: confirmLabel,
     onClick: onConfirm,
+    disabled:busy,
   };
 
   return (

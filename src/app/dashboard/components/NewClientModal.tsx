@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import {useToast} from "./ToastProvider";
 import Modal from "./Modal";
 import { User } from "react-feather";
 
@@ -14,9 +15,8 @@ type Props = {
 export default function NewClientModal({
   onClose,
   onCreated,
-  onSuccess,
-  onError,
 }: Props) {
+  const toast=useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,6 +34,7 @@ export default function NewClientModal({
   const handleSave = async () => {
     if (!isValid || loading) return;
 
+    const operation=toast.start("Registrando cliente...");
     setLoading(true);
     try {
       const payload = {
@@ -50,20 +51,17 @@ export default function NewClientModal({
         body: JSON.stringify(payload),
       });
 
+      if(res.status===401){window.location.href="/login";operation.close();return;}
       if (!res.ok) throw new Error("Error creando cliente");
 
       onCreated();
-      onSuccess?.(
-        "El cliente se ha creado con exito. Registrale un pago para que quede activo."
-      );
+      operation.success("Cliente registrado.");
       onClose();
     } catch (err) {
       console.error(err);
-      onError?.(
-        err instanceof Error ? err.message : "Error creando cliente"
-      );
+      operation.error("No se pudo registrar el cliente.");
     } finally {
-      setLoading(false);
+      operation.close();setLoading(false);
     }
   };
 
@@ -79,6 +77,7 @@ export default function NewClientModal({
   const secondaryAction = {
     label: "Regresar",
     onClick: onClose,
+    disabled:loading,
   };
 
   const primaryAction = {
@@ -90,7 +89,7 @@ export default function NewClientModal({
   return (
     <Modal
       size="small"
-      onClose={onClose}
+      onClose={()=>{if(!loading)onClose()}}
       header={header}
       secondaryAction={secondaryAction}
       primaryAction={primaryAction}

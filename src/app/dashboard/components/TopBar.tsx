@@ -3,18 +3,22 @@
 import React, { useEffect, useState } from "react";
 import { DollarSign, UserPlus, Menu } from "react-feather";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+const PlansModal = dynamic(() => import("./PlansModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
 
 interface TopBarProps {
+  paymentReady?: boolean;
   onNewPayment: () => void;
   onNewClient: () => void;
 }
 
-export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
+export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }: TopBarProps) {
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showPlans,setShowPlans]=useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = async () => {
@@ -80,7 +84,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
           </span>
           <span className="h-5 w-px bg-bg3" />
           <span className="text-xs text-app-secondary">
-            {ownerName ?? "Owner invitado"}
+            {ownerName ?? "—"}
           </span>
         </div>
 
@@ -88,7 +92,8 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         <div className="flex items-center gap-p40">
           {!isMobile && (
             <div className="flex items-center gap-p20">
-              <button onClick={onNewPayment} className="btn-primary">
+              <button className="btn-secondary" onClick={()=>setShowPlans(true)}>Planes</button>
+              <button disabled={!paymentReady} onClick={onNewPayment} className="btn-primary">
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
                 <span>Registrar pago</span>
               </button>
@@ -131,13 +136,15 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center fs-14 text-app font-semibold">
-              {ownerName ?? "Owner invitado"}
+              {ownerName ?? "—"}
             </div>
 
+            <button className="btn-secondary" onClick={()=>{setShowSheet(false);setShowPlans(true)}}>Planes</button>
             <button
+              disabled={!paymentReady}
               onClick={() => {
                 setShowSheet(false);
-                onNewPayment();
+                if(paymentReady)onNewPayment();
               }}
               className="w-full btn-primary justify-center py-p12 fs-14"
             >
@@ -169,6 +176,7 @@ export default function TopBar({ onNewPayment, onNewClient }: TopBarProps) {
         </div>
       )}
 
+      {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       <ConfirmDialog
         open={confirmLogout}
         title="Cerrar sesión"

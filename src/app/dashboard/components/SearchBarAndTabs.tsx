@@ -6,6 +6,7 @@ import { Search as SearchIcon } from "react-feather";
 export type ClientStatus = "active" | "inactive" | "archived";
 
 export type SearchTabsAndPaginationProps = {
+  available?: boolean;
   searchTerm: string;
   onSearchChange: (value: string) => void;
 
@@ -20,6 +21,7 @@ export type SearchTabsAndPaginationProps = {
 };
 
 export default function SearchTabsAndPagination({
+  available=true,
   searchTerm,
   onSearchChange,
   status,
@@ -144,7 +146,7 @@ export default function SearchTabsAndPagination({
           </select>
 
           <span className="fs-12 font-semibold text-app">
-            {startCount} - {endCount} de {totalClients}
+            {available?startCount:"—"} - {available?endCount:"—"} de {available?totalClients:"—"}
           </span>
 
           <button

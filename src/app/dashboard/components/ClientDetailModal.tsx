@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { ClientRow, Payment } from "../page";
+import {useRemoteData} from "./useRemoteData"
+import {useToast} from "./ToastProvider"
 import Modal from "./Modal";
 import SubscriptionPanel from "./SubscriptionPanel";
 import { formatCalendarDate, formatPaymentPeriod } from "@/lib/payments/schedule";
@@ -20,6 +22,8 @@ type EmailLog = {
   status: string;
 };
 
+const emptyPayments:Payment[]=[];
+const emptyEmails:EmailLog[]=[];
 export type TabId = "data" | "payments" | "emails";
 
 type Props = {
@@ -73,84 +77,16 @@ export default function ClientDetailModal({
     address !== originalAddress ||
     addressNumber !== originalAddressNumber;
 
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
-  const [paymentsLoaded, setPaymentsLoaded] = useState(false);
-
-  const [emails, setEmails] = useState<EmailLog[]>([]);
-  const [loadingEmails, setLoadingEmails] = useState(false);
-
-  const [saving, setSaving] = useState(false);
-
-  // === Load payment history (lazy por tab) ==========================
-  useEffect(() => {
-    if (activeTab !== "payments" || paymentsLoaded) return;
-
-    const loadPayments = async () => {
-      setLoadingPayments(true);
-      try {
-        const res = await fetch(`/api/payments?clientId=${client.id}`);
-        if (res.status === 401) { window.location.href = "/login"; return; }
-
-        if (!res.ok) {
-          const txt = await res.text();
-          console.error("Payments fetch failed:", res.status, txt);
-          throw new Error("Error cargando historial");
-        }
-
-        const data: Payment[] = await res.json();
-        setPayments(data);
-        setPaymentsLoaded(true);
-      } catch (e) {
-        console.error(e);
-        alert("Error cargando historial de pagos");
-      } finally {
-        setLoadingPayments(false);
-      }
-    };
-
-    loadPayments();
-  }, [activeTab, paymentsLoaded, client.id]);
-
-  // Consultar emails solo al abrir su pestaña; se refrescan al volver a ella.
-  useEffect(() => {
-    if (activeTab !== "emails") return;
-    const controller = new AbortController();
-    const loadEmails = async () => {
-      setLoadingEmails(true);
-      try {
-        const res = await fetch(`/api/clients/emails?clientId=${client.id}`, { signal: controller.signal });
-        if (res.status === 401) {
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!res.ok) {
-          const txt = await res.text();
-          console.error("Emails fetch failed:", res.status, txt);
-          throw new Error("Error cargando historial de emails");
-        }
-
-        const data: EmailLog[] = await res.json();
-        if (!controller.signal.aborted) setEmails(data);
-      } catch (e) {
-        if (controller.signal.aborted) return;
-        console.error(e);
-        alert(
-          e instanceof Error ? e.message : "Error cargando historial de emails"
-        );
-      } finally {
-        if (!controller.signal.aborted) setLoadingEmails(false);
-      }
-    };
-
-    void loadEmails();
-    return () => controller.abort();
-  }, [activeTab, client.id]);
+  const toast=useToast();
+  const paymentRemote=useRemoteData<Payment[]>(`/api/payments?clientId=${client.id}`,"Cargando historial de pagos...","No se pudo cargar el historial de pagos.",activeTab==="payments");
+  const emailRemote=useRemoteData<EmailLog[]>(`/api/clients/emails?clientId=${client.id}`,"Cargando emails...","No se pudieron cargar los emails.",activeTab==="emails");
+  const payments=paymentRemote.data??emptyPayments,emails=emailRemote.data??emptyEmails;
+  const [saving,setSaving]=useState(false);
 
   // === Save changes ===================================================
   const handleSave = async () => {
-    if (!isDirty || activeTab !== "data") return;
+    if (!isDirty || activeTab !== "data" || saving) return;
+    const operation=toast.start("Guardando cliente...");
 
     setSaving(true);
     try {
@@ -165,15 +101,17 @@ export default function ClientDetailModal({
         }),
       });
 
-      if (!res.ok) throw new Error("Error guardando cambios");
+      if(res.status===401){window.location.href="/login";operation.close();return;}
+      if (!res.ok) throw new Error("No se pudo actualizar el cliente.");
+      operation.success("Cliente actualizado.");
 
       onChanged();
       onClose();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Error guardando cambios");
+      operation.error("No se pudo actualizar el cliente.");
     } finally {
-      setSaving(false);
+      operation.close();setSaving(false);
     }
   };
 
@@ -282,7 +220,7 @@ export default function ClientDetailModal({
   return (
     <Modal
       size="normal"
-      onClose={onClose}
+      onClose={()=>{if(!saving)onClose()}}
       header={header}
       secondaryAction={secondaryAction}
       primaryAction={primaryAction}
@@ -336,9 +274,10 @@ export default function ClientDetailModal({
       {/* TAB: Historial de Pagos */}
       {activeTab === "payments" && (
         <div className="space-y-p20 fs-14 text-app">
-          {loadingPayments ? (
-            <p className="text-app-secondary">Cargando historial...</p>
-          ) : paymentLines.length === 0 ? (
+          {paymentRemote.error&&<button className="btn-secondary" onClick={()=>void paymentRemote.refresh()}>Reintentar</button>}
+          {!paymentRemote.data ? (
+            <div className="min-h-20" aria-busy={paymentRemote.loading}/>
+          ) : paymentRemote.status === "success" && paymentLines.length === 0 ? (
             <p className="text-app-secondary">
               Este cliente aún no tiene pagos registrados.
             </p>
@@ -355,11 +294,10 @@ export default function ClientDetailModal({
       {/* TAB: Historial de emails */}
       {activeTab === "emails" && (
         <div className="space-y-p20 fs-14 text-app">
-          {loadingEmails ? (
-            <p className="text-app-secondary">
-              Cargando historial de emails...
-            </p>
-          ) : emailLines.length === 0 ? (
+          {emailRemote.error&&<button className="btn-secondary" onClick={()=>void emailRemote.refresh()}>Reintentar</button>}
+          {!emailRemote.data ? (
+            <div className="min-h-20" aria-busy={emailRemote.loading}/>
+          ) : emailRemote.status === "success" && emailLines.length === 0 ? (
             <p className="text-app-secondary">
               Todavía no se enviaron emails a este cliente.
             </p>
