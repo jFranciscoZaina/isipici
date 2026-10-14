@@ -15,7 +15,9 @@ const NewClientModal = dynamic(() => import("./components/NewClientModal"));
 const NewPaymentModal = dynamic(() => import("./components/NewPaymentModal"));
 const ClientDetailModal = dynamic(() => import("./components/ClientDetailModal"));
 import type { ClientMenuAction } from "./components/ClientContextMenu";
-import ConfirmDialog from "./components/ConfirmDialog";
+import InlineLoader from "./components/InlineLoader";
+import {useSubmissionLock} from "./components/useSubmissionLock";
+import {useConfirm} from "./components/ConfirmProvider";
 import {useToast} from "./components/ToastProvider";
 import {LOADER_DELAY} from "@/lib/ui/toast-state";
 import type { Currency, PaymentProvider, PaymentType } from "@/lib/payments/types";
@@ -38,6 +40,8 @@ export type ClientRow = {
   hasPayments: boolean;
   archivedAt?: string | null;
 };
+
+const emptyClients:ClientRow[]=[];
 
 export type Payment = {
   payment_allocations?: {amount_applied:number;discount_applied:number;installment:{period_from:string;period_to:string}|null}[];
@@ -63,13 +67,14 @@ export type Payment = {
 // === ROOT DASHBOARD ===============================================================
 
 export default function DashboardPage() {
-  const toast=useToast();
-  const [loaded,setLoaded]=useState(false);
+  const submission=useSubmissionLock();
+  const toast=useToast(),confirm=useConfirm();
+  const [snapshots,setSnapshots]=useState<Partial<Record<ClientStatus,{clients:ClientRow[];currency:Currency}>>>({});
+  const [settledStatus,setSettledStatus]=useState<ClientStatus|null>(null);
   const [deleting,setDeleting]=useState(false);
-  const [ownerCurrency, setOwnerCurrency] = useState<Currency>("ARS");
-  const [clients, setClients] = useState<ClientRow[]>([]);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [requestError,setRequestError]=useState<{status:ClientStatus;message:string}|null>(null);
 
   const [showNewClient, setShowNewClient] = useState(false);
 
@@ -80,7 +85,7 @@ export default function DashboardPage() {
   // Modal de detalle
   const [detailClient, setDetailClient] = useState<ClientRow | null>(null);
   const [detailInitialTab, setDetailInitialTab] = useState<TabId>("data");
-  const [confirmDeleteClient, setConfirmDeleteClient] = useState<ClientRow | null>(null);
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +96,9 @@ export default function DashboardPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [status, setStatus] = useState<ClientStatus>("active");
+  const snapshot=snapshots[status],loaded=Boolean(snapshot),clients=snapshot?.clients??emptyClients,ownerCurrency=snapshot?.currency??"ARS";
+  const error=requestError?.status===status?requestError.message:null;
+  const waiting=loading||settledStatus!==status;
 
   // Helpers para el modal de pago
   const openNewPayment = (clientId?: string) => {
@@ -131,14 +139,14 @@ export default function DashboardPage() {
 
       const data: ClientRow[] = await res.json();
       if (controller.signal.aborted) return;
-      setOwnerCurrency(currency);setLoaded(true);setClients(data);operation.close();
-      setError(null);
+      setSnapshots(old=>({...old,[status]:{clients:data,currency}}));operation.close();
+      setRequestError(null);
     } catch (e: unknown) {
       if (controller.signal.aborted) return;
       console.error(e);
-      setError("No se pudieron cargar los clientes.");operation.error("No se pudieron cargar los clientes.");
+      setRequestError({status,message:"No se pudieron cargar los clientes."});operation.error("No se pudieron cargar los clientes.");
     } finally {
-      operation.close();if (!controller.signal.aborted) setLoading(false);
+      operation.close();if (!controller.signal.aborted){setSettledStatus(status);setLoading(false);}
     }
   }, [status,toast]);
 
@@ -146,6 +154,16 @@ export default function DashboardPage() {
     void fetchClients();
     return () => clientsRequest.current?.abort();
   }, [fetchClients]);
+
+  const refreshAfterMutation=useCallback(()=>{setSnapshots(old=>old[status]?{[status]:old[status]}:{});return fetchClients()},[status,fetchClients]);
+
+  const handleClientsImported=()=>{
+    setSearchTerm("");
+    setCurrentPage(1);
+    if(status==="inactive"){void refreshAfterMutation();return;}
+    setSnapshots({});
+    setStatus("inactive");
+  };
 
   // === Stats =====================================================================
   const stats = useMemo(
@@ -172,7 +190,11 @@ export default function DashboardPage() {
   // === Acciones del menú contextual ============================================
 
   async function handleDeleteClient(client: ClientRow) {
-    setConfirmDeleteClient(client);
+    if(deleting)return;
+    const accepted=await confirm({title:"Dar de baja cliente",message:"Se pausarán futuros cobros y vencimientos. Los pagos y deudas existentes se conservarán.",confirmLabel:"Dar de baja"});
+    if(!accepted||!submission.acquire())return;
+    setDeleting(true);const operation=toast.start("Dando de baja cliente...");
+    try{const res=await fetch(`/api/clients/${client.id}`,{method:"DELETE"});if(res.status===401){window.location.href="/login";operation.close();return;}if(!res.ok)throw new Error("No se pudo dar de baja al cliente.");operation.success("Cliente dado de baja.");await refreshAfterMutation();setDetailClient(null)}catch{operation.error("No se pudo dar de baja al cliente.")}finally{submission.release();operation.close();setDeleting(false)}
   }
 
   function handleClientMenuAction(action: ClientMenuAction, client: ClientRow) {
@@ -259,10 +281,11 @@ export default function DashboardPage() {
 
   // === RENDER ===================================================================
   return (
-    <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center px-[var(--p0)] py-[var(--p20)] md:p-[var(--p20)]">
-      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg flex flex-col gap-p20 overflow-hidden grain-surface p-p20 pt-p10">
+    <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center px-[var(--p0)] py-[var(--p10)] md:p-[var(--p10)]">
+      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg flex flex-col gap-p20 overflow-hidden grain-surface p-p20 px-p30">
         {/* HEADER */}
         <TopBar
+          onClientsImported={handleClientsImported}
           paymentReady={loaded}
           onNewPayment={() => openNewPayment()}
           onNewClient={() => setShowNewClient(true)}
@@ -289,11 +312,12 @@ export default function DashboardPage() {
           />
 
           {error&&<button className="btn-secondary" disabled={loading} onClick={()=>void fetchClients()}>Reintentar carga de clientes</button>}
+          {waiting&&loaded&&<InlineLoader text="Actualizando clientes..."/>}
           {/* TABLA */}
           <section className="flex flex-col flex-1 min-h-0">
             <ClientsTable
               clients={pageClients}
-              loading={loading&&(!loaded||clients.length===0)}
+              loading={waiting&&(!loaded||clients.length===0)}
               error={loaded?null:error}
               sortKey={sortKey}
               sortDir={sortDir}
@@ -308,7 +332,7 @@ export default function DashboardPage() {
         {showNewClient && (
           <NewClientModal
             onClose={() => setShowNewClient(false)}
-            onCreated={fetchClients}
+            onCreated={refreshAfterMutation}
           />
         )}
 
@@ -318,7 +342,7 @@ export default function DashboardPage() {
             preselectedClientId={paymentClientId}
             onClose={closeNewPayment}
             onCreated={async () => {
-              await fetchClients();
+              await refreshAfterMutation();
               closeNewPayment();
             }}
           />
@@ -329,38 +353,11 @@ export default function DashboardPage() {
             key={detailClient.id}
             client={detailClient}
             onClose={() => setDetailClient(null)}
-            onChanged={fetchClients}
+            onChanged={refreshAfterMutation}
             initialTab={detailInitialTab}
           />
         )}
 
-        <ConfirmDialog
-          open={!!confirmDeleteClient}
-          title="Dar de baja cliente"
-          message="Se pausarán futuros cobros y vencimientos. Los pagos y deudas existentes se conservarán. ¿Continuar?"
-          busy={deleting}
-          confirmLabel="Dar de baja"
-          onCancel={() => {if(!deleting)setConfirmDeleteClient(null)}}
-          onConfirm={async () => {
-            if (!confirmDeleteClient||deleting) return;
-            setDeleting(true);const operation=toast.start("Dando de baja cliente...");
-            try {
-              const res = await fetch(`/api/clients/${confirmDeleteClient.id}`, {
-                method: "DELETE",
-              });
-              if (res.status === 401) { window.location.href = "/login"; operation.close();return; }
-              if (!res.ok) throw new Error("Error dando de baja al cliente");
-              operation.success("Cliente dado de baja.");
-              await fetchClients();
-              setDetailClient(null);
-            } catch (err) {
-              console.error(err);
-              operation.error("No se pudo dar de baja al cliente.");
-            } finally {
-              operation.close();setDeleting(false);setConfirmDeleteClient(null);
-            }
-          }}
-        />
 
       </div>
     </div>

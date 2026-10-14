@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {loader} from './helpers/load-ts.mjs'
@@ -5,7 +6,7 @@ const owner='11111111-1111-4111-8111-111111111111',client='22222222-2222-4222-82
 const response={json:(body,options)=>({body,status:options?.status??200})}
 test('plans API requires session, rejects browser authority and uses authenticated owner',async()=>{
  const calls=[];let signed=false;
- const route=loader({'server-only':{},'next/server':{NextResponse:response},'@/lib/auth':{getSessionOwnerId:async()=>signed?owner:null},'@/lib/supabaseClient':{supabase:{rpc:async(name,args)=>{calls.push([name,args]);return args.p_input.planId?{error:{message:'PLAN_UNAVAILABLE'}}:{data:{ok:true,planId:plan}}}}}})('src/app/api/plans/route.ts');
+ const route=loader({...auditMocks,'server-only':{},'next/server':{NextResponse:response},'@/lib/auth':{getSessionOwnerId:async()=>signed?owner:null},'@/lib/supabaseClient':{supabase:{rpc:async(name,args)=>{calls.push([name,args]);return args.p_input.planId?{error:{message:'PLAN_UNAVAILABLE'}}:{data:{ok:true,planId:plan}}}}}})('src/app/api/plans/route.ts');
  const req=input=>({json:async()=>input});assert.equal((await route.POST(req({action:'create'}))).status,401);assert.equal(calls.length,0);signed=true;
  const base={action:'create',name:'Monthly',frequency:'monthly',amount:50,effectiveFrom:undefined};
  for(const extra of [{owner_id:'foreign'},{currency:'AUD'},{amount:-1},{frequency:'daily'}])assert.equal((await route.POST(req({...base,...extra}))).status,400);
@@ -13,7 +14,7 @@ test('plans API requires session, rejects browser authority and uses authenticat
  const foreign=await route.POST(req({action:'archive',planId:plan}));assert.equal(foreign.status,409);assert.equal(foreign.body.error,'Plan no disponible');
 });
 test('plan subscription input ignores browser pricing and requires a catalog plan',async()=>{
- const calls=[];const service=loader({'server-only':{},'@/lib/auth':{ownedClientColumn:async()=> 'owner_id'},'@/lib/supabaseClient':{supabase:{rpc:async(name,args)=>{calls.push(args);return {data:{ok:true}}}}}})('src/lib/payments/lifecycle.ts');
+ const calls=[];const service=loader({...auditMocks,'server-only':{},'@/lib/auth':{ownedClientColumn:async()=> 'owner_id'},'@/lib/supabaseClient':{supabase:{rpc:async(name,args)=>{calls.push(args);return {data:{ok:true}}}}}})('src/lib/payments/lifecycle.ts');
  await service.lifecycleOperation(owner,client,{action:'create',planId:plan,anchorDate:'2026-11-01',amount:1,frequency:'weekly'});
  assert.equal(calls[0].p_input.planId,plan);assert.equal(calls[0].p_input.amount,undefined);assert.equal(calls[0].p_input.frequency,undefined);
  await assert.rejects(()=>service.lifecycleOperation(owner,client,{action:'create',amount:1,frequency:'monthly',anchorDate:'2026-11-01'}));
@@ -24,7 +25,7 @@ function modalHarness(current){
  const react={default:{createElement},useState:init=>{const n=index++;if(!(n in hooks))hooks[n]=typeof init==='function'?init():init;return [hooks[n],next=>{hooks[n]=typeof next==='function'?next(hooks[n]):next}]},useRef:init=>{const n=index++;return hooks[n]??(hooks[n]={current:init})},useCallback:(fn,deps)=>{const n=index++,old=hooks[n];if(old&&deps.every((d,i)=>d===old.deps[i]))return old.fn;hooks[n]={deps,fn};return fn},useEffect:(fn,deps)=>{const n=index++,old=hooks[n];if(!old||deps.some((d,i)=>d!==old.deps[i])){old?.cleanup?.();hooks[n]={deps};effects.push(()=>{hooks[n].cleanup=fn()})}}};
  const state=()=>({current,agreements:current?[current]:[],installments:[],legacyDebt:0,legacyDebtPaymentId:null,archivedAt:null});
  const toast={start:()=>({close(){},success(){},error(){}})};
- const Component=loader({react,'./ToastProvider':{useToast:()=>toast},'./RangeCalendar':{default:'Calendar'},'./PlanFields':{default:'PlanFields'},'./ClientSearchSelect':{default:'ClientPicker'},'./Modal':{default:'Modal'}},{},{AbortController,DOMException,window:{location:{}},fetch:async url=>({status:200,ok:true,json:async()=>url.includes('/subscription')?state():[]})})('src/app/dashboard/components/NewPaymentModal.tsx').default;
+ const Component=loader({...auditMocks,react,'./ToastProvider':{useToast:()=>toast},'./InlineLoader':{default:'InlineLoader'},'./RangeCalendar':{default:'Calendar'},'./PlanFields':{default:'PlanFields'},'./ClientSearchSelect':{default:'ClientPicker'},'./Modal':{default:'Modal'}},{},{AbortController,DOMException,window:{location:{}},fetch:async url=>({status:200,ok:true,json:async()=>url.includes('/subscription')?state():[]})})('src/app/dashboard/components/NewPaymentModal.tsx').default;
  const props={clients:[{id:client,name:'Client',currency:'ARS'},{id:plan,name:'Other',currency:'ARS'}],preselectedClientId:client,onClose:()=>{},onCreated:()=>{}};
  const render=()=>{index=0;effects.length=0;const tree=Component(props);effects.forEach(fn=>fn());return tree};
  const flush=async()=>{render();await new Promise(resolve=>setImmediate(resolve));return render()};

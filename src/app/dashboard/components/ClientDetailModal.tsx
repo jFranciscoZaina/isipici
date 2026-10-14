@@ -1,4 +1,6 @@
-"use client";
+"use client"
+import {useSubmissionLock} from "./useSubmissionLock"
+import InlineLoader from "./InlineLoader";
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { ClientRow, Payment } from "../page";
@@ -77,7 +79,8 @@ export default function ClientDetailModal({
     address !== originalAddress ||
     addressNumber !== originalAddressNumber;
 
-  const toast=useToast();
+  const submission=useSubmissionLock()
+ const toast=useToast();
   const paymentRemote=useRemoteData<Payment[]>(`/api/payments?clientId=${client.id}`,"Cargando historial de pagos...","No se pudo cargar el historial de pagos.",activeTab==="payments");
   const emailRemote=useRemoteData<EmailLog[]>(`/api/clients/emails?clientId=${client.id}`,"Cargando emails...","No se pudieron cargar los emails.",activeTab==="emails");
   const payments=paymentRemote.data??emptyPayments,emails=emailRemote.data??emptyEmails;
@@ -85,7 +88,7 @@ export default function ClientDetailModal({
 
   // === Save changes ===================================================
   const handleSave = async () => {
-    if (!isDirty || activeTab !== "data" || saving) return;
+    if (!isDirty || activeTab !== "data" || saving) return;if(!submission.acquire())return;
     const operation=toast.start("Guardando cliente...");
 
     setSaving(true);
@@ -111,7 +114,7 @@ export default function ClientDetailModal({
       console.error(err);
       operation.error("No se pudo actualizar el cliente.");
     } finally {
-      operation.close();setSaving(false);
+      submission.release();operation.close();setSaving(false);
     }
   };
 
@@ -274,9 +277,10 @@ export default function ClientDetailModal({
       {/* TAB: Historial de Pagos */}
       {activeTab === "payments" && (
         <div className="space-y-p20 fs-14 text-app">
+          {paymentRemote.loading&&paymentRemote.data&&<InlineLoader text="Actualizando historial..."/>}
           {paymentRemote.error&&<button className="btn-secondary" onClick={()=>void paymentRemote.refresh()}>Reintentar</button>}
-          {!paymentRemote.data ? (
-            <div className="min-h-20" aria-busy={paymentRemote.loading}/>
+          {!paymentRemote.data ? (paymentRemote.loading?
+            <InlineLoader text="Cargando historial..."/>:null
           ) : paymentRemote.status === "success" && paymentLines.length === 0 ? (
             <p className="text-app-secondary">
               Este cliente aún no tiene pagos registrados.
@@ -294,9 +298,10 @@ export default function ClientDetailModal({
       {/* TAB: Historial de emails */}
       {activeTab === "emails" && (
         <div className="space-y-p20 fs-14 text-app">
+          {emailRemote.loading&&emailRemote.data&&<InlineLoader text="Actualizando emails..."/>}
           {emailRemote.error&&<button className="btn-secondary" onClick={()=>void emailRemote.refresh()}>Reintentar</button>}
-          {!emailRemote.data ? (
-            <div className="min-h-20" aria-busy={emailRemote.loading}/>
+          {!emailRemote.data ? (emailRemote.loading?
+            <InlineLoader text="Cargando emails..."/>:null
           ) : emailRemote.status === "success" && emailLines.length === 0 ? (
             <p className="text-app-secondary">
               Todavía no se enviaron emails a este cliente.

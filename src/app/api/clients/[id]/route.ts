@@ -1,3 +1,4 @@
+import {withRequestAudit} from "@/lib/audit-request"
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionOwnerId, ownedClientColumn } from "@/lib/auth"
 import { lifecycleOperation } from "@/lib/payments/lifecycle"
@@ -5,7 +6,7 @@ import { PaymentError } from "@/lib/payments/validation"
 import { supabase } from "@/lib/supabaseClient"
 
 type Context = { params: Promise<{ id: string }> }
-export async function PATCH(req: NextRequest, ctx: Context) {
+async function performPATCH(req: NextRequest, ctx: Context) {
   const ownerId = await getSessionOwnerId(req)
   if (!ownerId) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   const { id } = await ctx.params
@@ -19,7 +20,7 @@ export async function PATCH(req: NextRequest, ctx: Context) {
   return NextResponse.json(data)
 }
 
-export async function DELETE(req: NextRequest, ctx: Context) {
+async function performDELETE(req: NextRequest, ctx: Context) {
   const ownerId = await getSessionOwnerId(req)
   if (!ownerId) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   const { id } = await ctx.params
@@ -28,3 +29,7 @@ export async function DELETE(req: NextRequest, ctx: Context) {
   try { return NextResponse.json(await lifecycleOperation(ownerId,id,{action:"archive"})) }
   catch (e) { return NextResponse.json({error:e instanceof PaymentError?e.message:"No se pudo dar de baja"},{status:e instanceof PaymentError?e.status:503}) }
 }
+
+export async function PATCH(req:NextRequest,ctx:Context){return withRequestAudit(req,()=>performPATCH(req,ctx))}
+
+export async function DELETE(req:NextRequest,ctx:Context){return withRequestAudit(req,()=>performDELETE(req,ctx))}

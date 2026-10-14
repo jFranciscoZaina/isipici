@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import {test} from "node:test"
 import assert from "node:assert/strict"
 import {loader} from "./helpers/load-ts.mjs"
@@ -18,7 +19,7 @@ test("client summary uses owner currency and recurring debt even when the latest
  {id:"recurring",amount:100,currency:"AUD",payment_type:"recurring",debt:20,plan:"Monthly",period_to:"2026-11-15",created_at:"2026-09-01T12:00:00Z"},
  {id:"unique",amount:50,currency:"AUD",payment_type:"one_off",debt:0,plan:"Dinner",period_from:"2026-11-07",period_to:"2026-11-09",created_at:now}]}]
  const db={from:table=>query(table==="owners"?{default_currency:"AUD"}:data,calls,table)}
- const route=loader({"next/server":{NextResponse:response,after:()=>{}},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:{...db,rpc:async()=>({error:{code:"PGRST202"}})}}})("src/app/api/clients/route.ts")
+ const route=loader({...auditMocks,"next/server":{NextResponse:response,after:()=>{}},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:{...db,rpc:async()=>({error:{code:"PGRST202"}})}}})("src/app/api/clients/route.ts")
  const result=await route.GET({nextUrl:new URL("https://example.test/api/clients")})
  assert.equal(result.status,200);assert.equal(result.headers["X-Owner-Currency"],"AUD")
  assert.equal(result.body[0].currency,"AUD");assert.equal(result.body[0].currentDebt,20);assert.equal(result.body[0].nextDue,"2026-11-15")

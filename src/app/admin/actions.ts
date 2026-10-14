@@ -1,10 +1,12 @@
 "use server"
 
+import {withAuditActor} from "@/lib/audit-context"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { ADMIN_COOKIE, requireAdmin } from "@/lib/admin-auth"
+import {updateBusinessContact,updateLegacyAccess} from "@/lib/admin-business"
 import { createOwner } from "@/lib/owner-registration"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -35,16 +37,16 @@ export async function logoutAdmin() {
   redirect("/admin/login")
 }
 
-export async function addOwner(form: FormData) {
+async function executeAddOwner(form: FormData) {
   await requireAdmin()
   const currency = form.get("currency")
   if (currency !== "ARS" && currency !== "AUD") redirect("/admin?error=Seleccioná%20una%20moneda")
-  const result = await createOwner({ name: form.get("name"), email: form.get("email"), password: form.get("password"), pin: form.get("pin") }, { defaultCurrency: currency })
+  const result = await createOwner({name:form.get("name"),contactEmail:form.get("contactEmail"),email:form.get("email"),password:form.get("password"),legacyLoginEnabled:form.get("legacyEnabled")==="on",country:form.get("country"),businessType:form.get("businessType"),timezone:form.get("timezone")}, { defaultCurrency: currency })
   if ("error" in result) redirect(`/admin?error=${encodeURIComponent(result.error)}`)
   redirect(`/admin/owners/${result.data.id}`)
 }
 
-export async function setOwnerStatus(form: FormData) {
+async function executeSetOwnerStatus(form: FormData) {
   await requireAdmin()
   const id = form.get("id")
   const active = form.get("active")
@@ -54,7 +56,7 @@ export async function setOwnerStatus(form: FormData) {
   redirect(`/admin/owners/${id}`)
 }
 
-export async function setOwnerCurrency(form: FormData) {
+async function executeSetOwnerCurrency(form: FormData) {
   await requireAdmin()
   const id = form.get("id")
   const currency = form.get("currency")
@@ -63,3 +65,26 @@ export async function setOwnerCurrency(form: FormData) {
   if (error || !data) redirect("/admin?error=No%20se%20puede%20cambiar%20la%20moneda%20con%20pagos,%20deuda%20o%20configuración%20de%20proveedores")
   redirect(`/admin/owners/${id}`)
 }
+
+async function executeSetBusinessContact(form:FormData){
+ await requireAdmin()
+ const id=form.get("id"),error=await updateBusinessContact(id,form.get("contactEmail"),form.get("timezone"),form.get("country")??undefined,form.get("businessType")??undefined,form.get("name")??undefined)
+ if(error)redirect("/admin?error="+encodeURIComponent(error))
+ redirect("/admin/owners/"+id)
+}
+async function executeSetLegacyAccess(form:FormData){
+ await requireAdmin()
+ const id=form.get("id"),error=await updateLegacyAccess(id,form.get("legacyEnabled")==="on",form.get("email"),form.get("password"))
+ if(error)redirect("/admin?error="+encodeURIComponent(error))
+ redirect("/admin/owners/"+id)
+}
+
+export async function addOwner(form:FormData){return withAuditActor({kind:"admin"},()=>executeAddOwner(form))}
+
+export async function setOwnerStatus(form:FormData){return withAuditActor({kind:"admin"},()=>executeSetOwnerStatus(form))}
+
+export async function setOwnerCurrency(form:FormData){return withAuditActor({kind:"admin"},()=>executeSetOwnerCurrency(form))}
+
+export async function setBusinessContact(form:FormData){return withAuditActor({kind:"admin"},()=>executeSetBusinessContact(form))}
+
+export async function setLegacyAccess(form:FormData){return withAuditActor({kind:"admin"},()=>executeSetLegacyAccess(form))}

@@ -1,18 +1,17 @@
 import React from "react"
 import { ToastProvider } from "./components/ToastProvider"
-import PinLockGate from "./components/PinLockGate"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { NextRequest } from "next/server"
-import { getSessionOwnerId } from "@/lib/auth"
+import { getAccessContext } from "@/lib/auth"
+import { verifiedModernUser } from "@/lib/supabase-auth"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const token = (await cookies()).get("session")?.value
-  const req = new NextRequest("http://localhost/dashboard", { headers: { cookie: `session=${token ?? ""}` } })
-  if (!await getSessionOwnerId(req)) redirect("/login")
-  return <ToastProvider><PinLockGate>{children}</PinLockGate></ToastProvider>
+  if (!await getAccessContext()) {
+    if(await verifiedModernUser())redirect("/api/auth/continue")
+    redirect("/login")
+  }
+  return <ToastProvider>{children}</ToastProvider>
 }

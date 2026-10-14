@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { loader } from "./helpers/load-ts.mjs"
@@ -21,7 +22,7 @@ test("subscription reads overlap only after ownership and agenda generation; sna
    },
    async rpc(name) { calls.push(name); return { error: null } },
   }
-  const service = loader({ "server-only": {}, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } }, "@/lib/auth": {
+  const service = loader({...auditMocks, "server-only": {}, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } }, "@/lib/auth": {
    ownedClientColumn: async () => { authorized = true; return "owner_id" },
   } })("src/lib/payments/lifecycle.ts")
   const result = service.getSubscriptionState(owner, client)
@@ -59,7 +60,7 @@ test("dashboard summaries preserve unordered histories, owner currency and due d
   } })
   return q
  } }
- const route = loader({ "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } }, "@/lib/auth": { getSessionOwnerId: async () => owner }, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } } })("src/app/api/clients/route.ts")
+ const route = loader({...auditMocks, "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } }, "@/lib/auth": { getSessionOwnerId: async () => owner }, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } } })("src/app/api/clients/route.ts")
  const result = await route.GET({ nextUrl: new URL("https://test/api/clients") })
  assert.equal(result.status, 200)
  assert.equal(result.body[0].currentPlan, "Current")
@@ -84,7 +85,7 @@ test("reminder batch reuses owner reads and refreshes historical agreements once
   },
   async rpc(name) { snapshots.push(name); return { error: null } },
  }
- const service = loader({ "server-only": {}, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } }, "@/lib/auth": { ownedClientColumn: async () => "owner_id" }, "./service": {} })("src/lib/emails/installment-reminders.ts")
+ const service = loader({...auditMocks, "server-only": {}, "@/lib/supabaseClient": { supabase: { ...db, rpc: db.rpc ?? (async()=>({error:{code:"PGRST202"}})) } }, "@/lib/auth": { ownedClientColumn: async () => "owner_id" }, "./service": {} })("src/lib/emails/installment-reminders.ts")
  assert.equal((await service.sendInstallmentReminders("2026-11-10")).length, 0)
  assert.equal(ownerReads.length, 1)
  assert.deepEqual(snapshots, ["refresh_installment_snapshot"])

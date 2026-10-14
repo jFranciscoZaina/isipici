@@ -1,4 +1,5 @@
 "use client"
+import InlineLoader from "./InlineLoader"
 import {useEffect} from "react"
 import {useRemoteData} from "./useRemoteData"
 import type {PlanSummary} from "@/lib/payments/plan-types"
@@ -13,6 +14,7 @@ export default function PlanFields({planId,onPlanId,date,onFrequency,onName,onPr
  useEffect(()=>{if(planId)onPrice?.(price?Number(price.amount):null)},[planId,price,onPrice])
  const choose=(id:string)=>{onPlanId(id);const plan=plans.find(p=>p.id===id);if(plan){onFrequency(plan.frequency);onName(plan.name)}}
  return <div className="space-y-p10">
+  {remote.loading&&<InlineLoader text="Cargando planes..."/>}
   <label className="fs-12 text-app-secondary">Plan<select className={inputClass} disabled={remote.loading||remote.status!=="success"} value={planId} onChange={e=>choose(e.target.value)}><option value="">Seleccioná un plan</option>{plans.map(p=><option key={p.id} value={p.id}>{p.name} · {FREQUENCY_LABELS[p.frequency]}</option>)}</select></label>
   {error&&<p role="alert" className="fs-12 text-app-secondary">{error}</p>}
   {planId&&selected&&<p className="fs-14">{selected?.name??"Plan actual"} · {selected?FREQUENCY_LABELS[selected.frequency]:""} · {price?formatPaymentMoney(price.amount,price.currency):"Elegí una fecha con precio vigente"}</p>}

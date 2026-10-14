@@ -1,3 +1,4 @@
+import {withRequestAudit} from "@/lib/audit-request"
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { getSessionOwnerId } from "@/lib/auth"
@@ -231,7 +232,7 @@ export async function GET(req: NextRequest) {
 // -----------------------------------------------------------------------------
 // POST - Crear cliente para el owner logueado
 // -----------------------------------------------------------------------------
-export async function POST(req: NextRequest) {
+async function performPOST(req: NextRequest) {
   try {
     const ownerId = await getSessionOwnerId(req)
 
@@ -280,3 +281,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 })
   }
 }
+
+export async function POST(req:NextRequest){return withRequestAudit(req,()=>performPOST(req))}

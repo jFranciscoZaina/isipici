@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
@@ -10,6 +11,7 @@ const { PaymentError } = loader()("src/lib/payments/validation.ts")
 const secret = "test-owner-secret-with-at-least-32-characters"
 const adminSecret = "test-admin-secret-with-at-least-32-characters"
 function load(path, mocks, env = {}) {
+  mocks={...auditMocks,...mocks}
   const exports = {}
   const source = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText
   vm.runInNewContext(source, { exports, require: name => {
@@ -34,10 +36,10 @@ test("owner sessions reject absent, invalid, disabled and database errors", asyn
     [undefined, {}, null], ["invalid", {}, null],
     [token, { data: { id: "owner-a", is_active: false } }, null],
     [token, { error: { code: "connection" } }, null],
-    [token, { data: { id: "owner-a", is_active: true } }, "owner-a"],
+    [token, { data: { id: "owner-a", is_active: true,legacy_login_enabled:true,legacy_session_version:0 } }, "owner-a"],
   ]) {
     const db = database(result)
-    const auth = load("src/lib/auth.ts", { "server-only": {}, jsonwebtoken: jwt, "@/lib/supabaseClient": { supabase: db } }, { JWT_SECRET: secret })
+    const auth = load("src/lib/auth.ts", { "server-only": {}, jsonwebtoken: jwt, "@/lib/supabaseClient": { supabase: db }, "next/headers": {}, "@/lib/supabase-auth": {hasDualSession:()=>false,verifiedModernUser:async()=>null}, "@/lib/modern-workspaces": {} }, { JWT_SECRET: secret })
     assert.equal(await auth.getSessionOwnerId(request(tokenValue)), expected)
   }
 })
@@ -87,9 +89,9 @@ test("admin mutations reauthorize direct calls", async () => {
   const actions = load("src/app/admin/actions.ts", {
     "next/headers": {}, "next/navigation": {}, bcryptjs: {}, jsonwebtoken: jwt,
     "@/lib/admin-auth": { requireAdmin: async () => { throw new Error("unauthorized") } },
-    "@/lib/owner-registration": {}, "@/lib/supabaseClient": {},
+    "@/lib/admin-business":{},"@/lib/owner-registration": {}, "@/lib/supabaseClient": {},
   })
-  for (const method of ["addOwner", "setOwnerStatus", "setOwnerCurrency", "logoutAdmin"]) await assert.rejects(actions[method](new FormData()), /unauthorized/)
+  for (const method of ["addOwner", "setOwnerStatus", "setOwnerCurrency", "logoutAdmin","setBusinessContact","setLegacyAccess"]) await assert.rejects(actions[method](new FormData()), /unauthorized/)
 })
 
 test("authorized client mutations scope both id and owner, including legacy column", async () => {
@@ -121,7 +123,7 @@ test("internal login fails closed when persistent throttle denies or is unavaila
     const actions = load("src/app/admin/actions.ts", {
       "next/headers": {}, "next/navigation": { redirect: path => { throw new Error(path) } },
       bcryptjs: { compare: async () => { compared = true; return true } }, jsonwebtoken: jwt,
-      "@/lib/admin-auth": {}, "@/lib/owner-registration": {},
+      "@/lib/admin-auth": {}, "@/lib/admin-business":{}, "@/lib/owner-registration": {},
       "@/lib/supabaseClient": { supabase: { rpc: async () => result } },
     }, { ADMIN_EMAIL: "operator@example.test", ADMIN_PASSWORD_HASH: "$2a$12$" + "a".repeat(53), ADMIN_JWT_SECRET: adminSecret, JWT_SECRET: secret })
     const form = new FormData()
@@ -142,7 +144,7 @@ test("cron endpoints fail closed without configured bearer secret", async () => 
   }
 })
 
-test("registration validates credentials, hashes password and PIN, and selects only public fields", async () => {
+test("registration validates legacy credentials, hashes password without PIN, and selects public fields", async () => {
   const calls = []
   const db = { from: () => {
     const query = {
@@ -154,8 +156,8 @@ test("registration validates credentials, hashes password and PIN, and selects o
     }
     return query
   } }
-  const registration = load("src/lib/owner-registration.ts", { "server-only": {}, "@/lib/supabaseClient": { supabase: db }, bcryptjs: { hash: async value => `hashed:${value}` } })
-  for (const input of [null, {}, { name: "Name", email: "invalid", password: "short" }, { name: "Name", email: "owner@example.test", password: "a-long-password", pin: "bad" }]) {
+  const registration = load("src/lib/owner-registration.ts", {"./business-validation":loader()("src/lib/business-validation.ts"), "server-only": {}, "@/lib/supabaseClient": { supabase: db }, bcryptjs: { hash: async value => `hashed:${value}` } })
+  for (const input of [null, {}, { name: "Name", email: "invalid", password: "short" }, { name: "Name", email: "owner@example.test", password: "a-long-password", legacyLoginEnabled:"yes" }]) {
     assert.equal((await registration.createOwner(input)).status, 400)
   }
   assert.equal(calls.length, 0)
@@ -164,9 +166,9 @@ test("registration validates credentials, hashes password and PIN, and selects o
   const payload = calls.find(([operation]) => operation === "insert")[1]
   assert.equal(payload.default_currency, "ARS")
   assert.equal(payload.password_hash, "hashed:a-long-password")
-  assert.equal(payload.pin_hash, "hashed:1234")
+  assert.equal(payload.pin_hash, undefined);assert.equal(payload.contact_email,"owner@example.test");assert.equal(payload.legacy_login_enabled,true)
   assert.equal("is_active" in payload, false)
-  assert.ok(calls.some(([operation, fields]) => operation === "select" && fields === "id, name, email"))
+  assert.ok(calls.some(([operation, fields]) => operation === "select" && fields === "id, name, email, contact_email, legacy_login_enabled"))
   calls.length = 0
   await registration.createOwner({ name: "Business", email: "owner@example.test", password: "a-long-password" }, { defaultCurrency: "AUD" })
   assert.equal(calls.find(([operation]) => operation === "insert")[1].default_currency, "AUD")

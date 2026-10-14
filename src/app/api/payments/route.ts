@@ -1,3 +1,4 @@
+import {withRequestAudit} from "@/lib/audit-request"
 import { NextRequest, NextResponse, after } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
 import { getSessionOwnerId, ownedClientColumn } from "@/lib/auth"
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data ?? [])
   } catch { return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 503 }) }
 }
-export async function POST(req: NextRequest) {
+async function performPOST(req: NextRequest) {
   const started = Date.now()
   try {
     const ownerId = await getSessionOwnerId(req)
@@ -46,3 +47,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No se pudo registrar el pago" }, { status: 503 })
   }
 }
+
+export async function POST(req:NextRequest){return withRequestAudit(req,()=>performPOST(req))}

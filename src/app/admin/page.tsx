@@ -1,28 +1,25 @@
 import Link from "next/link"
-import { requireAdmin } from "@/lib/admin-auth"
-import { supabase } from "@/lib/supabaseClient"
-import { ownerSummary } from "@/lib/admin-owners"
-import { addOwner, logoutAdmin } from "./actions"
-
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; error?: string }> }) {
-  await requireAdmin()
-  const params = await searchParams
-  const q = (params.q ?? "").trim().slice(0, 100)
-  const page = Math.max(1, Math.min(100000, Math.floor(Number(params.page) || 1)))
-  let query = supabase.from("owners").select("id", { count: "exact" }).order("created_at", { ascending: false }).order("id")
-  if (q) {
-    const term = q.replace(/[^\p{L}\p{N}@ ._-]/gu, "").replaceAll("_", "\\_")
-    query = query.or(`name.ilike.%${term}%,email.ilike.%${term}%`)
-  }
-  const { data, error, count } = await query.range((page - 1) * 20, page * 20 - 1)
-  if (error) throw new Error("No se pudieron consultar las cuentas")
-  const owners = await Promise.all((data ?? []).map(row => ownerSummary(row.id)))
-  return <>
-    <header className="flex flex-wrap justify-between gap-4"><h1 className="text-[length:var(--fs-28)]">ISIPICI · Cuentas</h1><form action={logoutAdmin}><button className="btn-primary">Salir</button></form></header>
-    {params.error && <p role="alert">{params.error}</p>}
-    <form className="flex gap-4"><label>Buscar por nombre o email<input name="q" defaultValue={q} className="block border p-p10" /></label><button className="btn-primary">Buscar</button></form>
-    <div className="overflow-x-auto"><table className="w-full text-left"><thead><tr>{["Nombre", "Email", "Alta", "Estado", "Clientes", "País", "Actividad"].map(label => <th className="p-p10" key={label}>{label}</th>)}</tr></thead><tbody>{owners.map(owner => owner && <tr key={owner.id}><td className="p-p10"><Link className="underline" href={`/admin/owners/${owner.id}`}>{owner.name}</Link></td><td className="p-p10">{owner.email}</td><td className="p-p10">{owner.created_at ? new Date(owner.created_at).toLocaleDateString("es-AR", { timeZone: "UTC" }) : "—"}</td><td className="p-p10">{owner.is_active ? "Activa" : "Deshabilitada"}</td><td className="p-p10">{owner.clientCount}</td><td className="p-p10">{owner.country ?? "—"}</td><td className="p-p10">{owner.business_type ?? "—"}</td></tr>)}</tbody></table>{!owners.length && <p>No hay cuentas para esta búsqueda.</p>}</div>
-    <nav className="flex gap-4" aria-label="Paginación">{page > 1 && <Link href={`/admin?q=${encodeURIComponent(q)}&page=${page - 1}`}>Anterior</Link>}<span>Página {page} · {count ?? 0} cuentas</span>{page * 20 < (count ?? 0) && <Link href={`/admin?q=${encodeURIComponent(q)}&page=${page + 1}`}>Siguiente</Link>}</nav>
-    <section className="p-p20 bg-[var(--n)] rounded-[var(--br20)] space-y-6"><h2 className="text-[length:var(--fs-20)]">Crear cuenta</h2><p>Entregá la contraseña inicial mediante un canal seguro.</p><form action={addOwner} className="space-y-6"><label className="block">Nombre<input name="name" required maxLength={200} className="block border p-p10" /></label><label className="block">Email<input name="email" type="email" required maxLength={254} className="block border p-p10" /></label><label className="block">Contraseña inicial<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={72} required className="block border p-p10" /></label><label className="block">PIN de acceso al dashboard<input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" minLength={4} maxLength={4} required className="block border p-p10" /></label><label className="block">Moneda<select name="currency" required defaultValue="ARS" className="block border p-p10"><option value="ARS">ARS — Peso argentino</option><option value="AUD">AUD — Dólar australiano</option></select></label><button className="btn-primary">Crear cuenta</button></form></section>
-  </>
+import {requireAdmin} from "@/lib/admin-auth"
+import {platformSummary,businessPage,AnalyticsError,type PlatformSummary,type BusinessPage} from "@/lib/admin-owners"
+import BusinessCreateModal from "./BusinessCreateModal"
+import AuditPanel from "./AuditPanel"
+import {logoutAdmin} from "./actions"
+const format=(v:string|null)=>v?new Date(v).toLocaleString("es-AR",{timeZone:"UTC"})+" UTC":"Sin actividad registrada"
+export default async function AdminPage({searchParams}:{searchParams:Promise<{q?:string;page?:string;error?:string}>}){
+ await requireAdmin()
+ const params=await searchParams,q=(params.q??"").trim().slice(0,100),page=Math.max(1,Math.min(100000,Math.floor(Number(params.page)||1)))
+ let summary:PlatformSummary|null=null,list:BusinessPage|null=null,loadError:string|null=null
+ try{[summary,list]=await Promise.all([platformSummary(),businessPage(page,20,q)])}catch(e){loadError=e instanceof AnalyticsError?e.message:"No se pudo cargar el backoffice."}
+ const kpis=summary?{"Negocios registrados":summary.businesses,"Negocios activos":summary.activeBusinesses,"Usuarios registrados":summary.users,"Memberships owner activas":summary.activeMemberships,"Negocios sin owner moderno":summary.zeroOwnerBusinesses,"Invitaciones pendientes":summary.pendingInvites,"Clientes totales":summary.clients,"Pagos totales":summary.payments,"Pagos recurrentes":summary.recurringPayments,"Pagos únicos":summary.oneOffPayments}:null
+ return <>
+  <header className="flex flex-wrap justify-between gap-p20"><h1 className="text-[length:var(--fs-28)]">ISIPICI · Backoffice</h1><div className="flex gap-p20"><BusinessCreateModal/><form action={logoutAdmin}><button className="btn-primary">Salir</button></form></div></header>
+  {params.error&&<p role="alert">{params.error}</p>}
+  {loadError&&<p role="alert">{loadError}</p>}
+  {kpis&&<section aria-label="Métricas globales" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-p20">{Object.entries(kpis).map(([label,count])=><div className="bg-bg1 rounded-br15 p-p20" key={label}><p className="fs-14 text-app-secondary">{label}</p><strong className="text-[length:var(--fs-28)]">{count.toLocaleString("es-AR")}</strong></div>)}</section>}
+  {summary&&<p className="fs-12 text-app-secondary">Pagos históricos o sin tipo reconocido: {summary.unclassifiedPayments}. No se asignan a recurrentes ni únicos. Usuarios: identidades registradas en Supabase Auth; perfiles completados: {summary.profiles}.</p>}
+  <form className="flex flex-wrap gap-p20"><label>Buscar por nombre o email<input name="q" defaultValue={q} maxLength={100} className="block rounded-br15 bg-bg1 p-p10"/></label><button className="btn-primary">Buscar</button></form>
+  {list&&<><div className="overflow-x-auto"><table className="w-full text-left"><thead><tr>{["Nombre","Estado","Contacto","País","Actividad comercial","Clientes","Owners / máximo","Acceso clásico","Última actividad"].map(label=><th className="p-p10" key={label}>{label}</th>)}</tr></thead><tbody>{list.businesses.map(b=><tr key={b.id}><td className="p-p10"><Link className="underline" href={"/admin/owners/"+b.id}>{b.name}</Link></td><td className="p-p10">{b.is_active?"Activo":"Deshabilitado"}</td><td className="p-p10">{b.contact_email??"—"}</td><td className="p-p10">{b.country??"—"}</td><td className="p-p10">{b.business_type??"—"}</td><td className="p-p10">{b.clientCount}</td><td className="p-p10">{b.modernOwnerCount} / {b.max_owner_members}</td><td className="p-p10">{b.legacy_login_enabled?"Habilitado":"Deshabilitado"}</td><td className="p-p10">{format(b.lastActivityAt)}</td></tr>)}</tbody></table>{!list.businesses.length&&<p>No hay negocios para esta búsqueda.</p>}</div>
+  <nav className="flex gap-p20" aria-label="Paginación">{page>1&&<Link href={"/admin?q="+encodeURIComponent(q)+"&page="+(page-1)}>Anterior</Link>}<span>Página {page} · {list.total} negocios</span>{page*20<list.total&&<Link href={"/admin?q="+encodeURIComponent(q)+"&page="+(page+1)}>Siguiente</Link>}</nav></>}
+  <AuditPanel/>
+ </>
 }

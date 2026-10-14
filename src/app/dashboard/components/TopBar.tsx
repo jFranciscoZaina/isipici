@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { DollarSign, UserPlus, Menu } from "react-feather";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+const ClientCsvModal=dynamic(()=>import("./ClientCsvModal"));
 const PlansModal = dynamic(() => import("./PlansModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
@@ -12,21 +13,20 @@ interface TopBarProps {
   paymentReady?: boolean;
   onNewPayment: () => void;
   onNewClient: () => void;
+  onClientsImported?:()=>void;
 }
 
-export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }: TopBarProps) {
+export default function TopBar({ onNewPayment, onNewClient, onClientsImported, paymentReady=true }: TopBarProps) {
+  const [modern,setModern]=useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showCsv,setShowCsv]=useState(false);
   const [showPlans,setShowPlans]=useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = async () => {
   try {
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("isipici_unlocked"); // 👈 limpia el PIN unlock del tab
-    }
-
     await fetch("/api/auth/logout", { method: "POST" });
 
     if (typeof window !== "undefined") {
@@ -35,9 +35,8 @@ export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }:
   } catch (e) {
     console.error("Error al cerrar sesión", e);
 
-    // fallback: igual limpiamos y redirigimos
+    // Fallback: redirigimos al login.
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("isipici_unlocked");
       window.location.href = "/login";
     }
   }
@@ -51,6 +50,7 @@ export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }:
         if (res.ok) {
           const data = await res.json();
           setOwnerName(data.name);
+          setModern(data.authKind==="user");
         } else {
           console.error("No se pudo cargar el owner logueado");
         }
@@ -88,10 +88,12 @@ export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }:
           </span>
         </div>
 
+        {modern&&<a href="/workspaces" className="text-xs text-app-secondary underline">Cambiar espacio</a>}
         {/* Derecha: botones desktop / menú mobile */}
         <div className="flex items-center gap-p40">
           {!isMobile && (
             <div className="flex items-center gap-p20">
+              <button className="btn-secondary" onClick={()=>setShowCsv(true)}>CSV</button>
               <button className="btn-secondary" onClick={()=>setShowPlans(true)}>Planes</button>
               <button disabled={!paymentReady} onClick={onNewPayment} className="btn-primary">
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
@@ -139,6 +141,7 @@ export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }:
               {ownerName ?? "—"}
             </div>
 
+            <button className="btn-secondary" onClick={()=>{setShowSheet(false);setShowCsv(true)}}>Importar / exportar clientes</button>
             <button className="btn-secondary" onClick={()=>{setShowSheet(false);setShowPlans(true)}}>Planes</button>
             <button
               disabled={!paymentReady}
@@ -176,6 +179,7 @@ export default function TopBar({ onNewPayment, onNewClient, paymentReady=true }:
         </div>
       )}
 
+      {showCsv&&<ClientCsvModal onClose={()=>setShowCsv(false)} onImported={()=>onClientsImported?.()}/>}
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       <ConfirmDialog
         open={confirmLogout}

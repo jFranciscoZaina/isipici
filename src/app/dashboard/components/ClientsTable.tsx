@@ -1,3 +1,4 @@
+import InlineLoader from "./InlineLoader"
 import { useMemo, useState } from "react";
 import type { ClientRow } from "../page";
 import { formatDateEs } from "@/lib/utils";
@@ -116,7 +117,7 @@ export default function ClientsTable({
               </th>
               <th
                 style={{ width: colWidths[1], fontWeight: 400 }}
-                className="relative cursor-pointer select-none px-p20 py-p10 text-left"
+                className="relative cursor-pointer select-none px-p20 py-[var(--fs-14)] text-left"
                 onClick={() => onToggleSort("name")}
               >
                 Persona{" "}
@@ -189,7 +190,7 @@ export default function ClientsTable({
                   colSpan={6}
                   className="px-p20 py-p20 text-center text-app-secondary"
                 >
-                  Cargando clientes...
+                  <InlineLoader text="Cargando clientes..."/>
                 </td>
               </tr>
             )}

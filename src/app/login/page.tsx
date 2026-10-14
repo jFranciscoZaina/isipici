@@ -5,13 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Eye, EyeOff, ArrowLeft } from "react-feather"
+import {useSubmissionLock} from "../dashboard/components/useSubmissionLock"
 import isipiciLogo from "../isipici.svg"
 
 export default function LoginPage() {
   const router = useRouter()
+  const submission=useSubmissionLock()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [showEmail, setShowEmail] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,8 @@ export default function LoginPage() {
       try {
         const res = await fetch("/api/auth/me", { method: "GET" })
         if (res.ok) {
-          router.replace("/dashboard")
+          const data=await res.json()
+          window.location.assign(data.next??"/dashboard")
           return
         }
       } catch {
@@ -37,6 +39,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if(!submission.acquire())return
     setError(null)
 
     setLoading(true)
@@ -55,15 +58,26 @@ export default function LoginPage() {
         return
       }
 
-      router.push("/dashboard")
+      window.location.assign("/dashboard")
     } catch (err) {
       console.error(err)
       setError("Error inesperado, intenta de nuevo")
     } finally {
+      submission.release()
       setLoading(false)
     }
   }
 
+  const startGoogle=async()=>{
+    if(!submission.acquire())return
+    setLoading(true);setError(null)
+    try{
+      const response=await fetch("/api/auth/google",{method:"POST"}),data=await response.json()
+      if(!response.ok)throw new Error(data.error??"No se pudo iniciar Google")
+      window.location.assign(data.url)
+    }catch(e){setError(e instanceof Error?e.message:"No se pudo iniciar Google");setLoading(false);submission.release()}
+  }
+  React.useEffect(()=>{if(new URLSearchParams(window.location.search).has("authError"))setError("No se pudo completar el acceso con Google. Intentá nuevamente.")},[])
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
@@ -101,6 +115,8 @@ export default function LoginPage() {
           Inicia sesion con la cuenta de tu negocio para ver tus clientes y pagos.
         </p>
 
+        <button type="button" disabled={loading} onClick={startGoogle} className="btn-primary w-full">Continuar con Google</button>
+        <p className="text-app-secondary text-center py-p10">──────── o ────────</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">
@@ -108,7 +124,7 @@ export default function LoginPage() {
             </label>
             <div className="relative">
               <input
-                type={showEmail ? "text" : "password"}
+                type="email"
                 className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 pr-12 fs-14 text-app placeholder:text-app-secondary"
                 placeholder="Email"
                 value={email}
@@ -116,14 +132,6 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
               />
-              <button
-                type="button"
-                aria-label={showEmail ? "Ocultar email" : "Mostrar email"}
-                className="absolute inset-y-0 right-3 flex items-center text-slate-500"
-                onClick={() => setShowEmail((v) => !v)}
-              >
-                {showEmail ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
             </div>
           </div>
 

@@ -1,4 +1,6 @@
 "use client"
+import {useSubmissionLock} from "./useSubmissionLock"
+import InlineLoader from "./InlineLoader"
 import React, { useCallback, useEffect, useState, useRef } from "react"
 import {useToast} from "./ToastProvider"
 import {useRemoteData} from "./useRemoteData"
@@ -16,6 +18,7 @@ type Props={clients:ClientRow[];onClose:()=>void;onCreated:()=>void;preselectedC
 const inputClass="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
 export default function NewPaymentModal({clients,onClose,onCreated,preselectedClientId}:Props){
  const [clientId,setClientId]=useState(preselectedClientId??""),[chosenType,setType]=useState<PaymentType>("one_off")
+ const submission=useSubmissionLock()
  const toast=useToast()
  const [saving,setSaving]=useState(false),[choice,setChoice]=useState("")
  const [amount,setAmount]=useState(""),[discount,setDiscount]=useState(""),[price,setPrice]=useState(""),[concept,setConcept]=useState(""),[note,setNote]=useState("")
@@ -51,19 +54,20 @@ export default function NewPaymentModal({clients,onClose,onCreated,preselectedCl
  const over=type==="recurring"&&Number(amount)+Number(discount)>remainingBase
  const canSave=Boolean(clientId&&state&&!loading&&!loadError&&!over&&selected.length<=100&&validPaymentMoneyDraft(amount)&&validPaymentMoneyDraft(discount)&&Number(amount)>=0&&Number(discount)>=0&&Number.isFinite(Number(amount))&&Number.isFinite(Number(discount))&&(Number(amount)>0||Number(discount)>0)&&
   (type==="one_off"?!state.archivedAt&&concept.trim()&&range.from&&validPaymentMoneyDraft(oneOffDebt):installment||legacyDebt||creating&&!state.archivedAt&&planId&&date&&(validPaymentMoneyDraft(price)&&Number(price)>0)))
- const save=async()=>{if(!canSave||saving)return;const operation=toast.start("Registrando pago...");setSaving(true);try{
+ const save=async()=>{if(!canSave||saving)return;if(!submission.acquire())return;const operation=toast.start("Registrando pago...");setSaving(true);try{
   const payload:Record<string,unknown>={clientId,paymentType:type,provider:"manual",amount:Number(amount),discount:Number(discount),receiptNote:note.trim()||undefined,concept:concept.trim()||undefined}
   if(type==="one_off"){payload.debt=Number(oneOffDebt);payload.periodFrom=toCalendarDate(range.from)||undefined;payload.periodTo=toCalendarDate(range.to??range.from)||undefined}
   else if(installment){payload.selectedInstallmentIds=selectedIds;payload.recurringAgreementId=installment.recurring_agreement_id}
   else if(legacyDebt){payload.plan="Pago deuda";payload.debtPaymentId=state?.legacyDebtPaymentId;payload.debt=remaining}
   else {payload.anchorDate=date;if(planId)payload.planId=planId;else{payload.frequency=frequency;payload.cycleDate=date;payload.plan=planName.trim()||undefined;payload.debt=remaining}}
   const r=await fetch("/api/payments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});if(r.status===401){window.location.href="/login";operation.close();return}const b=await r.json();if(!r.ok)throw new Error("No se pudo registrar el pago.");operation.success(b.receipt_status==="failed"?"Pago registrado. No se pudo preparar el comprobante.":"Pago registrado.");onCreated();onClose()
- }catch{operation.error("No se pudo registrar el pago.")}finally{operation.close();setSaving(false)}}
+ }catch{operation.error("No se pudo registrar el pago.")}finally{submission.release();operation.close();setSaving(false)}}
  return <Modal size="large" onClose={()=>{if(!saving)onClose()}} header={<h2 className="fs-14 font-semibold">Registrar pago</h2>} secondaryAction={{label:"Regresar",onClick:onClose,disabled:saving}} primaryAction={{label:saving?"Guardando…":"Registrar pago",onClick:save,disabled:saving||!canSave}}>
   <div className="grid grid-cols-1 md:grid-cols-2 gap-p30"><div className="space-y-p10">
    <ClientSearchSelect disabled={saving} clients={clients} selectedClientId={clientId} onSelectClient={id=>{typeChoice.current={clientId:id,initialized:false,manual:false};setType("one_off");setPlanId("");setPlanName("");setClientId(id);setOneOffDebt("");setChoice("");setSelectedIds([]);setAmount("");setDiscount("")}}/>
    {state&&<Field label="Tipo de pago"><select disabled={loading||saving} className={inputClass} value={type} onChange={e=>{typeChoice.current.manual=true;setType(e.target.value as PaymentType)}}><option value="recurring">Recurrente</option><option value="one_off">Pago único</option></select></Field>}
-   {!state&&<div className="min-h-20" aria-busy={loading}/>}{loadError&&<button className="btn-secondary" disabled={loading} onClick={()=>void remote.refresh()}>Reintentar carga del cliente</button>}
+   {state&&loading&&<InlineLoader text="Actualizando cuotas..."/>}
+   {!state&&loading&&<InlineLoader text="Cargando información del cliente..."/>}{loadError&&<button className="btn-secondary" disabled={loading} onClick={()=>void remote.refresh()}>Reintentar carga del cliente</button>}
    {state?.archivedAt&&<p className="fs-14 font-semibold">Cliente dado de baja. Solo puede registrar pagos de deuda pendiente.</p>}
    {type==="recurring"&&state&&<>
     <h3 className="fs-14 font-semibold">{creating?"Crear suscripción y registrar primera cuota":"Registrar cuota"}</h3>

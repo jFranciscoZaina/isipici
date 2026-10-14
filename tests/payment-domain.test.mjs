@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { loader } from "./helpers/load-ts.mjs"
@@ -48,7 +49,7 @@ function service({ owned = true, rpcError = null, duplicate = false, emailFails 
       return method === "single" ? Promise.resolve({ data: table === "clients" ? { name: "Client", email: "client@example.test" } : { name: "Owner", default_currency: ownerCurrency } }) : q
     } }); return q
   } }
-  const load = loader({ "server-only": {}, "@/lib/supabaseClient": { supabase: db }, "@/lib/auth": { ownedClientColumn: async () => owned ? "gym_id" : null },
+  const load = loader({...auditMocks, "server-only": {}, "@/lib/supabaseClient": { supabase: db }, "@/lib/auth": { ownedClientColumn: async () => owned ? "gym_id" : null },
     "@/lib/email": { sendPaymentReceiptEmail: async input => { emails.push(input); if (emailFails) throw Error("unavailable"); return { status: "sent" } } } })
   return { ...load("src/lib/payments/service.ts"), calls, emails, load }
 }
@@ -85,7 +86,7 @@ test("provider replay uses the same canonical id and receipt deduplication key",
 })
 test("API preserves manual response and rechecks authentication; browser IDs are rejected", async () => {
   const s = service({ emailFails: true })
-  const route = loader({ "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
+  const route = loader({...auditMocks, "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     "@/lib/supabaseClient": {}, "@/lib/auth": { getSessionOwnerId: async () => owner }, "@/lib/payments/service": s,
     "@/lib/payments/validation": s.load("src/lib/payments/validation.ts") })("src/app/api/payments/route.ts")
   const result = await route.POST({ json: async () => legacy })
@@ -136,7 +137,7 @@ test("receipt uses payment currency, escapes notes and omits empty context secti
 
 test("shared calendar single mode replaces the date; range mode still selects from/to and keeps markers", () => {
   const createElement=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)})
-  const Calendar=loader({react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
+  const Calendar=loader({...auditMocks,react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
   let value={from:new Date(2026,9,1)}
   const render=mode=>Calendar({value,selectionMode:mode,numberOfMonths:1,onChange:next=>{value=next},markers:{"2026-10-15":"paid"}})
   const find=(tree,day)=> {
@@ -162,7 +163,7 @@ test("shared calendar single mode replaces the date; range mode still selects fr
 
 test("calendar previews recurring dates in dark gray without selecting them", () => {
   const createElement=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)})
-  const Calendar=loader({react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
+  const Calendar=loader({...auditMocks,react:{default:{createElement},useEffect:()=>{},useMemo:fn=>fn(),useState:initial=>[typeof initial==="function"?initial():initial,()=>{}]}})("src/app/dashboard/components/RangeCalendar.tsx").default
   const collect=tree=>!tree||typeof tree!=="object"?[]:[...(tree.type==="button"&&tree.props.title==="Próximo cobro recurrente"?[tree]:[]),...(tree.children??[]).flatMap(collect)]
   for(const [frequency,date,expected] of [["weekly",new Date(2026,9,14),[21,28]],["biweekly",new Date(2026,9,14),[28]],["monthly",new Date(2026,0,31),[28]]]) {
     const tree=Calendar({value:{from:date},selectionMode:"single",numberOfMonths:frequency==="monthly"?2:1,onChange:()=>{},recurrence:{frequency,anchorDate:frequency==="monthly"?"2026-01-31":"2026-10-14"}})

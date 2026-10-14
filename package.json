@@ -14,12 +14,16 @@
     "test": "node --test tests/*.test.mjs",
     "test:performance": "node --test tests/performance.test.mjs tests/performance-db.test.mjs tests/email-dispatch.test.mjs",
     "test:plans": "node --test tests/plans-db.test.mjs tests/plans.test.mjs",
-    "test:allocations": "node --test tests/payment-allocations-db.test.mjs tests/payment-calendar.test.mjs"
+    "test:allocations": "node --test tests/payment-allocations-db.test.mjs tests/payment-calendar.test.mjs",
+    "test:admin": "node --test tests/admin-analytics.test.mjs",
+    "test:admin:db": "node --test tests/admin-analytics-db.test.mjs",
+    "test:csv": "node --test tests/client-csv.test.mjs tests/client-csv-db.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
     "@react-three/fiber": "^9.4.2",
     "@react-three/postprocessing": "^3.0.4",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.83.0",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",

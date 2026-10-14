@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
@@ -9,6 +10,7 @@ import { testPostgres } from "./helpers/postgres.mjs"
 import { loader } from "./helpers/load-ts.mjs"
 
 function load(path, mocks, env = {}) {
+  mocks={...auditMocks,...mocks}
   const exports = {}
   const source = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText
   vm.runInNewContext(source, { exports, require: name => { if (!(name in mocks)) throw new Error(`Unexpected import ${name}`); return mocks[name] }, process: { env }, Buffer, Date, URL, console })

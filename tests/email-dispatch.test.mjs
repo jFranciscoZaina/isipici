@@ -1,3 +1,4 @@
+import {auditMocks} from "./helpers/audit-mocks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { loader } from "./helpers/load-ts.mjs"
@@ -8,7 +9,7 @@ const response={json:(body,options)=>({body,status:options?.status??200,headers:
 test("payment API responds with persisted queue state before provider work and survives scheduler errors",async()=>{
  for(const schedulerFails of [false,true]) {
   const callbacks=[],sent=[]
-  const route=loader({"next/server":{NextResponse:response,after:fn=>{if(schedulerFails)throw new Error("scheduler unavailable");callbacks.push(fn)}},"@/lib/supabaseClient":{},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/payments/service":{registerManualPayment:async(_owner,_input,options)=>{
+  const route=loader({...auditMocks,"next/server":{NextResponse:response,after:fn=>{if(schedulerFails)throw new Error("scheduler unavailable");callbacks.push(fn)}},"@/lib/supabaseClient":{},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/payments/service":{registerManualPayment:async(_owner,_input,options)=>{
    assert.equal(options.queueReceipt,true);return {payment:{id:"payment"},duplicate:false,receiptStatus:"queued",receiptJobId:"job"}
   }},"@/lib/emails/dispatch":{dispatchEmailJob:async(...args)=>sent.push(args)}})("src/app/api/payments/route.ts")
   const result=await route.POST({json:async()=>({})})
@@ -20,7 +21,7 @@ test("payment API responds with persisted queue state before provider work and s
 test("enqueue persists frozen provider request and only treats missing RPC as legacy schema",async()=>{
  for(const code of [null,"PGRST202","42501","connection"]) {
   let input
-  const dispatch=loader({"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"@/lib/supabaseClient":{supabase:{rpc:async(name,args)=>{assert.equal(name,"enqueue_payment_receipt");input=args;return code?{error:{code}}:{data:{id:"job",state:"queued"}}}}},"./provider":{}} ,env)("src/lib/emails/dispatch.ts")
+  const dispatch=loader({...auditMocks,"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"@/lib/supabaseClient":{supabase:{rpc:async(name,args)=>{assert.equal(name,"enqueue_payment_receipt");input=args;return code?{error:{code}}:{data:{id:"job",state:"queued"}}}}},"./provider":{}} ,env)("src/lib/emails/dispatch.ts")
   const result=await dispatch.enqueuePaymentReceiptEmail({ownerId:owner,clientId:client,deduplicationKey:"ignored-server-derives-key",to:"client@example.test",clientName:"<Client>",ownerName:"Owner",amount:20,dueDate:null},"payment")
   assert.equal(input.p_owner,owner);assert.equal(input.p_payment,"payment");assert.equal(input.p_payload.from,env.EMAIL_FROM);assert.ok(input.p_payload.html.includes("&lt;Client&gt;"));assert.equal(JSON.stringify(input).includes(env.RESEND_API_KEY),false)
   assert.equal(result.status,code?"failed":"queued");assert.equal(Boolean(result.legacySchema),code==="PGRST202")
@@ -31,7 +32,7 @@ test("worker sends only leased jobs, preserves idempotency and records uncertain
  for(const mode of ["empty","sent","transport","validation","logging-failure"]) {
   const calls=[],sends=[]
   const payload={from:env.EMAIL_FROM,to:"client@example.test",subject:"Frozen subject",html:"<p>Frozen template</p>"}
-  const dispatch=loader({"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"@/lib/supabaseClient":{supabase:{rpc:async(name,args)=>{
+  const dispatch=loader({...auditMocks,"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"@/lib/supabaseClient":{supabase:{rpc:async(name,args)=>{
    calls.push([name,args])
    if(name==="claim_email_dispatch")return {data:mode==="empty"?[]:[{id:"job",owner_id:owner,deduplication_key:"key",dispatch_token:"lease",dispatch_payload:payload}]}
    if(name==="finish_email_dispatch")return mode==="logging-failure"?{error:{code:"connection"}}:{data:true}
@@ -56,7 +57,7 @@ test("dispatch cron rejects missing bearer before queue access and bounds recove
  assert.equal((await route.GET({headers:{get:()=>null}})).status,401);assert.equal(calls,0)
  assert.equal((await route.GET({headers:{get:()=>`Bearer ${env.CRON_SECRET}`}})).status,200);assert.equal(calls,1)
  let claims=0
- const worker=loader({"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"./provider":{getResend:()=>({emails:{send:async()=>({data:{id:"provider"}})}})},"@/lib/supabaseClient":{supabase:{rpc:async(name)=>name==="unqueued_payment_receipts"?{data:[]}:name==="claim_email_dispatch"?(claims++,{data:[{id:"job",dispatch_payload:{},deduplication_key:"key",dispatch_token:"token"}]}):{data:true}}}},env)("src/lib/emails/dispatch.ts")
+ const worker=loader({...auditMocks,"server-only":{},"node:timers/promises":{setTimeout:async()=>{}},"./provider":{getResend:()=>({emails:{send:async()=>({data:{id:"provider"}})}})},"@/lib/supabaseClient":{supabase:{rpc:async(name)=>name==="unqueued_payment_receipts"?{data:[]}:name==="claim_email_dispatch"?(claims++,{data:[{id:"job",dispatch_payload:{},deduplication_key:"key",dispatch_token:"token"}]}):{data:true}}}},env)("src/lib/emails/dispatch.ts")
  assert.equal((await worker.drainEmailQueue()).processed,3);assert.equal(claims,3)
 })
 
@@ -66,7 +67,7 @@ test("summary API never queries historical relationships once RPC is installed; 
    assert.equal(name,"dashboard_client_summary");assert.equal(args.p_owner,owner)
    return fails?{error:{code:"42501"}}:{data:{currency:"ARS",clients:[{id:client,name:"Client",archived_at:null,current_debt:0,legacy_debt_amount:5,installment_debt:30,total_paid_this_month:80,last_payment:{id:"one",created_at:new Date().toISOString()},last_recurring:{id:"recurring",plan:"Monthly",created_at:new Date().toISOString()},has_agreements:true,has_active_agreement:false}]}}
   }}
-  const route=loader({"next/server":{NextResponse:response},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:db}})("src/app/api/clients/route.ts")
+  const route=loader({...auditMocks,"next/server":{NextResponse:response},"@/lib/auth":{getSessionOwnerId:async()=>owner},"@/lib/supabaseClient":{supabase:db}})("src/app/api/clients/route.ts")
   const result=await route.GET({nextUrl:new URL("https://test/api/clients")})
   assert.equal(result.status,fails?500:200)
   if(!fails){assert.equal(result.body[0].currentDebt,35);assert.equal(result.body[0].totalPaidThisMonth,80);assert.equal(result.body[0].currentPlan,"Monthly");assert.equal(result.body[0].hasPayments,true);assert.equal(result.body[0].nextDue,null)}
@@ -78,7 +79,7 @@ test("queued payment service does not call synchronous email transport and queue
   let registrations=0,sends=0
   const payment={id:"33333333-3333-4333-8333-333333333333",owner_id:owner,client_id:client,amount:20,currency:"ARS",provider:"manual",payment_type:"one_off",concept:"Dinner",created_at:new Date().toISOString()}
   const db={from:table=>{const q=new Proxy({},{get:(_,method)=>()=>method==="single"?Promise.resolve({data:table==="owners"?{name:"Owner",default_currency:"ARS"}:{name:"Client",email:"client@example.test"}}):q});return q},rpc:async()=>{registrations++;return {data:{payment,duplicate:false}}}}
-  const service=loader({"server-only":{},"@/lib/auth":{ownedClientColumn:async()=>"owner_id"},"@/lib/supabaseClient":{supabase:db},"@/lib/email":{
+  const service=loader({...auditMocks,"server-only":{},"@/lib/auth":{ownedClientColumn:async()=>"owner_id"},"@/lib/supabaseClient":{supabase:db},"@/lib/email":{
    enqueuePaymentReceiptEmail:async(input,id)=>{assert.equal(id,payment.id);assert.equal(input.ownerId,owner);if(fail)throw new Error("queue unavailable");return {status:"queued",jobId:"job"}},
    sendPaymentReceiptEmail:async()=>{sends++;throw new Error("must not run")},
   }})("src/lib/payments/service.ts")
@@ -99,7 +100,7 @@ test("post-response retry is bounded and reuses the identical provider payload a
   if (++sends === 1) throw new Error("timeout")
   return { data: { id: "provider" } }
  } } }) }
- const dispatch = loader({ "server-only": {}, "node:timers/promises": { setTimeout: async ms => delays.push(ms) }, "@/lib/supabaseClient": { supabase: db }, "./provider": provider }, env)("src/lib/emails/dispatch.ts")
+ const dispatch = loader({...auditMocks, "server-only": {}, "node:timers/promises": { setTimeout: async ms => delays.push(ms) }, "@/lib/supabaseClient": { supabase: db }, "./provider": provider }, env)("src/lib/emails/dispatch.ts")
  assert.equal(await dispatch.dispatchEmailJob("job",owner,true),"sent")
  assert.equal(sends,2);assert.equal(claims,2);assert.deepEqual(delays,[5500]);assert.deepEqual(requests[0],requests[1])
 })

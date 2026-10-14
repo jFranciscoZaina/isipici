@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import {useSubmissionLock} from "./useSubmissionLock";
 import {useToast} from "./ToastProvider";
 import Modal from "./Modal";
 import { User } from "react-feather";
@@ -16,7 +17,8 @@ export default function NewClientModal({
   onClose,
   onCreated,
 }: Props) {
-  const toast=useToast();
+  const submission=useSubmissionLock()
+ const toast=useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,7 +34,7 @@ export default function NewClientModal({
   const isValid = name.trim().length > 0 && emailIsValid;
 
   const handleSave = async () => {
-    if (!isValid || loading) return;
+    if (!isValid || loading) return;if(!submission.acquire())return;
 
     const operation=toast.start("Registrando cliente...");
     setLoading(true);
@@ -61,7 +63,7 @@ export default function NewClientModal({
       console.error(err);
       operation.error("No se pudo registrar el cliente.");
     } finally {
-      operation.close();setLoading(false);
+      submission.release();operation.close();setLoading(false);
     }
   };
 
