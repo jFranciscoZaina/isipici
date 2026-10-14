@@ -180,8 +180,8 @@ export default function ClientDetailModal({
   // === HEADER para Modal (tabs centradas) ============================
 
   const header = (
-    <div className="flex flex-col items-center w-full">
-      <div className="flex items-center justify-around gap-p40 w-full px-p20">
+    <div className="flex flex-col items-center w-full gap-p10">
+      <div className="flex items-center justify-center gap-p10 w-full">
         <TabButton
           icon={UserIcon}
           label="Perfil"
@@ -201,6 +201,7 @@ export default function ClientDetailModal({
           onClick={() => setActiveTab("emails")}
         />
       </div>
+      <p className="fs-12 text-app-secondary">{activeTab==="data"?"Datos y suscripción del cliente":activeTab==="payments"?"Historial de pagos registrados":"Historial de comunicaciones enviadas"}</p>
     </div>
   );
 
@@ -286,11 +287,11 @@ export default function ClientDetailModal({
               Este cliente aún no tiene pagos registrados.
             </p>
           ) : (
-            <ul className="list-disc pl-6 space-y-p10">
+            <div className="space-y-p10">
               {paymentLines.map((line, idx) => (
-                <li key={`payment-${idx}`}>{line}</li>
+                <div key={`payment-${idx}`} className="rounded-br10 border border-n1 p-p20" style={{backgroundColor:"var(--n)"}}>{line}</div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       )}
@@ -307,11 +308,11 @@ export default function ClientDetailModal({
               Todavía no se enviaron emails a este cliente.
             </p>
           ) : (
-            <ul className="list-disc pl-6 space-y-p10">
+            <div className="space-y-p10">
               {emailLines.map((line, idx) => (
-                <li key={`email-${idx}`}>{line}</li>
+                <div key={`email-${idx}`} className="rounded-br10 border border-n1 p-p20" style={{backgroundColor:"var(--n)"}}>{line}</div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       )}
@@ -333,20 +334,11 @@ function TabButton({ icon: Icon, label, isActive, onClick }: TabButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`
-        flex items-center gap-p10
-        
-       
-        fs-14 font-medium
-        transition-colors
-        ${
-          isActive
-            ? "border-n8 text-app"
-            : "border-transparent text-app-secondary hover:text-app"
-        }
-      `}
+      aria-pressed={isActive}
+      className={`flex min-w-0 flex-1 items-center justify-center gap-p10 rounded-full border px-p20 py-p10 fs-14 font-medium transition-colors ${isActive ? "text-app" : "border-transparent text-app-secondary hover:bg-bg1 hover:text-app"}`}
+      style={isActive?{borderColor:"var(--color-accent-primary)",backgroundColor:"var(--color-accent-primary-soft)",color:"var(--color-accent-primary)"}:undefined}
     >
-      <Icon className="h-5 w-5" />
+      <Icon className="h-5 w-5 shrink-0" />
       <span>{label}</span>
     </button>
   );
