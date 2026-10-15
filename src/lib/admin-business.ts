@@ -9,7 +9,7 @@ export async function updateBusinessContact(id:unknown,email:unknown,timezone:un
  if(typeof id!=="string"||!idPattern.test(id))return "Negocio inválido"
  const payload:Record<string,unknown>={}
  let contact:string,zone:string|null
- try{contact=businessEmail(email);zone=businessTimezone(timezone);if(country!==undefined)payload.country=businessText(country);if(businessType!==undefined)payload.business_type=businessText(businessType,200);if(name!==undefined){const label=businessText(name,200);if(!label)throw new Error();payload.name=label}}catch{return "Información del negocio inválida"}
+ try{contact=businessEmail(email);zone=businessTimezone(timezone);if(country!==undefined)payload.country=businessText(country);if(businessType!==undefined)payload.business_type=businessText(businessType,200);if(name!==undefined){const label=businessText(name,200);if(!label)throw new Error("Indicá el nombre del negocio");payload.name=label}}catch(error){return error&&typeof error==="object"&&"message" in error&&typeof error.message==="string"&&error.message?error.message:"Información del negocio inválida"}
  const {data,error}=await supabase.from("owners").update({...payload,contact_email:contact,timezone:zone}).eq("id",id).select("id").maybeSingle()
  return error||!data?"No se pudo actualizar el negocio":null
 }

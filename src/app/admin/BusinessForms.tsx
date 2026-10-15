@@ -1,4 +1,5 @@
 "use client"
+import BusinessLocationFields from "./BusinessLocationFields"
 import ConfirmedForm from "./ConfirmedForm"
 import {useEffect,useState} from "react"
 import {useFormStatus} from "react-dom"
@@ -40,9 +41,9 @@ export function BusinessCreateForm({onPendingChange}:{onPendingChange?:(value:bo
      <label className={label}>Nombre del negocio<input name="name" required maxLength={200} className={field}/></label>
      <label className={label}>Email de contacto<input name="contactEmail" type="email" required maxLength={254} className={field}/></label>
      <label className={label}>Moneda<select name="currency" required defaultValue="ARS" className={field}><option value="ARS">ARS — Peso argentino</option><option value="AUD">AUD — Dólar australiano</option></select></label>
-     <label className={label}>País (opcional)<input name="country" maxLength={100} className={field}/></label>
+     <BusinessLocationFields/>
      <label className={label}>Actividad (opcional)<input name="businessType" maxLength={200} className={field}/></label>
-     <label className={label}>Zona horaria (opcional)<input name="timezone" placeholder="America/Argentina/Buenos_Aires" maxLength={100} className={field}/></label>
+
     </div>
    </section>
 

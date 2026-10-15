@@ -1,3 +1,4 @@
+import BusinessLocationFields from "../../BusinessLocationFields"
 import WorkspaceAccessPanel from "../../WorkspaceAccessPanel"
 import AuditPanel from "../../AuditPanel"
 import ConfirmedForm from "../../ConfirmedForm"
@@ -76,9 +77,9 @@ export default async function OwnerDetails({params}:{params:Promise<{id:string}>
      <div className="grid grid-cols-1 gap-p20 md:grid-cols-2">
       <label className={label}>Nombre<input name="name" defaultValue={owner.name} required maxLength={200} className={field}/></label>
       <label className={label}>Email de contacto<input name="contactEmail" type="email" required maxLength={254} defaultValue={owner.contact_email??""} className={field}/></label>
-      <label className={label}>País<input name="country" maxLength={100} defaultValue={owner.country??""} className={field}/></label>
+      <BusinessLocationFields country={owner.country} timezone={owner.timezone}/>
       <label className={label}>Actividad comercial<input name="businessType" maxLength={200} defaultValue={owner.business_type??""} className={field}/></label>
-      <label className={label}>Zona horaria<input name="timezone" maxLength={100} defaultValue={owner.timezone??""} className={field}/></label>
+
      </div>
      <div><button className="btn-primary">Guardar información</button></div>
     </form>

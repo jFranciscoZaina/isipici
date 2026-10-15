@@ -9,6 +9,7 @@ export function legacyPassword(value:unknown){
  return value
 }
 export function businessTimezone(value:unknown){
+ if(typeof value==="string")value=value.trim()
  if(value==null||value==="")return null
  if(typeof value!=="string"||value.length>100)throw new Error("Zona horaria inválida")
  try{new Intl.DateTimeFormat("en",{timeZone:value}).format()}catch{throw new Error("Zona horaria inválida")}
