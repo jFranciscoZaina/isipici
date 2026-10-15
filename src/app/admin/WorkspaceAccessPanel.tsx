@@ -66,7 +66,7 @@ export default function WorkspaceAccessPanel({ownerId}:{ownerId:string}){
     <section className="flex flex-col gap-p10 border-t border-n1" style={{paddingTop:"var(--p20)"}}>
      <div className="flex flex-col gap-p10 sm:flex-row sm:items-center sm:justify-between">
       <div><h3 className="fs-16 font-semibold text-app">Invitaciones</h3><p className="fs-12 text-app-secondary">Cada código dura 7 días y permite un único uso.</p></div>
-      <button className="btn-primary justify-center" disabled={pending} onClick={()=>{setCode("");void mutate("createInvite")}}>Crear invitación</button>
+      <button className="btn-primary justify-center" disabled={pending} onClick={()=>{setCode("");void mutate("createInvite")}}>Crear código de invitación</button>
      </div>
 
      {code&&<div className="rounded-br15 border border-n1 p-p20" style={{backgroundColor:"var(--color-accent-primary-soft)"}}>
@@ -90,7 +90,7 @@ export default function WorkspaceAccessPanel({ownerId}:{ownerId:string}){
      <div><h3 className="fs-16 font-semibold text-app">Owners del negocio</h3><p className="fs-12 text-app-secondary">Usuarios con acceso moderno a este espacio.</p></div>
      {remote.status==="success"&&!remote.data.memberships.length?<div className="rounded-br10 border border-n1 p-p20 text-center" style={{backgroundColor:"var(--color-bg-bg0)"}}><p className="fs-14 text-app-secondary">Este negocio todavía no tiene usuarios asociados.</p></div>:(
       <div className="flex flex-col gap-p10">
-       {remote.data.memberships.map(m=><div key={m.id} className="flex flex-col gap-p10 rounded-br10 border border-n1 p-p10 sm:flex-row sm:items-center sm:justify-between" style={{backgroundColor:"var(--color-bg-bg0)"}}><div><p className="fs-14 font-medium text-app">{m.displayName??m.email??m.userId}</p><p className="fs-12 text-app-secondary">Owner · {m.email??m.userId}</p></div><button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={pending} onClick={async()=>{if(await confirm({title:"Retirar acceso",message:"Se libera el lugar. El usuario, negocio y sus datos se conservan.",confirmLabel:"Retirar acceso"}))void mutate("revokeMembership",{id:m.id})}}>Retirar acceso</button></div>)}
+       {remote.data.memberships.map(m=><div key={m.id} className="flex flex-col gap-p10 rounded-br10 border border-n1 p-p10 sm:flex-row sm:items-center sm:justify-between" style={{backgroundColor:"var(--color-bg-bg0)"}}><div><p className="fs-14 font-medium text-app">{m.displayName??m.email??m.userId}</p><p className="fs-12 text-app-secondary">Owner · {m.email??m.userId}</p></div><button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={pending} onClick={async()=>{if(await confirm({title:"Desvincular cuenta",message:"La cuenta dejará de administrar este negocio. El usuario, el negocio y sus datos se conservan.",confirmLabel:"Desvincular"}))void mutate("revokeMembership",{id:m.id})}}>Desvincular cuenta</button></div>)}
       </div>
      )}
     </section>
