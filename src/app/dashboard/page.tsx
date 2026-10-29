@@ -284,8 +284,8 @@ export default function DashboardPage() {
 
   // === RENDER ===================================================================
   return (
-    <div className="h-dvh w-screen bg-bg0 flex items-stretch justify-center p-p0 md:h-screen md:bg-bg1 md:p-[var(--p10)]">
-      <div className="w-full h-full bg-bg0 rounded-none shadow-none flex flex-col gap-p10 overflow-hidden grain-surface p-p10 md:rounded-br25 md:shadow-lg md:gap-p20 md:p-p20 md:px-p30">
+    <div className="h-dvh w-screen bg-bg0 flex items-stretch justify-center p-p0 md:h-screen md:bg-[var(--color-bg-bg1)] md:p-[var(--p10)]">
+      <div className="w-full h-full bg-bg0 rounded-none shadow-none flex flex-col gap-p10 overflow-hidden grain-surface p-p10 md:rounded-[var(--br25)] md:shadow-lg md:gap-[var(--p20)] md:p-[var(--p20)] md:px-[var(--p30)]">
         {/* HEADER */}
         <TopBar
           onClientsImported={handleClientsImported}
