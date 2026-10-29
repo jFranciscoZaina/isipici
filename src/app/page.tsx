@@ -2,6 +2,7 @@
 
 import Dither from "./dashboard/components/Dither";
 import Image from "next/image";
+import Link from "next/link";
 import isipiciLogo from "../../public/isipici.svg";
 import ablelogo from "../../public/abllle-logo-o.png";
 
@@ -133,22 +134,30 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
-            <a
-              className="fs-12 text-[color:var(--n4)] mt-p10 flex flex-wrap items-center gap-p10 w-fit pt-p30"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://abllle.com"
-            >
-              powered by
-              <Image
-                src={ablelogo}
-                alt="Able Software"
-                width={40}
-                height={6}
-                className="h-6 w-auto mt-p10 mx-auto"
-                priority
-              />
-            </a>
+            <div className="flex flex-col items-center gap-p10 pt-p30">
+              <Link
+                href="/privacy"
+                className="fs-12 text-[color:var(--n4)] underline-offset-4 hover:underline"
+              >
+                Política de Privacidad
+              </Link>
+              <a
+                className="fs-12 text-[color:var(--n4)] flex flex-wrap items-center gap-p10 w-fit"
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://abllle.com"
+              >
+                powered by
+                <Image
+                  src={ablelogo}
+                  alt="Able Software"
+                  width={40}
+                  height={6}
+                  className="h-6 w-auto mt-p10 mx-auto"
+                  priority
+                />
+              </a>
+            </div>
           </div>
         </Dither>
       </section>
