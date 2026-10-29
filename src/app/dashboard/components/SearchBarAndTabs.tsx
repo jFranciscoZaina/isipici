@@ -45,11 +45,11 @@ export default function SearchTabsAndPagination({
         ))}
       </div>
 
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[5rem] right-4 z-30 flex justify-end md:static md:z-auto md:flex-1">
+      <div className="fixed bottom-[calc(var(--p20)+env(safe-area-inset-bottom))] left-[calc(var(--p30)+3.5rem+var(--p10))] right-[var(--p30)] z-30 flex justify-end md:static md:z-auto md:flex-1">
         <div className="relative group w-full max-w-md">
           <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-6 w-px border border-n8 transition-all duration-300 ease-out group-focus-within:opacity-0 group-focus-within:scale-y-50"/>
           <span className="pointer-events-none absolute left-0 right-0 bottom-0 h-px origin-center scale-x-0 opacity-0 transition-all duration-300 ease-out group-focus-within:scale-x-100 group-focus-within:opacity-100" style={{backgroundColor:"var(--n8)"}}/>
-          <div className="flex min-h-12 items-center gap-p10 rounded-br15 border border-n2 bg-bg0 px-p10 text-sm text-app-secondary shadow-md md:min-h-0 md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:pl-6 md:pr-3 md:py-2 md:shadow-none">
+          <div className="flex min-h-12 items-center gap-p10 rounded-br15 border border-n2 bg-bg0 px-p20 text-sm text-app-secondary shadow-md md:min-h-0 md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:pl-6 md:pr-3 md:py-2 md:shadow-none">
             <SearchIcon className="w-4 h-4 text-app-secondary" strokeWidth={2}/>
             <input
               className="w-full bg-transparent outline-none border-none rounded-none placeholder:text-app-secondary text-app"
