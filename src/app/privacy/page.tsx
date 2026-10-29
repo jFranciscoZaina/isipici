@@ -140,7 +140,7 @@ export default function PrivacyPage(){
      <h2 className={headingClass}>12. Contacto</h2>
      <p className={textClass}>
       Para consultas relacionadas con privacidad o con el uso de tus datos podés escribir a{" "}
-      <a className="font-medium text-app underline underline-offset-4" href="mailto:jfranciscozaina@gmail.com">jfranciscozaina@gmail.com</a>.
+      <a className="font-medium text-app underline underline-offset-4" href="mailto:juanfranciscozaina@gmail.com">juanfranciscozaina@gmail.com</a>.
      </p>
     </section>
    </article>
