@@ -11,7 +11,6 @@ function GoogleMark(){
 }
 import {useSubmissionLock} from "../dashboard/components/useSubmissionLock"
 import isipiciLogo from "../isipici.svg"
-import LanguageSwitch from "../LanguageSwitch"
 import {useI18n} from "../I18nProvider"
 
 export default function LoginPage() {
@@ -97,7 +96,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4 relative">
-      <div className="absolute right-p20 top-p20"><LanguageSwitch compact/></div>
       <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
         <div className="mb-4">
           <Link
