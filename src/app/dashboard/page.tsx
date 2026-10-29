@@ -284,8 +284,8 @@ export default function DashboardPage() {
 
   // === RENDER ===================================================================
   return (
-    <div className="h-dvh w-screen bg-bg0 flex items-stretch justify-center p-p0 md:h-screen md:bg-[var(--color-bg-bg1)] md:p-[var(--p10)]">
-      <div className="w-full h-full bg-bg0 rounded-none shadow-none flex flex-col gap-p10 overflow-hidden grain-surface p-p10 md:rounded-[var(--br25)] md:shadow-lg md:gap-[var(--p20)] md:p-[var(--p20)] md:px-[var(--p30)]">
+    <div className="h-dvh w-screen flex items-stretch justify-center bg-[var(--color-bg-bg0)] p-0 md:h-screen md:bg-[var(--color-bg-bg1)] md:p-[var(--p10)]">
+      <div className="grain-surface flex h-full w-full flex-col overflow-hidden bg-[var(--color-bg-bg0)] p-[var(--p10)] gap-[var(--p10)] shadow-none rounded-none md:rounded-[var(--br25)] md:shadow-lg md:gap-[var(--p20)] md:p-[var(--p20)] md:px-[var(--p30)]">
         {/* HEADER */}
         <TopBar
           onClientsImported={handleClientsImported}
@@ -300,7 +300,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Tabs + buscador + paginador */}
-        <div className="flex flex-col gap-p10 md:gap-p20 h-full min-h-0 flex-1">
+        <div className="flex h-full min-h-0 flex-1 flex-col gap-[var(--p10)] md:gap-[var(--p20)]">
           <SearchTabsAndPagination
             searchTerm={searchTerm}
             onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
