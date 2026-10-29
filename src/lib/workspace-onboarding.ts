@@ -81,7 +81,7 @@ export async function sendWorkspaceVerification(user:ModernUser,contactEmail:unk
   },{idempotencyKey:`isipici/workspace-verification/${user.id}/${hash.slice(0,20)}`})
   if(sent.error||!sent.data?.id)throw new Error("provider")
  }catch{
-  await supabase.from("workspace_creation_requests").delete().eq("user_id",user.id).eq("code_hash",hash).catch(()=>{})
+  try{await supabase.from("workspace_creation_requests").delete().eq("user_id",user.id).eq("code_hash",hash)}catch{}
   throw new WorkspaceOnboardingError("No pudimos enviar el código. Intentá nuevamente.",503)
  }
  return {verificationRequired:true as const,email}
