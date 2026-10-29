@@ -4,182 +4,51 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import type { ClientRow } from "../page";
 import { Trash2, DollarSign, UserPlus, CreditCard, Mail } from "react-feather";
+import {useI18n} from "../../I18nProvider";
 
-export type ClientMenuAction =
-  | "delete"
-  | "registerPayment"
-  | "editProfile"
-  | "paymentsHistory"
-  | "emailsHistory";
+export type ClientMenuAction="delete"|"registerPayment"|"editProfile"|"paymentsHistory"|"emailsHistory";
+type Props={client:ClientRow|null;position:{top:number;left:number}|null;onClose:()=>void;onAction:(action:ClientMenuAction,client:ClientRow)=>void};
 
-type Props = {
-  client: ClientRow | null;
-  position: { top: number; left: number } | null;
-  onClose: () => void;
-  onAction: (action: ClientMenuAction, client: ClientRow) => void;
-};
+export function ClientContextMenu({client,position,onClose,onAction}:Props){
+  const {t}=useI18n();
+  const ref=useRef<HTMLDivElement|null>(null);
+  const [adjustedTop,setAdjustedTop]=useState<number|null>(null),[isMobile,setIsMobile]=useState(false);
 
-export function ClientContextMenu({
-  client,
-  position,
-  onClose,
-  onAction,
-}: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [adjustedTop, setAdjustedTop] = useState<number | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const update = () => setIsMobile(window.innerWidth < 640);
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  // Cerrar con click afuera o ESC
-  useEffect(() => {
-    if (!client || !position) return;
-
-    const handleClick = (e: MouseEvent) => {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [client, position, onClose]);
-
-  // Ajustar posición vertical para que nunca se salga de la ventana
-  useEffect(() => {
-    if (!client || !position) return;
-
-    const margin = 16; // px de margen respecto al borde de la pantalla
-
-    // esperamos al próximo frame para asegurarnos de que el menú tenga altura
-    const raf = requestAnimationFrame(() => {
-      if (!ref.current) return;
-
-      const menuHeight = ref.current.offsetHeight;
-      const viewportHeight = window.innerHeight;
-      const scrollY = window.scrollY;
-
-      let top = position.top;
-      const bottom = top + menuHeight;
-
-      const maxBottom = scrollY + viewportHeight - margin;
-      const minTop = scrollY + margin;
-
-      if (bottom > maxBottom) {
-        top -= bottom - maxBottom; // lo subimos
-      }
-      if (top < minTop) {
-        top = minTop; // lo bajamos si nos pasamos por arriba
-      }
-
+  useEffect(()=>{const update=()=>setIsMobile(window.innerWidth<640);update();window.addEventListener("resize",update);return()=>window.removeEventListener("resize",update)},[]);
+  useEffect(()=>{
+    if(!client||!position)return;
+    const handleClick=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))onClose()};
+    const handleKey=(e:KeyboardEvent)=>{if(e.key==="Escape")onClose()};
+    document.addEventListener("mousedown",handleClick);document.addEventListener("keydown",handleKey);
+    return()=>{document.removeEventListener("mousedown",handleClick);document.removeEventListener("keydown",handleKey)}
+  },[client,position,onClose]);
+  useEffect(()=>{
+    if(!client||!position)return;
+    const raf=requestAnimationFrame(()=>{
+      if(!ref.current)return;
+      const margin=16,menuHeight=ref.current.offsetHeight,viewportHeight=window.innerHeight,scrollY=window.scrollY;
+      let top=position.top,bottom=top+menuHeight,maxBottom=scrollY+viewportHeight-margin,minTop=scrollY+margin;
+      if(bottom>maxBottom)top-=bottom-maxBottom;
+      if(top<minTop)top=minTop;
       setAdjustedTop(top);
     });
+    return()=>cancelAnimationFrame(raf)
+  },[client,position]);
 
-    return () => cancelAnimationFrame(raf);
-  }, [client, position]);
-
-  if (!client || !position) return null;
-
-  const items: {
-    id: ClientMenuAction;
-    label: string;
-    icon: ComponentType<SVGProps<SVGSVGElement>>;
-    tone?: "danger";
-  }[] = [
-    { id: "registerPayment", label: "Registrar pago", icon: DollarSign },
-    { id: "editProfile", label: "Editar perfil", icon: UserPlus },
-    { id: "paymentsHistory", label: "Historial de pagos", icon: CreditCard },
-    { id: "emailsHistory", label: "Historial de emails", icon: Mail },
-    { id: "delete", label: "Dar de baja cliente", icon: Trash2, tone: "danger" },
+  if(!client||!position)return null;
+  const items:{id:ClientMenuAction;label:string;icon:ComponentType<SVGProps<SVGSVGElement>>;tone?:"danger"}[]=[
+    {id:"registerPayment",label:t("menu.registerPayment"),icon:DollarSign},
+    {id:"editProfile",label:t("menu.editProfile"),icon:UserPlus},
+    {id:"paymentsHistory",label:t("menu.paymentHistory"),icon:CreditCard},
+    {id:"emailsHistory",label:t("menu.emailHistory"),icon:Mail},
+    {id:"delete",label:t("menu.archive"),icon:Trash2,tone:"danger"},
   ];
+  const top=adjustedTop??position.top;
 
-  const top = adjustedTop ?? position.top;
+  const list=<ul className={isMobile?"space-y-p10 flex flex-col gap-p30":"px-p20 py-p20 space-y-p30"}>
+    {items.map(({id,label,icon:Icon,tone})=><li key={id}><button type="button" className={`flex w-full items-center gap-p20 rounded-br10 px-p10 py-p10 text-left fs-14 transition-colors ${tone==="danger"?"text-danger":"text-app"} hover:bg-bg1`} onClick={()=>{onAction(id,client);onClose()}}><Icon className="h-5 w-5 stroke-[2.2]"/><span>{label}</span></button></li>)}
+  </ul>;
 
-  if (isMobile) {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-end sm:hidden bg-black/60 transition-opacity duration-200"
-        onClick={onClose}
-      >
-        <div
-          className="w-full bg-bg0  p-p40 rounded-t-3xl shadow-2xl transform translate-y-0 animate-[sheet-up_200ms_ease-out] flex flex-col gap-p30"
-          onClick={(e) => e.stopPropagation()}
-          style={{ animationFillMode: "both" }}
-        >
-          <div className="font-bold uppercase">{client.name}</div>
-          
-          <ul className="space-y-p10 flex flex-col gap-p30">
-            {items.map(({ id, label, icon: Icon, tone }) => (
-              <li key={id}>
-                <button
-                  type="button"
-                  className={`flex w-full items-center gap-p20 rounded-br15 px-p15 py-p12 text-left fs-14 transition-colors ${
-                    tone === "danger"
-                      ? "text-danger hover:bg-[color:var(--danger-50,#fef2f2)]"
-                      : "text-app hover:bg-bg1"
-                  }`}
-                  onClick={() => {
-                    onAction(id, client);
-                    onClose();
-                  }}
-                >
-                  <Icon className="h-5 w-5 stroke-[2]" />
-                  <span>{label}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 pointer-events-none">
-      <div
-        ref={ref}
-        className="pointer-events-auto rounded-br10 border border-n2 bg-bg0 shadow-lg w-[240px]"
-        style={{
-          position: "absolute",
-          top,
-          left: position.left,
-          transform: "translateX(-100%)",
-        }}
-      >
-        <ul className="px-p20 py-p20 space-y-p30">
-          {items.map(({ id, label, icon: Icon, tone }) => (
-            <li key={id}>
-              <button
-                type="button"
-                className={`flex w-full items-center gap-p20 rounded-br10 px-p10 py-p10 text-left fs-14 bg-bg0 transition-colors hover:bg-bg1 hover:cursor-pointer ${
-                  tone === "danger" ? "text-danger" : "text-app"
-                } hover:bg-bg1`}
-                onClick={() => {
-                  onAction(id, client);
-                  onClose();
-                }}
-              >
-                <Icon className="h-5 w-5 stroke-[2.2]" />
-                <span>{label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
+  if(isMobile)return <div className="fixed inset-0 z-50 flex items-end sm:hidden bg-black/60 transition-opacity duration-200" onClick={onClose}><div className="w-full bg-bg0 p-p40 rounded-t-3xl shadow-2xl flex flex-col gap-p30" onClick={e=>e.stopPropagation()}><div className="font-bold uppercase">{client.name}</div>{list}</div></div>;
+  return <div className="fixed inset-0 z-40 pointer-events-none"><div ref={ref} className="pointer-events-auto rounded-br10 border border-n2 bg-bg0 shadow-lg w-[240px]" style={{position:"absolute",top,left:position.left,transform:"translateX(-100%)"}}>{list}</div></div>
 }

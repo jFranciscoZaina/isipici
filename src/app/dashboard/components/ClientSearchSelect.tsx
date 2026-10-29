@@ -1,101 +1,22 @@
 "use client"
+import {useMemo,useState} from "react"
+import type {ClientRow} from "../page"
+import {useI18n} from "../../I18nProvider"
 
-import { useMemo, useState } from "react"
-import type { ClientRow } from "../page"
+type Props={disabled?:boolean;clients:ClientRow[];selectedClientId:string;onSelectClient:(id:string)=>void}
 
-type Props = {
-  disabled?: boolean
-  clients: ClientRow[]
-  selectedClientId: string
-  onSelectClient: (id: string) => void
-}
-
-export default function ClientSearchSelect({
-  disabled=false,
-  clients,
-  selectedClientId,
-  onSelectClient,
-}: Props) {
-  const [draft, setDraft] = useState<{clientId: string; text: string} | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
-
-  const selectedLabel = useMemo(() => {
-    if (!selectedClientId) return ""
-    const c = clients.find((cl) => cl.id === selectedClientId)
-    return c ? `${c.name}${c.email ? ` — ${c.email}` : ""}` : ""
-  }, [clients, selectedClientId])
-
-  const search = draft?.clientId === selectedClientId ? draft.text : selectedLabel
-
-  // Filtrado local por nombre / email (sin llamadas a la API)
-  const filteredClients = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    if (!q) return []
-    return clients.filter((c) => {
-      const name = c.name?.toLowerCase() ?? ""
-      const email = c.email?.toLowerCase() ?? ""
-      return name.includes(q) || email.includes(q)
-    })
-  }, [clients, search])
-
-  const handleSelect = (id: string) => {
-    onSelectClient(id)
-    const c = clients.find((cl) => cl.id === id)
-    if (c) {
-      setDraft({clientId: id, text: `${c.name}${c.email ? ` — ${c.email}` : ""}`})
-    }
-    setIsOpen(false)
-  }
-
-  return (
-    <div className="flex flex-col gap-p5">
-      <label className="block text-sm font-medium text-app-secondary">
-        Persona
-      </label>
-
-      <div className="relative">
-        <input
-          disabled={disabled}
-          type="text"
-          className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary"
-          placeholder="Buscar por nombre o email..."
-          value={search}
-          onChange={(e) => {
-            const value = e.target.value
-            setDraft({clientId: selectedClientId, text: value})
-            setIsOpen(value.trim().length > 0) // solo abre si escribe
-          }}
-          onFocus={() => {
-            if (search.trim().length > 0) setIsOpen(true)
-          }}
-        />
-
-        {isOpen && (
-          <div className="absolute z-20 mt-1 w-full rounded-md border border-slate-200 bg-white max-h-56 overflow-y-auto shadow-sm">
-            {filteredClients.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-slate-500">
-                No se encontraron clientes.
-              </div>
-            ) : (
-              filteredClients.map((c) => (
-                <button
-                  disabled={disabled}
-                  key={c.id}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleSelect(c.id)}
-                  className={`w-full text-left px-3 py-2 text-xs md:text-sm hover:bg-slate-50 ${
-                    c.id === selectedClientId ? "bg-slate-100 font-medium" : ""
-                  }`}
-                >
-                  {c.name}
-                  {c.email ? ` — ${c.email}` : ""}
-                </button>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+export default function ClientSearchSelect({disabled=false,clients,selectedClientId,onSelectClient}:Props){
+ const {t}=useI18n()
+ const [draft,setDraft]=useState<{clientId:string;text:string}|null>(null),[isOpen,setIsOpen]=useState(false)
+ const selectedLabel=useMemo(()=>{if(!selectedClientId)return"";const c=clients.find(cl=>cl.id===selectedClientId);return c?`${c.name}${c.email?` — ${c.email}`:""}`:""},[clients,selectedClientId])
+ const search=draft?.clientId===selectedClientId?draft.text:selectedLabel
+ const filteredClients=useMemo(()=>{const q=search.toLowerCase().trim();if(!q)return[];return clients.filter(c=>(c.name?.toLowerCase()??"").includes(q)||(c.email?.toLowerCase()??"").includes(q))},[clients,search])
+ const handleSelect=(id:string)=>{onSelectClient(id);const c=clients.find(cl=>cl.id===id);if(c)setDraft({clientId:id,text:`${c.name}${c.email?` — ${c.email}`:""}`});setIsOpen(false)}
+ return <div className="flex flex-col gap-p5">
+  <label className="block text-sm font-medium text-app-secondary">{t("table.person")}</label>
+  <div className="relative">
+   <input disabled={disabled} type="text" className="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app placeholder:text-app-secondary" placeholder={t("search.placeholder")} value={search} onChange={e=>{const value=e.target.value;setDraft({clientId:selectedClientId,text:value});setIsOpen(value.trim().length>0)}} onFocus={()=>{if(search.trim().length>0)setIsOpen(true)}}/>
+   {isOpen&&<div className="absolute z-20 mt-1 w-full rounded-md border border-slate-200 bg-white max-h-56 overflow-y-auto shadow-sm">{filteredClients.length===0?<div className="px-3 py-2 text-xs text-slate-500">{t("dashboard.loadError")}</div>:filteredClients.map(c=><button disabled={disabled} key={c.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>handleSelect(c.id)} className={`w-full text-left px-3 py-2 text-xs md:text-sm hover:bg-slate-50 ${c.id===selectedClientId?"bg-slate-100 font-medium":""}`}>{c.name}{c.email?` — ${c.email}`:""}</button>)}</div>}
+  </div>
+ </div>
 }

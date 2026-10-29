@@ -21,6 +21,7 @@ import {useConfirm} from "./components/ConfirmProvider";
 import {useToast} from "./components/ToastProvider";
 import {LOADER_DELAY} from "@/lib/ui/toast-state";
 import type { Currency, PaymentProvider, PaymentType } from "@/lib/payments/types";
+import {useI18n} from "../I18nProvider";
 
 // === TYPES =======================================================================
 
@@ -67,6 +68,7 @@ export type Payment = {
 // === ROOT DASHBOARD ===============================================================
 
 export default function DashboardPage() {
+  const {t}=useI18n();
   const submission=useSubmissionLock();
   const toast=useToast(),confirm=useConfirm();
   const [snapshots,setSnapshots]=useState<Partial<Record<ClientStatus,{clients:ClientRow[];currency:Currency}>>>({});
@@ -118,7 +120,7 @@ export default function DashboardPage() {
     clientsRequest.current?.abort();
     const controller = new AbortController();
     clientsRequest.current = controller;
-    const operation=toast.start("Actualizando clientes...",LOADER_DELAY);
+    const operation=toast.start(t("dashboard.refresh"),LOADER_DELAY);
     controller.signal.addEventListener("abort",()=>operation.close(),{once:true});
     try {
       setLoading(true);
@@ -132,10 +134,10 @@ export default function DashboardPage() {
         return;
       }
 
-      if (!res.ok) throw new Error("Error cargando clientes");
+      if (!res.ok) throw new Error(t("dashboard.loadError"));
 
       const currency = res.headers.get("X-Owner-Currency");
-      if (currency !== "ARS" && currency !== "AUD") throw new Error("Configuración de moneda no disponible");
+      if (currency !== "ARS" && currency !== "AUD") throw new Error(t("dashboard.currencyError"));
 
       const data: ClientRow[] = await res.json();
       if (controller.signal.aborted) return;
@@ -144,7 +146,7 @@ export default function DashboardPage() {
     } catch (e: unknown) {
       if (controller.signal.aborted) return;
       console.error(e);
-      setRequestError({status,message:"No se pudieron cargar los clientes."});operation.error("No se pudieron cargar los clientes.");
+      setRequestError({status,message:t("dashboard.loadError")});operation.error(t("dashboard.loadError"));
     } finally {
       operation.close();if (!controller.signal.aborted){setSettledStatus(status);setLoading(false);}
     }
@@ -191,10 +193,10 @@ export default function DashboardPage() {
 
   async function handleDeleteClient(client: ClientRow) {
     if(deleting)return;
-    const accepted=await confirm({title:"Dar de baja cliente",message:"Se pausarán futuros cobros y vencimientos. Los pagos y deudas existentes se conservarán.",confirmLabel:"Dar de baja"});
+    const accepted=await confirm({title:t("dashboard.archiveTitle"),message:t("dashboard.archiveMessage"),confirmLabel:t("dashboard.archiveConfirm")});
     if(!accepted||!submission.acquire())return;
-    setDeleting(true);const operation=toast.start("Dando de baja cliente...");
-    try{const res=await fetch(`/api/clients/${client.id}`,{method:"DELETE"});if(res.status===401){window.location.href="/login";operation.close();return;}if(!res.ok)throw new Error("No se pudo dar de baja al cliente.");operation.success("Cliente dado de baja.");await refreshAfterMutation();setDetailClient(null)}catch{operation.error("No se pudo dar de baja al cliente.")}finally{submission.release();operation.close();setDeleting(false)}
+    setDeleting(true);const operation=toast.start(t("dashboard.archiving"));
+    try{const res=await fetch(`/api/clients/${client.id}`,{method:"DELETE"});if(res.status===401){window.location.href="/login";operation.close();return;}if(!res.ok)throw new Error(t("dashboard.loadError"));operation.success(t("dashboard.archived"));await refreshAfterMutation();setDetailClient(null)}catch{operation.error(t("dashboard.loadError"))}finally{submission.release();operation.close();setDeleting(false)}
   }
 
   function handleClientMenuAction(action: ClientMenuAction, client: ClientRow) {
@@ -311,8 +313,8 @@ export default function DashboardPage() {
             onPageSizeChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
           />
 
-          {error&&<button className="btn-secondary" disabled={loading} onClick={()=>void fetchClients()}>Reintentar carga de clientes</button>}
-          {waiting&&loaded&&<InlineLoader text="Actualizando clientes..."/>}
+          {error&&<button className="btn-secondary" disabled={loading} onClick={()=>void fetchClients()}>{t("dashboard.retry")}</button>}
+          {waiting&&loaded&&<InlineLoader text={t("dashboard.refresh")}/>}
           {/* TABLA */}
           <section className="flex flex-col flex-1 min-h-0">
             <ClientsTable
