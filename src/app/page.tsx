@@ -6,6 +6,17 @@ import isipiciLogo from "../../public/isipici.svg";
 import ablelogo from "../../public/abllle-logo-o.png";
 
 export default function HomePage() {
+  const startGoogle = async () => {
+    try {
+      const response = await fetch("/api/auth/google", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || !data?.url) throw new Error("No se pudo iniciar Google");
+      window.location.assign(data.url);
+    } catch {
+      window.location.assign("/login");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-bg8 text-app">
       <section
@@ -115,10 +126,10 @@ export default function HomePage() {
                     hover:bg-[color:var(--n2)] hover:text-[color:var(--n8)] hover:cursor-pointer
                   "
                   onClick={() => {
-                    window.location.href = "https://wa.link/cf2s3z";
+                    void startGoogle();
                   }}
                 >
-                  Abrir cuenta
+                  Crear cuenta con Google
                 </button>
               </div>
             </div>

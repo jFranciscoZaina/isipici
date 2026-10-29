@@ -179,7 +179,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-[11px] text-slate-400">
-          Si todavia no tenes cuenta de negocio, contactanos. Es GRATIS!
+          Si todavía no tenés un negocio, podés crear tu espacio gratis iniciando con Google.
         </p>
       </div>
     </div>
