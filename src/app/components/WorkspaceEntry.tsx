@@ -3,7 +3,6 @@
 import {useEffect,useState} from "react"
 import InlineLoader from "../dashboard/components/InlineLoader"
 import {useSubmissionLock} from "../dashboard/components/useSubmissionLock"
-import LanguageSwitch from "../LanguageSwitch"
 import {useI18n} from "../I18nProvider"
 
 type Workspace={ownerId:string;membershipId:string;name:string}
@@ -61,7 +60,14 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
    })
    if(response.status===401){window.location.assign("/login");return}
    const data=await response.json()
-   if(!response.ok)throw new Error(data.error??t("login.error"))
+   if(!response.ok){
+    const translated=data.code==="ONBOARDING_DATABASE_NOT_READY"
+      ?t("onboarding.errorDatabaseNotReady")
+      :data.code==="WORKSPACE_CREATE_FAILED"
+        ?t("onboarding.errorCreate")
+        :data.error??t("onboarding.errorCreate")
+    throw new Error(translated)
+   }
    window.location.assign("/dashboard")
   }catch(reason){
    setError(reason instanceof Error?reason.message:t("common.retry"))
@@ -107,7 +113,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
  }
 
  if(mode==="select"){
-  return <main className="min-h-screen bg-bg1 flex items-center justify-center p-p20 text-app relative"><div className="absolute right-p20 top-p20"><LanguageSwitch compact/></div><section className="w-full max-w-md rounded-br25 border border-n1 bg-bg0 p-p30 shadow-lg">
+  return <main className="min-h-screen bg-bg1 flex items-center justify-center p-p20 text-app"><section className="w-full max-w-md rounded-br25 border border-n1 bg-bg0 p-p30 shadow-lg">
    <div className="flex flex-col gap-p20">
     <div><h1 className="fs-24 font-semibold text-app">{t("onboarding.selectTitle")}</h1><p className="fs-12 text-app-secondary" style={{marginTop:"var(--p5)"}}>{t("onboarding.selectLegacy")}</p></div>
     {loading?<InlineLoader text={t("onboarding.loadingWorkspaces")}/>:<div className="flex flex-col gap-p10">{items.map(workspace=><button key={workspace.membershipId} disabled={busy} className={secondary} onClick={()=>void joinWorkspace(workspace.ownerId)}>{workspace.name}</button>)}{!items.length&&!error&&<p className="fs-14 text-app-secondary">{t("onboarding.noWorkspaces")}</p>}</div>}
@@ -117,7 +123,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
   </section></main>
  }
 
- return <main className="min-h-screen bg-bg1 flex items-center justify-center p-p20 text-app relative"><div className="absolute right-p20 top-p20"><LanguageSwitch compact/></div><section className="w-full max-w-[620px] rounded-br25 border border-n1 bg-bg0 p-p30 shadow-lg">
+ return <main className="min-h-screen bg-bg1 flex items-center justify-center p-p20 text-app"><section className="w-full max-w-[620px] rounded-br25 border border-n1 bg-bg0 p-p30 shadow-lg">
   <div className="flex flex-col gap-p20">
    <div className="text-center">
     <p className="fs-12 font-medium text-app-secondary">{t("onboarding.first")}</p>
@@ -147,7 +153,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
     <div className="grid grid-cols-1 gap-p20 sm:grid-cols-2">
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary sm:col-span-2">{t("onboarding.businessName")}<input className={field} value={business.name} onChange={event=>setBusiness({...business,name:event.target.value})} required maxLength={200}/></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary sm:col-span-2">{t("onboarding.contactEmail")}<input className={field} type="email" value={business.contactEmail} onChange={event=>setBusiness({...business,contactEmail:event.target.value})} required maxLength={254}/><span>{t("onboarding.contactHelp")}</span></label>
-     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.currency")}<select className={field} value={business.currency} onChange={event=>setBusiness({...business,currency:event.target.value as "ARS"|"AUD"})}><option value="ARS">ARS — Peso argentino</option><option value="AUD">AUD — Dólar australiano</option></select></label>
+     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.currency")}<select className={field} value={business.currency} onChange={event=>setBusiness({...business,currency:event.target.value as "ARS"|"AUD"})}><option value="ARS">{t("admin.ars")}</option><option value="AUD">{t("admin.aud")}</option></select></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.timezone")}<input className={field} value={business.timezone} onChange={event=>setBusiness({...business,timezone:event.target.value})} placeholder="Australia/Brisbane" maxLength={100}/></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.country")}<input className={field} value={business.country} onChange={event=>setBusiness({...business,country:event.target.value})} maxLength={100}/></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.activity")}<input className={field} value={business.businessType} onChange={event=>setBusiness({...business,businessType:event.target.value})} maxLength={200}/></label>
