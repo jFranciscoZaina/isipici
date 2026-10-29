@@ -61,10 +61,10 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
    })
    if(response.status===401){window.location.assign("/login");return}
    const data=await response.json()
-   if(!response.ok)throw new Error(data.error??"No se pudo completar la operación")
+   if(!response.ok)throw new Error(data.error??t("login.error"))
    window.location.assign("/dashboard")
   }catch(reason){
-   setError(reason instanceof Error?reason.message:"Intentá nuevamente")
+   setError(reason instanceof Error?reason.message:t("common.retry"))
    setBusy(false);lock.release()
   }
  }
@@ -79,7 +79,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
     body:JSON.stringify(action==="resend"?{action,contactEmail:business.contactEmail}:{action,business,...(action==="complete"?{code:code.trim()}:{})})
    })
    const data=await response.json()
-   if(!response.ok)throw new Error(data.error??"No se pudo completar la operación")
+   if(!response.ok)throw new Error(data.error??t("login.error"))
    if(data.created){window.location.assign("/dashboard");return}
    if(data.verificationRequired){
     setVerificationEmail(data.email??business.contactEmail)
@@ -87,7 +87,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
     setStep("verify")
    }
   }catch(reason){
-   setError(reason instanceof Error?reason.message:"Intentá nuevamente")
+   setError(reason instanceof Error?reason.message:t("common.retry"))
   }finally{
    setBusy(false);lock.release()
   }
@@ -101,7 +101,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
    if(!response.ok)throw new Error()
    window.location.assign("/login")
   }catch{
-   setError("No se pudo cerrar sesión")
+   setError(t("login.error"))
    setBusy(false);lock.release()
   }
  }

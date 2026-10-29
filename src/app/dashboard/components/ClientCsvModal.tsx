@@ -108,14 +108,14 @@ export default function ClientCsvModal({onClose,onImported}:{onClose:()=>void;on
         className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-n2 px-p20 py-p10 fs-14 font-medium text-app transition-colors hover:bg-bg1"
         style={{backgroundColor:"var(--color-bg-bg0)"}}
        >
-        Elegir archivo CSV
+        {t("csv.choose")}
        </label>
        <div className="rounded-br10 border border-n1 px-p20 py-p10" style={{backgroundColor:"var(--color-bg-bg0)"}}>
         <p className="fs-12 text-app-secondary">{t("csv.selected")}</p>
         <p className="fs-14 text-app mt-p5 break-all">{file?.name??t("csv.none")}</p>
        </div>
        <button className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled={busy||!file} onClick={()=>void analyze()}>
-        Analizar archivo
+        {t("csv.analyze")}
        </button>
       </>
      )}
@@ -135,7 +135,7 @@ export default function ClientCsvModal({onClose,onImported}:{onClose:()=>void;on
       disabled={busy}
       onClick={()=>void exportFile()}
      >
-      Exportar clientes del negocio
+      {t("csv.exportButton")}
      </button>
      <p className="fs-12 text-app-secondary">{t("csv.exportNote")}</p>
     </section>

@@ -9,7 +9,7 @@ import PlanFields from "./PlanFields"
 import RangeCalendar, { type DateRangeValue } from "./RangeCalendar"
 import ClientSearchSelect from "./ClientSearchSelect"
 import Modal from "./Modal"
-import { FREQUENCY_LABELS, frequencyFromInterval, formatCalendarDate, formatPaymentPeriod, toCalendarDate, fromCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
+import { frequencyFromInterval, formatCalendarDate, formatPaymentPeriod, toCalendarDate, fromCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
 import {validPaymentMoneyDraft} from "@/lib/payments/validation"
 import {calendarWindow,defaultPaymentType,installmentPeriods,toggleInstallment,paymentHistoryMarkers,type CalendarPayment} from "@/lib/payments/calendar"
 import type { PaymentType, SubscriptionState } from "@/lib/payments/types"
@@ -37,7 +37,7 @@ export default function NewPaymentModal({clients,onClose,onCreated,preselectedCl
   if(responses.some(r=>!r.ok))throw new Error(t("payment.loadingClient"))
   const [subscription,history]=await Promise.all(responses.map(r=>r.json()))
   return {subscription:subscription as SubscriptionState,history:history as CalendarPayment[]}
- },[clientId,visible.from,visible.to])
+ },[clientId,visible.from,visible.to,t])
  const remote=useRemoteData(`/api/clients/${clientId}/subscription?from=${visible.from}&to=${visible.to}`,t("payment.loadingClient"),t("payment.loadingClient"),Boolean(clientId),clientId,loadClient)
  const state=remote.data?.subscription??null,loading=remote.loading,loadError=remote.error
  const type=state&&!typeChoice.current.initialized&&!typeChoice.current.manual?defaultPaymentType(state.current):chosenType

@@ -8,7 +8,7 @@ import {useRemoteData} from "./useRemoteData"
 import Modal from "./Modal"
 import RangeCalendar from "./RangeCalendar"
 import {priceForDate,type PlanSummary} from "@/lib/payments/plan-types"
-import {FREQUENCY_LABELS,RECURRING_FREQUENCIES,toCalendarDate,fromCalendarDate,formatCalendarDate,type RecurringFrequency} from "@/lib/payments/schedule"
+import {RECURRING_FREQUENCIES,toCalendarDate,fromCalendarDate,formatCalendarDate,type RecurringFrequency} from "@/lib/payments/schedule"
 import {formatPaymentMoney} from "@/lib/payments/format"
 import {validPaymentMoneyDraft} from "@/lib/payments/validation"
 import {frequencyLabel} from "@/lib/i18n"
@@ -75,7 +75,7 @@ export default function PlansModal({onClose}:{onClose:()=>void}){
           disabled={remote.loading||busy}
           onClick={()=>begin(p)}
          >
-          Editar plan
+          {t("plans.edit")}
          </button>
         </div>
        </article>
@@ -107,7 +107,7 @@ export default function PlansModal({onClose}:{onClose:()=>void}){
 
     {form==="edit"&&<section className="rounded-br15 border border-n1 p-p20 space-y-p10" style={{backgroundColor:"var(--n)"}}>
      <div><p className="fs-16 font-semibold text-app">{t("plans.history")}</p><p className="fs-12 text-app-secondary mt-p5">{t("plans.historyHelp")}</p></div>
-     <div className="space-y-p5">{plans.find(p=>p.id===id)?.prices.map(price=><div key={price.id} className="flex items-center justify-between rounded-br10 px-p10 py-p10 fs-12" style={{backgroundColor:"var(--color-bg-bg0)"}}><span className="text-app">{formatPaymentMoney(price.amount,price.currency)}</span><span className="text-app-secondary">desde {formatCalendarDate(price.effective_from)}</span></div>)}</div>
+     <div className="space-y-p5">{plans.find(p=>p.id===id)?.prices.map(price=><div key={price.id} className="flex items-center justify-between rounded-br10 px-p10 py-p10 fs-12" style={{backgroundColor:"var(--color-bg-bg0)"}}><span className="text-app">{formatPaymentMoney(price.amount,price.currency)}</span><span className="text-app-secondary">{t("common.from")} {formatCalendarDate(price.effective_from)}</span></div>)}</div>
      <div className="pt-p10 border-t border-n1">
       <button
        className="inline-flex items-center justify-center rounded-full border px-p20 py-p10 fs-14 font-medium disabled:opacity-50"
@@ -115,7 +115,7 @@ export default function PlansModal({onClose}:{onClose:()=>void}){
        disabled={busy}
        onClick={async()=>{if(await confirm({title:t("plans.archiveTitle"),message:t("plans.archiveMessage"),confirmLabel:t("plans.archive")}))void save("archive")}}
       >
-       Archivar plan
+       {t("plans.archive")}
       </button>
      </div>
     </section>}
