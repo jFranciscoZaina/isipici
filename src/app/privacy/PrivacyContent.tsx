@@ -1,6 +1,5 @@
 "use client"
 import Link from "next/link"
-import LanguageSwitch from "../LanguageSwitch"
 import {useI18n} from "../I18nProvider"
 import {privacyCopy} from "@/lib/privacy-copy"
 
@@ -16,7 +15,6 @@ export default function PrivacyContent(){
    <header className="flex flex-col gap-p10 border-b border-n1" style={{paddingBottom:"var(--p20)"}}>
     <div className="flex items-center justify-between gap-p20">
      <Link href="/" className="fs-12 text-app-secondary underline-offset-4 hover:underline">{locale==="es"?"← Volver a ISIPICI":"← Back to ISIPICI"}</Link>
-     <LanguageSwitch compact/>
     </div>
     <div>
      <p className="fs-12 font-medium text-app-secondary">ISIPICI</p>
