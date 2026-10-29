@@ -1,6 +1,7 @@
 "use client";
 
 import Modal from "./Modal";
+import {useI18n} from "../../I18nProvider";
 
 type Props = {
   busy?: boolean;
@@ -19,14 +20,15 @@ export default function ConfirmDialog({
   title,
   message,
   confirmLabel,
-  cancelLabel = "Cancelar",
+  cancelLabel,
   onConfirm,
   onCancel,
 }: Props) {
+  const {t}=useI18n();
   if (!open) return null;
 
   const secondaryAction = {
-    label: cancelLabel,
+    label: cancelLabel??t("common.cancel"),
     onClick: onCancel,
     disabled:busy,
   };
