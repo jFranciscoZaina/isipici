@@ -114,8 +114,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
   return (
     <>
-      <header className="flex min-h-11 items-center justify-between px-p5 py-p5 text-app md:min-h-0 md:p-p10 md:px-p10 md:pb-4">
-        <div className="flex min-w-0 items-center gap-p10 md:gap-3">
+      <header className="flex min-h-11 items-center justify-between px-[var(--p5)] py-[var(--p5)] text-app md:min-h-0 md:px-10 md:pt-[var(--p10)] md:pb-4">
+        <div className="flex min-w-0 items-center gap-[var(--p10)] md:gap-3">
           <span className="text-sm font-semibold tracking-[0.18em] text-[color:var(--color-accent-primary)] uppercase">
             <Image
               src={isipiciLogo}
