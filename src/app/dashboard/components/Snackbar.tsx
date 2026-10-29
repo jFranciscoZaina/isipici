@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect } from "react"
+import {useI18n} from "../../I18nProvider"
 
 type SnackbarProps = {
   message: string
@@ -17,6 +18,7 @@ export default function Snackbar({
   duration = 4000,
   managed = false,
 }: SnackbarProps) {
+  const {t}=useI18n()
   useEffect(() => {
     if (managed || type === "loading") return
     const t = setTimeout(onClose, duration)
@@ -45,7 +47,7 @@ export default function Snackbar({
           {type === "loading" && <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin"/>}
           {message}
           {type !== "loading" && <button
-            aria-label="Cerrar"
+            aria-label={t("common.close")}
             onClick={onClose}
             className="ml-auto text-white/80 hover:text-white"
           >
