@@ -386,8 +386,8 @@ function MobileDashboardActions({onNewPayment,onNewClient,paymentReady}:{onNewPa
       <Plus className="h-7 w-7" strokeWidth={2.5}/>
     </button>
     {open&&<div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={()=>setOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-label={t("topbar.openMenu")} className="w-full rounded-br15 bg-bg0 p-p20 pb-[calc(var(--p20)+env(safe-area-inset-bottom))] shadow-lg" onClick={event=>event.stopPropagation()}>
-        <div className="mb-p10 flex items-center justify-between"><h2 className="fs-16 font-semibold text-app">{t("topbar.openMenu")}</h2><button type="button" onClick={()=>setOpen(false)} aria-label={t("common.close")} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-bg1"><X className="h-5 w-5"/></button></div>
+      <section role="dialog" aria-modal="true" aria-label={t("topbar.openMenu")} className="w-full rounded-t-[var(--br25)] bg-bg0 px-p30 pt-p30 pb-[calc(var(--p30)+env(safe-area-inset-bottom))] shadow-lg" onClick={event=>event.stopPropagation()}>
+        <div className="mb-p20 flex items-center justify-between"><h2 className="fs-16 font-semibold text-app">{t("topbar.openMenu")}</h2><button type="button" onClick={()=>setOpen(false)} aria-label={t("common.close")} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-bg1"><X className="h-5 w-5"/></button></div>
         <div className="flex flex-col gap-p10">
           <button type="button" disabled={!paymentReady} onClick={()=>{setOpen(false);onNewPayment()}} className="btn-primary min-h-12 w-full justify-center disabled:opacity-50"><DollarSign className="h-4 w-4"/><span>{t("topbar.payment")}</span></button>
           <button type="button" onClick={()=>{setOpen(false);onNewClient()}} className="btn-primary min-h-12 w-full justify-center"><UserPlus className="h-4 w-4"/><span>{t("topbar.client")}</span></button>
