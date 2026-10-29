@@ -60,14 +60,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
    })
    if(response.status===401){window.location.assign("/login");return}
    const data=await response.json()
-   if(!response.ok){
-    const translated=data.code==="ONBOARDING_DATABASE_NOT_READY"
-      ?t("onboarding.errorDatabaseNotReady")
-      :data.code==="WORKSPACE_CREATE_FAILED"
-        ?t("onboarding.errorCreate")
-        :data.error??t("onboarding.errorCreate")
-    throw new Error(translated)
-   }
+   if(!response.ok)throw new Error(data.error??t("login.error"))
    window.location.assign("/dashboard")
   }catch(reason){
    setError(reason instanceof Error?reason.message:t("common.retry"))
@@ -85,7 +78,14 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
     body:JSON.stringify(action==="resend"?{action,contactEmail:business.contactEmail}:{action,business,...(action==="complete"?{code:code.trim()}:{})})
    })
    const data=await response.json()
-   if(!response.ok)throw new Error(data.error??t("login.error"))
+   if(!response.ok){
+    const translated=data.code==="ONBOARDING_DATABASE_NOT_READY"
+      ?t("onboarding.errorDatabaseNotReady")
+      :data.code==="WORKSPACE_CREATE_FAILED"
+        ?t("onboarding.errorCreate")
+        :data.error??t("onboarding.errorCreate")
+    throw new Error(translated)
+   }
    if(data.created){window.location.assign("/dashboard");return}
    if(data.verificationRequired){
     setVerificationEmail(data.email??business.contactEmail)
