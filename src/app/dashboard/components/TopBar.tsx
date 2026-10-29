@@ -103,12 +103,6 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
     setShowTeam(true);
   };
 
-  const changeWorkspace=()=>{
-    setShowBusinessMenu(false);
-    setShowSheet(false);
-    window.location.href="/workspaces";
-  };
-
   const askLogout=()=>{
     setShowBusinessMenu(false);
     setShowSheet(false);
@@ -194,13 +188,6 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                         >
                           Equipo y accesos
                         </button>
-                        <button
-                          role="menuitem"
-                          className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
-                          onClick={changeWorkspace}
-                        >
-                          Cambiar espacio
-                        </button>
                       </>
                     )}
                     <div className="my-p5 border-t border-n1" />
@@ -276,7 +263,6 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                 <button className={`w-full px-p20 py-p10 text-left fs-14 text-app ${modern?"border-b border-n1":""}`} onClick={openCsv}>Importar / exportar clientes</button>
                 {modern&&<>
                   <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openTeam}>Equipo y accesos</button>
-                  <button className="w-full px-p20 py-p10 text-left fs-14 text-app" onClick={changeWorkspace}>Cambiar espacio</button>
                 </>}
               </div>
             </div>
