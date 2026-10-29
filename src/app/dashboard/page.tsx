@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DollarSign, Plus, UserPlus, X } from "react-feather";
 import TopBar from "./components/TopBar";
 import SearchTabsAndPagination, {
   ClientStatus,
@@ -283,8 +284,8 @@ export default function DashboardPage() {
 
   // === RENDER ===================================================================
   return (
-    <div className="h-screen w-screen bg-bg1 flex items-stretch justify-center px-[var(--p0)] py-[var(--p10)] md:p-[var(--p10)]">
-      <div className="w-full h-full bg-bg0 rounded-br25 shadow-lg flex flex-col gap-p20 overflow-hidden grain-surface p-p20 px-p30">
+    <div className="h-dvh w-screen bg-bg1 flex items-stretch justify-center p-p5 md:p-p10">
+      <div className="w-full h-full bg-bg0 rounded-br10 md:rounded-br25 shadow-lg flex flex-col gap-p10 md:gap-p20 overflow-hidden grain-surface p-p10 md:p-p20 md:px-p30">
         {/* HEADER */}
         <TopBar
           onClientsImported={handleClientsImported}
@@ -299,7 +300,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Tabs + buscador + paginador */}
-        <div className="flex flex-col gap-p20 h-full min-h-0 flex-1">
+        <div className="flex flex-col gap-p10 md:gap-p20 h-full min-h-0 flex-1">
           <SearchTabsAndPagination
             searchTerm={searchTerm}
             onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
@@ -319,6 +320,7 @@ export default function DashboardPage() {
           <section className="flex flex-col flex-1 min-h-0">
             <ClientsTable
               clients={pageClients}
+              status={status}
               loading={waiting&&(!loaded||clients.length===0)}
               error={loaded?null:error}
               sortKey={sortKey}
@@ -329,6 +331,8 @@ export default function DashboardPage() {
             />
           </section>
         </div>
+
+        <MobileDashboardActions onNewPayment={() => openNewPayment()} onNewClient={() => setShowNewClient(true)} paymentReady={loaded} />
 
         {/* MODALS */}
         {showNewClient && (
@@ -364,4 +368,31 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function MobileDashboardActions({onNewPayment,onNewClient,paymentReady}:{onNewPayment:()=>void;onNewClient:()=>void;paymentReady:boolean}) {
+  const {t}=useI18n();
+  const [open,setOpen]=useState(false);
+
+  useEffect(()=>{
+    if(!open)return;
+    const onKeyDown=(event:KeyboardEvent)=>{if(event.key==="Escape")setOpen(false)};
+    document.addEventListener("keydown",onKeyDown);
+    return()=>document.removeEventListener("keydown",onKeyDown);
+  },[open]);
+
+  return <div className="md:hidden">
+    <button type="button" onClick={()=>setOpen(true)} aria-label={t("topbar.openMenu")} className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--color-accent-primary)] text-[color:var(--color-text-on-primary)] shadow-lg transition-transform active:scale-95">
+      <Plus className="h-7 w-7" strokeWidth={2.5}/>
+    </button>
+    {open&&<div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={()=>setOpen(false)}>
+      <section role="dialog" aria-modal="true" aria-label={t("topbar.openMenu")} className="w-full rounded-br15 bg-bg0 p-p20 pb-[calc(var(--p20)+env(safe-area-inset-bottom))] shadow-lg" onClick={event=>event.stopPropagation()}>
+        <div className="mb-p10 flex items-center justify-between"><h2 className="fs-16 font-semibold text-app">{t("topbar.openMenu")}</h2><button type="button" onClick={()=>setOpen(false)} aria-label={t("common.close")} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-bg1"><X className="h-5 w-5"/></button></div>
+        <div className="flex flex-col gap-p10">
+          <button type="button" disabled={!paymentReady} onClick={()=>{setOpen(false);onNewPayment()}} className="btn-primary min-h-12 w-full justify-center disabled:opacity-50"><DollarSign className="h-4 w-4"/><span>{t("topbar.payment")}</span></button>
+          <button type="button" onClick={()=>{setOpen(false);onNewClient()}} className="btn-primary min-h-12 w-full justify-center"><UserPlus className="h-4 w-4"/><span>{t("topbar.client")}</span></button>
+        </div>
+      </section>
+    </div>}
+  </div>
 }

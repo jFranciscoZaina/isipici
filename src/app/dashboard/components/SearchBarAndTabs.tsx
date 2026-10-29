@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Search as SearchIcon } from "react-feather";
 import {useI18n} from "../../I18nProvider";
 
@@ -23,22 +23,13 @@ export default function SearchTabsAndPagination({
   available=true,searchTerm,onSearchChange,status,onStatusChange,totalClients,currentPage,itemsPerPage,onPageChange,onPageSizeChange,
 }: SearchTabsAndPaginationProps) {
   const {t}=useI18n();
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   const totalPages = Math.max(1, Math.ceil(totalClients / itemsPerPage));
   const startCount = totalClients === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endCount = Math.min(currentPage * itemsPerPage, totalClients);
 
   return (
-    <div className={`flex-shrink-0 ${isMobile?"flex flex-col gap-4":"flex flex-wrap items-center justify-between gap-4"}`}>
-      <div className="flex items-center gap-2">
+    <div className="flex flex-shrink-0 flex-col gap-p10 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-p20">
+      <div className="flex items-center justify-between gap-p5">
         {([
           ["active",t("search.active")],
           ["inactive",t("search.inactive")],
@@ -47,18 +38,18 @@ export default function SearchTabsAndPagination({
           <button
             key={value}
             onClick={()=>onStatusChange(value)}
-            className={`px-5 fs-14 transition ${status===value?"text-app font-bold":"text-app-secondary hover:bg-bg3 font-medium"}`}
+            className={`min-h-11 flex-1 rounded-br10 px-p10 fs-14 transition md:min-h-0 md:flex-none md:rounded-none md:px-p20 ${status===value?"text-app font-bold":"text-app-secondary hover:bg-bg3 font-medium"}`}
           >
             {label}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 flex justify-end">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[5rem] right-4 z-30 flex justify-end md:static md:z-auto md:flex-1">
         <div className="relative group w-full max-w-md">
           <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-6 w-px border border-n8 transition-all duration-300 ease-out group-focus-within:opacity-0 group-focus-within:scale-y-50"/>
           <span className="pointer-events-none absolute left-0 right-0 bottom-0 h-px origin-center scale-x-0 opacity-0 transition-all duration-300 ease-out group-focus-within:scale-x-100 group-focus-within:opacity-100" style={{backgroundColor:"var(--n8)"}}/>
-          <div className="flex items-center gap-2 pl-6 pr-3 py-2 text-sm text-app-secondary border-none rounded-none">
+          <div className="flex min-h-12 items-center gap-p10 rounded-br15 border border-n2 bg-bg0 px-p10 text-sm text-app-secondary shadow-md md:min-h-0 md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:pl-6 md:pr-3 md:py-2 md:shadow-none">
             <SearchIcon className="w-4 h-4 text-app-secondary" strokeWidth={2}/>
             <input
               className="w-full bg-transparent outline-none border-none rounded-none placeholder:text-app-secondary text-app"
@@ -70,13 +61,13 @@ export default function SearchTabsAndPagination({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-app-secondary fs-12 font-semibold">
-        <select className="border-none rounded-none bg-bg0 text-app fs-12 font-semibold" value={itemsPerPage} onChange={(event)=>onPageSizeChange(Number(event.target.value))}>
+      <div className="flex items-center justify-between gap-p5 text-app-secondary fs-12 font-semibold md:justify-end md:gap-p20">
+        <label className="flex min-h-10 items-center gap-p5 rounded-br10 border border-n2 px-p10 md:min-h-0 md:rounded-none md:border-0 md:px-0"><span className="sr-only">{t("search.of")}</span><select className="border-none bg-bg0 text-app fs-12 font-semibold" value={itemsPerPage} onChange={(event)=>onPageSizeChange(Number(event.target.value))}>
           <option value={25}>25</option><option value={50}>50</option><option value={100}>100</option>
-        </select>
-        <span className="fs-12 font-semibold text-app">{available?startCount:"—"} - {available?endCount:"—"} {t("search.of")} {available?totalClients:"—"}</span>
-        <button className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold" aria-label={t("search.previous")} onClick={()=>onPageChange(currentPage-1)} disabled={currentPage<=1}>‹</button>
-        <button className="p-2 rounded-md hover:bg-bg3 fs-12 font-semibold" aria-label={t("search.next")} onClick={()=>onPageChange(currentPage+1)} disabled={currentPage>=totalPages}>›</button>
+        </select></label>
+        <span className="fs-12 font-semibold text-app">{available?startCount:"—"}-{available?endCount:"—"} {t("search.of")} {available?totalClients:"—"}</span>
+        <div className="flex items-center"><button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-p10" aria-label={t("search.previous")} onClick={()=>onPageChange(currentPage-1)} disabled={currentPage<=1}>‹</button>
+        <button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-p10" aria-label={t("search.next")} onClick={()=>onPageChange(currentPage+1)} disabled={currentPage>=totalPages}>›</button></div>
       </div>
     </div>
   );

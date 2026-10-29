@@ -66,7 +66,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
     loadOwner();
 
-    const update = () => setIsMobile(window.innerWidth < 640);
+    const update = () => setIsMobile(window.innerWidth < 768);
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -114,20 +114,20 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
   return (
     <>
-      <header className="flex items-center justify-between p-p10 pb-4 text-app px-p10 sm:px-10">
-        <div className="flex items-baseline gap-3 items-center">
+      <header className="flex min-h-11 items-center justify-between px-p5 py-p5 text-app md:min-h-0 md:p-p10 md:px-p10 md:pb-4">
+        <div className="flex min-w-0 items-center gap-p10 md:gap-3">
           <span className="text-sm font-semibold tracking-[0.18em] text-[color:var(--color-accent-primary)] uppercase">
             <Image
               src={isipiciLogo}
               alt="ISIPICI"
               width={96}
               height={24}
-              className="h-6 w-auto"
+              className="h-5 w-auto md:h-6"
               priority
             />
           </span>
           <span className="h-5 w-px bg-bg3" />
-          <span className="text-xs text-app-secondary">
+          <span className="max-w-[42vw] truncate text-xs text-app-secondary md:max-w-none">
             {ownerName ?? "—"}
           </span>
         </div>
@@ -213,7 +213,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             <button
               type="button"
               onClick={() => setShowSheet(true)}
-              className="inline-flex items-center justify-center rounded-full p-2 hover:bg-bg2"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg2"
               aria-label={t("topbar.openMenu")}
             >
               <Menu className="h-5 w-5" />
@@ -224,11 +224,11 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
       {showSheet && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:hidden bg-black/60"
+          className="fixed inset-0 z-50 flex items-end md:hidden bg-black/60"
           onClick={() => setShowSheet(false)}
         >
           <div
-            className="w-full bg-bg0 rounded-t-3xl p-p40 pb-p20 shadow-2xl flex flex-col gap-p20 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
+            className="w-full bg-bg0 rounded-t-2xl p-p20 pb-p10 shadow-lg flex flex-col gap-p10 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">

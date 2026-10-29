@@ -59,12 +59,12 @@ export default function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-p5 md:p-4">
       <div
         className={`
           relative w-full ${maxWidth}
-          h-[640px]
-          rounded-br25 bg-bg0 shadow-lg border border-n1
+          h-[min(640px,calc(100dvh-0.625rem))] md:h-[640px]
+          rounded-br10 md:rounded-br25 bg-bg0 shadow-lg border border-n1
           overflow-hidden
           flex flex-col
           ${className}
@@ -74,19 +74,19 @@ export default function Modal({
       >
         {/* HEADER */}
         {header && (
-          <header className="flex items-center justify-center border-b border-n2 px-p30 pt-p30 pb-p20">
+          <header className="flex items-center justify-center border-b border-n2 px-p10 pt-p10 pb-p10 md:px-p30 md:pt-p30 md:pb-p20">
             {header}
           </header>
         )}
 
         {/* BODY (scroll interno si se pasa de alto) */}
-        <main className="flex-1 overflow-y-auto px-p30 py-p30 text-app">
+        <main className="flex-1 overflow-y-auto px-p10 py-p10 text-app md:px-p30 md:py-p30">
           {children}
         </main>
 
         {/* FOOTER (botones) */}
         {(secondaryAction || primaryAction) && (
-          <footer className="border-t border-n2 px-p30 py-p20 flex items-center justify-between gap-p20">
+          <footer className="border-t border-n2 px-p10 py-p10 flex items-center justify-between gap-p10 md:px-p30 md:py-p20 md:gap-p20">
             {secondaryAction && (
               <button
                 type="button"
