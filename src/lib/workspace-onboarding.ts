@@ -17,7 +17,17 @@ export type WorkspaceBusinessInput={
 type CreateResult={ownerId:string;membershipId:string;name:string}
 
 export class WorkspaceOnboardingError extends Error{
- constructor(message:string,public status=409){super(message)}
+ constructor(message:string,public status=409,public code="WORKSPACE_ONBOARDING_FAILED"){super(message)}
+}
+
+function onboardingSchemaUnavailable(error:{code?:string|null;message?:string|null;details?:string|null;hint?:string|null}){
+ const code=error.code??""
+ const text=[error.message,error.details,error.hint].filter(Boolean).join(" ").toLowerCase()
+ return code==="PGRST202"||code==="42883"||code==="42P01"||text.includes("workspace_create_self_service")||text.includes("workspace_begin_self_service_verification")||text.includes("workspace_creation_requests")
+}
+
+function logDatabaseError(scope:string,error:{code?:string|null;message?:string|null;details?:string|null;hint?:string|null}){
+ console.error("[workspace-onboarding] "+scope,{code:error.code,message:error.message,details:error.details,hint:error.hint})
 }
 
 function verificationSecret(){
@@ -63,7 +73,11 @@ export async function sendWorkspaceVerification(user:ModernUser,contactEmail:unk
  const hash=verificationHash(user.id,email,code)
  const expiresAt=new Date(Date.now()+10*60*1000).toISOString()
  const {data,error}=await supabase.rpc("workspace_begin_self_service_verification",{p_user:user.id,p_email:email,p_hash:hash,p_expires:expiresAt})
- if(error)throw new WorkspaceOnboardingError("No se pudo iniciar la verificación.",503)
+ if(error){
+  logDatabaseError("verification rpc failed",error)
+  if(onboardingSchemaUnavailable(error))throw new WorkspaceOnboardingError("La configuración de onboarding no está disponible.",503,"ONBOARDING_DATABASE_NOT_READY")
+  throw new WorkspaceOnboardingError("No se pudo iniciar la verificación.",503,"VERIFICATION_START_FAILED")
+ }
  const result=data as {ok?:boolean;reason?:string}|null
  if(!result?.ok){
   if(result?.reason==="already_joined")throw new WorkspaceOnboardingError("Tu cuenta ya está vinculada a un negocio.",409)
@@ -106,7 +120,11 @@ export async function createSelfServiceWorkspace(user:ModernUser,input:unknown,c
   p_business_type:business.businessType,
   p_code_hash:codeHash
  }))
- if(error)throw new WorkspaceOnboardingError("No se pudo crear el negocio.",503)
+ if(error){
+  logDatabaseError("create rpc failed",error)
+  if(onboardingSchemaUnavailable(error))throw new WorkspaceOnboardingError("La configuración de onboarding no está disponible.",503,"ONBOARDING_DATABASE_NOT_READY")
+  throw new WorkspaceOnboardingError("No se pudo crear el negocio.",503,"WORKSPACE_CREATE_FAILED")
+ }
  const result=data as {ok?:boolean;reason?:string;attemptsLeft?:number;ownerId?:string;membershipId?:string;name?:string}|null
  if(!result?.ok){
   if(result?.reason==="already_joined")throw new WorkspaceOnboardingError("Tu cuenta ya está vinculada a un negocio.",409)
@@ -116,6 +134,6 @@ export async function createSelfServiceWorkspace(user:ModernUser,input:unknown,c
   if(result?.reason==="verification_required")throw new WorkspaceOnboardingError("Primero verificá el email de contacto.",409)
   throw new WorkspaceOnboardingError("Revisá los datos del negocio e intentá nuevamente.",400)
  }
- if(!result.ownerId||!result.membershipId||!result.name)throw new WorkspaceOnboardingError("No se pudo crear el negocio.",503)
+ if(!result.ownerId||!result.membershipId||!result.name)throw new WorkspaceOnboardingError("No se pudo crear el negocio.",503,"WORKSPACE_CREATE_FAILED")
  return {ownerId:result.ownerId,membershipId:result.membershipId,name:result.name}
 }
