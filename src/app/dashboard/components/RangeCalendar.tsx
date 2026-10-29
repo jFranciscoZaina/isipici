@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import {calendarWindow,type CalendarPeriod,type CalendarStatus} from "@/lib/payments/calendar"
 import { addCalendarDays, getNextRecurringDate, toCalendarDate, type RecurringFrequency } from "@/lib/payments/schedule"
+import {useI18n} from "../../I18nProvider"
 
 export type DateRangeValue = {
   from?: Date
@@ -24,8 +25,6 @@ type Props = {
   // YYYY-MM-DD -> estado del día
   markers?: Record<string, CalendarStatus>
 }
-
-const WEEK_DAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
 
 function isToday(d: Date) {
   const t = new Date()
@@ -62,8 +61,8 @@ function addMonths(d: Date, n: number) {
   next.setMonth(next.getMonth() + n)
   return next
 }
-function monthLabel(d: Date) {
-  return d.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+function monthLabel(d: Date, locale: "en"|"es") {
+  return d.toLocaleDateString(locale==="es"?"es-ES":"en-AU", { month: "long", year: "numeric" })
 }
 
 function buildMonthGrid(monthDate: Date) {
@@ -100,6 +99,8 @@ export default function RangeCalendar({
   markers = {},
   recurrence, periods=[], selectedIds=[], onSelectInstallment, onVisibleRangeChange,
 }: Props) {
+  const {t,locale}=useI18n()
+  const weekDays=locale==="es"?["Lu","Ma","Mi","Ju","Vi","Sa","Do"]:["Mo","Tu","We","Th","Fr","Sa","Su"]
   const [baseMonth, setBaseMonth] = useState<Date>(() => {
     return value.from ? new Date(value.from) : new Date()
   })
@@ -152,7 +153,7 @@ export default function RangeCalendar({
           onClick={() => setBaseMonth((m) => addMonths(m, -1))}
           disabled={disabled}
           className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 disabled:opacity-40"
-          aria-label="Previous month"
+          aria-label={t("calendar.previous")}
         >
           ‹
         </button>
@@ -166,7 +167,7 @@ export default function RangeCalendar({
               key={m.toISOString()}
               className={`text-center font-semibold text-slate-900 fs-14 ${index===1?"hidden md:block":""}`}
             >
-              {monthLabel(m)}
+              {monthLabel(m,locale)}
             </div>
           ))}
         </div>
@@ -176,7 +177,7 @@ export default function RangeCalendar({
           onClick={() => setBaseMonth((m) => addMonths(m, 1))}
           disabled={disabled}
           className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 disabled:opacity-40"
-          aria-label="Next month"
+          aria-label={t("calendar.next")}
         >
           ›
         </button>
@@ -190,7 +191,7 @@ export default function RangeCalendar({
             <div key={m.toISOString()} className={index===1?"hidden md:block":""}>
               {/* week header */}
               <div className="grid grid-cols-7 text-center text-sm text-slate-500 mb-2">
-                {WEEK_DAYS.map((w) => (
+                {weekDays.map((w) => (
                   <div key={w} className="py-1">
                     {w}
                   </div>
@@ -229,7 +230,7 @@ export default function RangeCalendar({
                           onClick={() => handleDayClick(d0)}
                           disabled={disabled||selectionMode==="multiple"&&!period?.selectable}
                           aria-pressed={isSelected || isEdge || isInside}
-                          title={period?`${period.status==="paid"?"Pagada":period.status==="partial"?"Pago parcial":period.status==="debt"?"Vencida":"Pendiente"} · ${period.from} – ${period.to}`:isUpcoming?"Próximo cobro recurrente":undefined}
+                          title={period?`${period.status==="paid"?t("subscription.paid"):period.status==="partial"?t("subscription.partial"):period.status==="debt"?t("subscription.overdue"):t("subscription.pending")} · ${period.from} – ${period.to}`:isUpcoming?t("calendar.nextRecurring"):undefined}
                           className={[
                             "h-9 w-full max-w-9 rounded-full text-sm flex flex-col items-center justify-center transition",
                             disabled
