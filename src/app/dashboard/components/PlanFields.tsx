@@ -18,8 +18,8 @@ export default function PlanFields({planId,onPlanId,date,onFrequency,onName,onPr
  const choose=(id:string)=>{onPlanId(id);const plan=plans.find(p=>p.id===id);if(plan){onFrequency(plan.frequency);onName(plan.name)}}
  return <div className="space-y-p10">
   {remote.loading&&<InlineLoader text={t("plans.loading")}/>}
-  <label className="fs-12 text-app-secondary">{t("common.plan")}<select className={inputClass} disabled={remote.loading||remote.status!=="success"} value={planId} onChange={e=>choose(e.target.value)}><option value="">{t("plans.new")}</option>{plans.map(p=><option key={p.id} value={p.id}>{p.name} · {frequencyLabel(locale,p.frequency)}</option>)}</select></label>
+  <label className="fs-12 text-app-secondary">{t("common.plan")}<select className={inputClass} disabled={remote.loading||remote.status!=="success"} value={planId} onChange={e=>choose(e.target.value)}><option value="">{t("plans.select")}</option>{plans.map(p=><option key={p.id} value={p.id}>{p.name} · {frequencyLabel(locale,p.frequency)}</option>)}</select></label>
   {error&&<p role="alert" className="fs-12 text-app-secondary">{error}</p>}
-  {planId&&selected&&<p className="fs-14">{selected?.name??t("common.plan")} · {selected?frequencyLabel(locale,selected.frequency):""} · {price?formatPaymentMoney(price.amount,price.currency):t("plans.noPrice")}</p>}
+  {planId&&selected&&<p className="fs-14">{selected?.name??t("common.plan")} · {selected?frequencyLabel(locale,selected.frequency):""} · {price?formatPaymentMoney(price.amount,price.currency):t("plans.choosePriceDate")}</p>}
  </div>
 }

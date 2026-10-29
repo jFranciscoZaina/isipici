@@ -27,7 +27,7 @@ export default function TeamAccessModal({onClose}:{onClose:()=>void}){
   if(response.status===401||response.status===403)throw new Error(t("team.error"))
   if(!response.ok)throw new Error(t("team.error"))
   return response.json() as Promise<Access>
- },[])
+ },[t])
  const remote=useRemoteData<Access>(url,t("team.loading"),t("team.error"),true,url,load)
  const toast=useToast(),confirm=useConfirm(),lock=useSubmissionLock()
  const [busy,setBusy]=useState(false),[code,setCode]=useState(""),[copied,setCopied]=useState(false)
@@ -57,10 +57,10 @@ export default function TeamAccessModal({onClose}:{onClose:()=>void}){
    size="normal"
    onClose={()=>{if(!busy)onClose()}}
    header={<div className="text-center"><h2 className="fs-20 font-semibold text-app">{t("team.title")}</h2><p className="fs-12 text-app-secondary" style={{marginTop:"var(--p5)"}}>{t("team.subtitle")}</p></div>}
-   secondaryAction={{label:"{t("common.close")}",onClick:onClose,disabled:busy}}
+   secondaryAction={{label:t("common.close"),onClick:onClose,disabled:busy}}
   >
    <div className="flex flex-col gap-p20">
-    {remote.loading&&<InlineLoader text={data?"{t("team.refreshing")}":"{t("team.loading")}"}/>}
+    {remote.loading&&<InlineLoader text={data?t("team.refreshing"):t("team.loading")}/>}
     {remote.error&&<div className="rounded-br10 border border-n1 p-p20" style={{backgroundColor:"var(--n)"}}><p className="fs-14 text-app-secondary">{remote.error}</p><button className="btn-primary" style={{marginTop:"var(--p10)"}} onClick={()=>void remote.refresh()}>{t("common.retry")}</button></div>}
 
     {data&&<>
@@ -80,7 +80,7 @@ export default function TeamAccessModal({onClose}:{onClose:()=>void}){
       <p className="fs-12 text-app-secondary" style={{marginTop:"var(--p5)"}}>{t("team.inviteHelp")}</p>
       <div className="flex flex-col gap-p10 sm:flex-row" style={{marginTop:"var(--p10)"}}>
        <input readOnly value={code} className="min-w-0 flex-1 rounded-br15 border border-n1 bg-bg0 px-p20 py-p10 fs-14 font-mono text-app"/>
-       <button className={secondary} style={{backgroundColor:"var(--n)"}} onClick={async()=>{await navigator.clipboard.writeText(code);setCopied(true)}}>{copied?"{t("team.copied")}":"{t("team.copy")}"}</button>
+       <button className={secondary} style={{backgroundColor:"var(--n)"}} onClick={async()=>{await navigator.clipboard.writeText(code);setCopied(true)}}>{copied?t("team.copied"):t("team.copy")}</button>
       </div>
      </section>}
 
@@ -91,19 +91,19 @@ export default function TeamAccessModal({onClose}:{onClose:()=>void}){
        return <div key={member.id} className="flex flex-col gap-p10 rounded-br10 border border-n1 p-p10 sm:flex-row sm:items-center sm:justify-between" style={{backgroundColor:"var(--n)"}}>
         <div>
          <div className="flex flex-wrap items-center gap-p10">
-          <p className="fs-14 font-medium text-app">{member.displayName??member.email??"{t("team.linked")}"}</p>
+          <p className="fs-14 font-medium text-app">{member.displayName??member.email??t("team.linked")}</p>
           {self&&<span className="rounded-full px-p10 fs-12 font-medium" style={{paddingBlock:"var(--p5)",backgroundColor:"var(--color-accent-primary-soft)",color:"var(--color-accent-primary)"}}>{t("team.yours")}</span>}
          </div>
          <p className="fs-12 text-app-secondary" style={{marginTop:"var(--p5)"}}>{member.email??member.userId}</p>
         </div>
-        {!self&&<button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={busy} onClick={async()=>{if(await confirm({title:"{t("team.unlink")} cuenta",message:t("team.unlinkMessage"),confirmLabel:t("team.unlink")}))void mutate("revokeMembership",member.id)}}>{t("team.unlink")}</button>}
+        {!self&&<button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={busy} onClick={async()=>{if(await confirm({title:t("team.unlinkTitle"),message:t("team.unlinkMessage"),confirmLabel:t("team.unlink")}))void mutate("revokeMembership",member.id)}}>{t("team.unlink")}</button>}
        </div>
       })}
      </section>
 
      <section className="flex flex-col gap-p10 border-t border-n1" style={{paddingTop:"var(--p20)"}}>
       <div><p className="fs-16 font-semibold text-app">{t("team.pending")}</p><p className="fs-12 text-app-secondary">{t("team.pendingHelp")}</p></div>
-      {!data.invites.length?<p className="fs-14 text-app-secondary">{t("team.none")}</p>:data.invites.map(invite=><div key={invite.id} className="flex flex-col gap-p10 rounded-br10 border border-n1 p-p10 sm:flex-row sm:items-center sm:justify-between" style={{backgroundColor:"var(--n)"}}><p className="fs-12 text-app-secondary">{t("team.expires")} {new Date(invite.expires_at).toLocaleDateString(locale==="es"?"es-AR":"en-AU")} · {t("team.uses")} {invite.used_count}/{invite.max_uses}</p><button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={busy} onClick={async()=>{if(await confirm({title:"{t("team.revoke")} invitación",message:t("team.revokeMessage"),confirmLabel:t("team.revoke")}))void mutate("revokeInvite",invite.id)}}>{t("team.revoke")}</button></div>)}
+      {!data.invites.length?<p className="fs-14 text-app-secondary">{t("team.none")}</p>:data.invites.map(invite=><div key={invite.id} className="flex flex-col gap-p10 rounded-br10 border border-n1 p-p10 sm:flex-row sm:items-center sm:justify-between" style={{backgroundColor:"var(--n)"}}><p className="fs-12 text-app-secondary">{t("team.expires")} {new Date(invite.expires_at).toLocaleDateString(locale==="es"?"es-AR":"en-AU")} · {t("team.uses")} {invite.used_count}/{invite.max_uses}</p><button className={danger} style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}} disabled={busy} onClick={async()=>{if(await confirm({title:t("team.revokeTitle"),message:t("team.revokeMessage"),confirmLabel:t("team.revoke")}))void mutate("revokeInvite",invite.id)}}>{t("team.revoke")}</button></div>)}
      </section>
     </>}
    </div>
