@@ -41,7 +41,8 @@ export async function POST(req:NextRequest){
   throw new WorkspaceOnboardingError("Acción inválida.",400)
  }catch(error){
   const message=error instanceof WorkspaceOnboardingError?error.message:"No se pudo completar el onboarding."
-  const status=error instanceof WorkspaceOnboardingError?error.status:400
-  return NextResponse.json({error:message},{status,headers})
+  const status=error instanceof WorkspaceOnboardingError?error.status:500
+  const code=error instanceof WorkspaceOnboardingError?error.code:"WORKSPACE_ONBOARDING_FAILED"
+  return NextResponse.json({error:message,code},{status,headers})
  }
 }
