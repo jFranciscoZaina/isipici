@@ -193,7 +193,9 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                         </button>
                       </>
                     )}
-                    <div className="my-p5 border-t border-n1" />\n                    <div className="flex items-center justify-between gap-p10 px-p20 py-p10"><span className="fs-12 text-app-secondary">{t("topbar.language")}</span><LanguageSwitch compact/></div>\n                    <div className="my-p5 border-t border-n1" />
+                    <div className="my-p5 border-t border-n1" />
+                    <div className="flex items-center justify-between gap-p10 px-p20 py-p10"><span className="fs-12 text-app-secondary">{t("topbar.language")}</span><LanguageSwitch compact/></div>
+                    <div className="my-p5 border-t border-n1" />
                     <button
                       role="menuitem"
                       className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-danger"
@@ -212,7 +214,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
               type="button"
               onClick={() => setShowSheet(true)}
               className="inline-flex items-center justify-center rounded-full p-2 hover:bg-bg2"
-              aria-label="{t("topbar.openMenu")}"
+              aria-label={t("topbar.openMenu")}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -286,9 +288,9 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
       <ConfirmDialog
         open={confirmLogout}
-        title="{t("topbar.logoutTitle")}"
-        message="{t("topbar.logoutMessage")}"
-        confirmLabel="{t("common.logout")}"
+        title={t("topbar.logoutTitle")}
+        message={t("topbar.logoutMessage")}
+        confirmLabel={t("common.logout")}
         onCancel={() => setConfirmLogout(false)}
         onConfirm={() => {
           setConfirmLogout(false);
