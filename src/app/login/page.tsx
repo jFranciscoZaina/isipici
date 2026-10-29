@@ -11,8 +11,11 @@ function GoogleMark(){
 }
 import {useSubmissionLock} from "../dashboard/components/useSubmissionLock"
 import isipiciLogo from "../isipici.svg"
+import LanguageSwitch from "../LanguageSwitch"
+import {useI18n} from "../I18nProvider"
 
 export default function LoginPage() {
+  const {t}=useI18n()
   const router = useRouter()
   const submission=useSubmissionLock()
   const [email, setEmail] = useState("")
@@ -58,14 +61,14 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data?.error || "Error al iniciar sesion")
+        setError(data?.error || t("login.error"))
         return
       }
 
       window.location.assign("/dashboard")
     } catch (err) {
       console.error(err)
-      setError("Error inesperado, intenta de nuevo")
+      setError(t("login.error"))
     } finally {
       submission.release()
       setLoading(false)
@@ -77,31 +80,31 @@ export default function LoginPage() {
     setLoading(true);setError(null)
     try{
       const response=await fetch("/api/auth/google",{method:"POST"}),data=await response.json()
-      if(!response.ok)throw new Error(data.error??"No se pudo iniciar Google")
+      if(!response.ok)throw new Error(data.error??t("login.googleError"))
       window.location.assign(data.url)
-    }catch(e){setError(e instanceof Error?e.message:"No se pudo iniciar Google");setLoading(false);submission.release()}
+    }catch(e){setError(e instanceof Error?e.message:t("login.googleError"));setLoading(false);submission.release()}
   }
-  React.useEffect(()=>{if(new URLSearchParams(window.location.search).has("authError"))setError("No se pudo completar el acceso con Google. Intentá nuevamente.")},[])
+  React.useEffect(()=>{if(new URLSearchParams(window.location.search).has("authError"))setError(t("login.googleError"))},[])
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4 relative">
         <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8 text-sm text-slate-500">
-          Verificando sesion...
+          {t("login.checking")}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-slate-200 px-4 relative">
+      <div className="absolute right-p20 top-p20"><LanguageSwitch compact/></div>\n      <div className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
         <div className="mb-4">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
           >
             <ArrowLeft size={18} />
-            <span>Volver</span>
+            <span>{t("login.back")}</span>
           </Link>
         </div>
 
@@ -116,11 +119,11 @@ export default function LoginPage() {
         </div>
 
         <p className="text-sm text-slate-500 mb-6">
-          Inicia sesion con la cuenta de tu negocio para ver tus clientes y pagos.
+          {t("login.body")}
         </p>
 
-        <button type="button" disabled={loading} onClick={startGoogle} className="inline-flex w-full items-center justify-center gap-p10 rounded-full border border-n2 px-p20 py-p10 fs-14 font-medium text-app shadow-sm transition-colors hover:bg-bg1 disabled:cursor-not-allowed disabled:opacity-60" style={{backgroundColor:"var(--n)"}}><GoogleMark/><span>Continuar con Google</span></button>
-        <p className="text-app-secondary text-center py-p10">──────── o ────────</p>
+        <button type="button" disabled={loading} onClick={startGoogle} className="inline-flex w-full items-center justify-center gap-p10 rounded-full border border-n2 px-p20 py-p10 fs-14 font-medium text-app shadow-sm transition-colors hover:bg-bg1 disabled:cursor-not-allowed disabled:opacity-60" style={{backgroundColor:"var(--n)"}}><GoogleMark/><span>{t("login.google")}</span></button>
+        <p className="text-app-secondary text-center py-p10">──────── {t("login.or")} ────────</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">
@@ -141,7 +144,7 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">
-              Contrasena
+              {t("login.password")}
             </label>
             <div className="relative">
               <input
@@ -154,7 +157,7 @@ export default function LoginPage() {
               />
               <button
                 type="button"
-                aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
                 className="absolute inset-y-0 right-3 flex items-center text-slate-500"
                 onClick={() => setShowPassword((v) => !v)}
               >
@@ -174,12 +177,12 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-full bg-slate-900 text-white text-sm font-medium py-2.5 mt-2 hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? "Ingresando..." : "Iniciar sesion"}
+            {loading ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
 
         <p className="mt-6 text-[11px] text-slate-400">
-          Si todavía no tenés un negocio, podés crear tu espacio gratis iniciando con Google.
+          {t("login.footer")}
         </p>
       </div>
     </div>

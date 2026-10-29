@@ -5,13 +5,16 @@ import Image from "next/image";
 import Link from "next/link";
 import isipiciLogo from "../../public/isipici.svg";
 import ablelogo from "../../public/abllle-logo-o.png";
+import LanguageSwitch from "./LanguageSwitch";
+import {useI18n} from "./I18nProvider";
 
 export default function HomePage() {
+  const {t}=useI18n();
   const startGoogle = async () => {
     try {
       const response = await fetch("/api/auth/google", { method: "POST" });
       const data = await response.json();
-      if (!response.ok || !data?.url) throw new Error("No se pudo iniciar Google");
+      if (!response.ok || !data?.url) throw new Error("Could not start Google");
       window.location.assign(data.url);
     } catch {
       window.location.assign("/login");
@@ -20,6 +23,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-bg8 text-app">
+      <div className="fixed right-p20 top-p20 z-50"><LanguageSwitch compact/></div>
       <section
         className="
           relative
@@ -69,7 +73,7 @@ export default function HomePage() {
             >
               <div className="flex flex-col gap-p50 text-center max-w-[600px]">
                 <p className="fs-12 tracking-[0.18em] uppercase text-[color:var(--n8)]">
-                  CLIENT & PAYMENT MANAGER
+                  {t("home.kicker")}
                 </p>
                 <span className="text-sm font-semibold tracking-[0.18em]  uppercase flex justify-center">
                   <Image
@@ -83,12 +87,10 @@ export default function HomePage() {
                 </span>{" "}
                 <div className=" flex-col gap-p10 flex">
                   <h1 className="fs-32 font-black text-[color:var(--n8)] uppercase ">
-                    control total de tus cuotas
+                    {t("home.title")}
                   </h1>
                   <p className="fs-14 text-[color:var(--n8)]">
-                    Administra clientes, pagos y deudas en un dashboard pensado
-                    para el día a día de tu organización. Datos claros, decisiones
-                    rápidas.
+                    {t("home.body")}
                   </p>
                 </div>
               </div>
@@ -109,7 +111,7 @@ export default function HomePage() {
                     window.location.href = "/login";
                   }}
                 >
-                  Iniciar sesión
+                  {t("home.login")}
                 </button>
                 <button
                   type="button"
@@ -130,7 +132,7 @@ export default function HomePage() {
                     void startGoogle();
                   }}
                 >
-                  Crear cuenta con Google
+                  {t("home.create")}
                 </button>
               </div>
             </div>
@@ -139,7 +141,7 @@ export default function HomePage() {
                 href="/privacy"
                 className="fs-12 text-[color:var(--n4)] underline-offset-4 hover:underline"
               >
-                Política de Privacidad
+                {t("home.privacy")}
               </Link>
               <a
                 className="fs-12 text-[color:var(--n4)] flex flex-wrap items-center gap-p10 w-fit"

@@ -9,6 +9,8 @@ const PlansModal = dynamic(() => import("./PlansModal"));
 const TeamAccessModal = dynamic(() => import("./TeamAccessModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
+import LanguageSwitch from "../../LanguageSwitch";
+import {useI18n} from "../../I18nProvider";
 
 interface TopBarProps {
   paymentReady?: boolean;
@@ -18,6 +20,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onNewPayment, onNewClient, onClientsImported, paymentReady=true }: TopBarProps) {
+  const {t}=useI18n();
   const [modern,setModern]=useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
@@ -134,11 +137,11 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             <div className="flex items-center gap-p20">
               <button disabled={!paymentReady} onClick={onNewPayment} className="btn-primary">
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
-                <span>Registrar pago</span>
+                <span>{t("topbar.payment")}</span>
               </button>
               <button onClick={onNewClient} className="btn-primary">
                 <UserPlus className="h-4 w-4" strokeWidth={2} />
-                <span>Registrar cliente</span>
+                <span>{t("topbar.client")}</span>
               </button>
 
               <span className="h-5 w-px bg-bg3" />
@@ -152,7 +155,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                   className="inline-flex items-center gap-p10 rounded-full border border-n2 px-p20 py-p10 fs-14 font-medium text-app transition-colors hover:bg-bg1"
                   style={{backgroundColor:"var(--color-bg-bg0)"}}
                 >
-                  <span>Más sobre tu negocio</span>
+                  <span>{t("topbar.more")}</span>
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${showBusinessMenu?"rotate-180":""}`}
                     strokeWidth={2}
@@ -170,14 +173,14 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                       className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                       onClick={openPlans}
                     >
-                      Planes
+                      {t("topbar.plans")}
                     </button>
                     <button
                       role="menuitem"
                       className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                       onClick={openCsv}
                     >
-                      Importar / exportar clientes
+                      {t("topbar.csv")}
                     </button>
                     {modern&&(
                       <>
@@ -186,17 +189,17 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                           className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                           onClick={openTeam}
                         >
-                          Equipo y accesos
+                          {t("topbar.team")}
                         </button>
                       </>
                     )}
-                    <div className="my-p5 border-t border-n1" />
+                    <div className="my-p5 border-t border-n1" />\n                    <div className="flex items-center justify-between gap-p10 px-p20 py-p10"><span className="fs-12 text-app-secondary">{t("topbar.language")}</span><LanguageSwitch compact/></div>\n                    <div className="my-p5 border-t border-n1" />
                     <button
                       role="menuitem"
                       className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-danger"
                       onClick={askLogout}
                     >
-                      Salir
+                      {t("common.logout")}
                     </button>
                   </div>
                 )}
@@ -209,7 +212,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
               type="button"
               onClick={() => setShowSheet(true)}
               className="inline-flex items-center justify-center rounded-full p-2 hover:bg-bg2"
-              aria-label="Abrir menú"
+              aria-label="{t("topbar.openMenu")}"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -227,7 +230,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">
-              <p className="fs-12 text-app-secondary">Espacio actual</p>
+              <p className="fs-12 text-app-secondary">{t("topbar.current")}</p>
               <p className="fs-16 text-app font-semibold mt-p5">{ownerName ?? "—"}</p>
             </div>
 
@@ -241,7 +244,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                 className="w-full btn-primary justify-center py-p10 fs-14"
               >
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
-                <span>Registrar pago</span>
+                <span>{t("topbar.payment")}</span>
               </button>
 
               <button
@@ -252,17 +255,17 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                 className="w-full btn-primary justify-center py-p10 fs-14"
               >
                 <UserPlus className="h-4 w-4" strokeWidth={2} />
-                <span>Registrar cliente</span>
+                <span>{t("topbar.client")}</span>
               </button>
             </div>
 
             <div className="border-t border-n1 pt-p20">
-              <p className="fs-12 font-medium text-app-secondary mb-p10">Más sobre tu negocio</p>
+              <div className="mb-p10 flex items-center justify-between gap-p10"><p className="fs-12 font-medium text-app-secondary">{t("topbar.more")}</p><LanguageSwitch compact/></div>
               <div className="overflow-hidden rounded-br15 border border-n1" style={{backgroundColor:"var(--n)"}}>
-                <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openPlans}>Planes</button>
-                <button className={`w-full px-p20 py-p10 text-left fs-14 text-app ${modern?"border-b border-n1":""}`} onClick={openCsv}>Importar / exportar clientes</button>
+                <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openPlans}>{t("topbar.plans")}</button>
+                <button className={`w-full px-p20 py-p10 text-left fs-14 text-app ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
                 {modern&&<>
-                  <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openTeam}>Equipo y accesos</button>
+                  <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openTeam}>{t("topbar.team")}</button>
                 </>}
               </div>
             </div>
@@ -272,7 +275,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
               className="w-full rounded-full border px-p20 py-p10 text-center fs-14 font-medium text-danger"
               style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}}
             >
-              Salir
+              {t("common.logout")}
             </button>
           </div>
         </div>
@@ -283,9 +286,9 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
       <ConfirmDialog
         open={confirmLogout}
-        title="Cerrar sesión"
-        message="No podrás ver ni gestionar los datos de tu negocio hasta que inicies sesión nuevamente."
-        confirmLabel="Salir"
+        title="{t("topbar.logoutTitle")}"
+        message="{t("topbar.logoutMessage")}"
+        confirmLabel="{t("common.logout")}"
         onCancel={() => setConfirmLogout(false)}
         onConfirm={() => {
           setConfirmLogout(false);
