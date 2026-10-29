@@ -165,19 +165,19 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                 {showBusinessMenu&&(
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-50 mt-p10 min-w-[260px] overflow-hidden rounded-br15 border border-n1 p-p5"
+                    className="absolute right-0 top-full z-50 mt-p10 min-w-[280px] overflow-hidden rounded-br15 border border-n1 p-p10"
                     style={{backgroundColor:"var(--n)",boxShadow:"var(--shadow-lg)"}}
                   >
                     <button
                       role="menuitem"
-                      className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                       onClick={openPlans}
                     >
                       {t("topbar.plans")}
                     </button>
                     <button
                       role="menuitem"
-                      className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                       onClick={openCsv}
                     >
                       {t("topbar.csv")}
@@ -186,7 +186,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                       <>
                         <button
                           role="menuitem"
-                          className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                          className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                           onClick={openTeam}
                         >
                           {t("topbar.team")}
@@ -198,7 +198,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                     <div className="my-p5 border-t border-n1" />
                     <button
                       role="menuitem"
-                      className="flex w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-danger"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-danger hover:bg-bg1"
                       onClick={askLogout}
                     >
                       {t("common.logout")}
@@ -228,15 +228,15 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
           onClick={() => setShowSheet(false)}
         >
           <div
-            className="w-full bg-bg0 rounded-t-2xl p-p20 pb-p10 shadow-lg flex flex-col gap-p10 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
+            className="w-full bg-bg0 rounded-t-[var(--br25)] px-p30 pt-p30 pb-[calc(var(--p30)+env(safe-area-inset-bottom))] shadow-lg flex flex-col gap-p20 transform translate-y-0 animate-[sheet-up_200ms_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center">
+            <div className="rounded-br15 bg-bg1 p-p20 text-center">
               <p className="fs-12 text-app-secondary">{t("topbar.current")}</p>
               <p className="fs-16 text-app font-semibold mt-p5">{ownerName ?? "—"}</p>
             </div>
 
-            <div className="space-y-p10">
+            <div className="flex flex-col gap-p10">
               <button
                 disabled={!paymentReady}
                 onClick={() => {
@@ -262,19 +262,19 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             </div>
 
             <div className="border-t border-n1 pt-p20">
-              <div className="mb-p10 flex items-center justify-between gap-p10"><p className="fs-12 font-medium text-app-secondary">{t("topbar.more")}</p><LanguageSwitch compact/></div>
+              <div className="mb-p10 flex items-center justify-between gap-p20 px-p5"><p className="fs-12 font-medium text-app-secondary">{t("topbar.more")}</p><LanguageSwitch compact/></div>
               <div className="overflow-hidden rounded-br15 border border-n1" style={{backgroundColor:"var(--n)"}}>
-                <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openPlans}>{t("topbar.plans")}</button>
-                <button className={`w-full px-p20 py-p10 text-left fs-14 text-app ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
+                <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openPlans}>{t("topbar.plans")}</button>
+                <button className={`flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1 ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
                 {modern&&<>
-                  <button className="w-full border-b border-n1 px-p20 py-p10 text-left fs-14 text-app" onClick={openTeam}>{t("topbar.team")}</button>
+                  <button className="flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTeam}>{t("topbar.team")}</button>
                 </>}
               </div>
             </div>
 
             <button
               onClick={askLogout}
-              className="w-full rounded-full border px-p20 py-p10 text-center fs-14 font-medium text-danger"
+              className="w-full rounded-full border px-p20 py-p10 text-center fs-14 font-medium text-danger transition-colors hover:bg-bg1"
               style={{borderColor:"var(--color-state-danger)",backgroundColor:"var(--n)"}}
             >
               {t("common.logout")}
