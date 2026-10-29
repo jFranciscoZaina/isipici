@@ -28,7 +28,7 @@ export default function SearchTabsAndPagination({
   const endCount = Math.min(currentPage * itemsPerPage, totalClients);
 
   return (
-    <div className="flex flex-shrink-0 flex-col gap-p10 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-p20">
+    <div className="flex flex-shrink-0 flex-col gap-[var(--p10)] md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
       <div className="flex items-center justify-between gap-p5">
         {([
           ["active",t("search.active")],
@@ -38,7 +38,7 @@ export default function SearchTabsAndPagination({
           <button
             key={value}
             onClick={()=>onStatusChange(value)}
-            className={`min-h-11 flex-1 rounded-br10 px-p10 fs-14 transition md:min-h-0 md:flex-none md:rounded-none md:px-p20 ${status===value?"text-app font-bold":"text-app-secondary hover:bg-bg3 font-medium"}`}
+            className={`min-h-11 flex-1 rounded-[var(--br10)] px-[var(--p10)] fs-14 transition md:min-h-0 md:flex-none md:rounded-none md:px-5 ${status===value?"text-app font-bold":"text-app-secondary hover:bg-bg3 font-medium"}`}
           >
             {label}
           </button>
@@ -61,13 +61,13 @@ export default function SearchTabsAndPagination({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-p5 text-app-secondary fs-12 font-semibold md:justify-end md:gap-p20">
+      <div className="flex items-center justify-between gap-[var(--p5)] text-app-secondary fs-12 font-semibold md:justify-end md:gap-4">
         <label className="flex min-h-10 items-center gap-p5 rounded-br10 border border-n2 px-p10 md:min-h-0 md:rounded-none md:border-0 md:px-0"><span className="sr-only">{t("search.of")}</span><select className="border-none bg-bg0 text-app fs-12 font-semibold" value={itemsPerPage} onChange={(event)=>onPageSizeChange(Number(event.target.value))}>
           <option value={25}>25</option><option value={50}>50</option><option value={100}>100</option>
         </select></label>
         <span className="fs-12 font-semibold text-app">{available?startCount:"—"}-{available?endCount:"—"} {t("search.of")} {available?totalClients:"—"}</span>
-        <div className="flex items-center"><button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-p10" aria-label={t("search.previous")} onClick={()=>onPageChange(currentPage-1)} disabled={currentPage<=1}>‹</button>
-        <button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-p10" aria-label={t("search.next")} onClick={()=>onPageChange(currentPage+1)} disabled={currentPage>=totalPages}>›</button></div>
+        <div className="flex items-center"><button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-2" aria-label={t("search.previous")} onClick={()=>onPageChange(currentPage-1)} disabled={currentPage<=1}>‹</button>
+        <button className="flex h-10 w-10 items-center justify-center rounded-br10 hover:bg-bg3 fs-12 font-semibold md:h-auto md:w-auto md:p-2" aria-label={t("search.next")} onClick={()=>onPageChange(currentPage+1)} disabled={currentPage>=totalPages}>›</button></div>
       </div>
     </div>
   );
