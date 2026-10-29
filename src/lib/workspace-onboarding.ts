@@ -56,6 +56,9 @@ export async function sendWorkspaceVerification(user:ModernUser,contactEmail:unk
  const email=businessEmail(contactEmail)
  if(!needsContactVerification(user,email))return {verificationRequired:false as const}
 
+ const from=process.env.EMAIL_FROM
+ if(!from||!process.env.RESEND_API_KEY)throw new WorkspaceOnboardingError("El envío de códigos no está configurado.",503)
+
  const code=String(randomInt(100000,1000000))
  const hash=verificationHash(user.id,email,code)
  const expiresAt=new Date(Date.now()+10*60*1000).toISOString()
@@ -69,8 +72,6 @@ export async function sendWorkspaceVerification(user:ModernUser,contactEmail:unk
   throw new WorkspaceOnboardingError("No se pudo iniciar la verificación.",400)
  }
 
- const from=process.env.EMAIL_FROM
- if(!from||!process.env.RESEND_API_KEY)throw new WorkspaceOnboardingError("El envío de códigos no está configurado.",503)
  try{
   const sent=await getResend().emails.send({
    from,
@@ -80,7 +81,8 @@ export async function sendWorkspaceVerification(user:ModernUser,contactEmail:unk
   },{idempotencyKey:`isipici/workspace-verification/${user.id}/${hash.slice(0,20)}`})
   if(sent.error||!sent.data?.id)throw new Error("provider")
  }catch{
-  throw new WorkspaceOnboardingError("No pudimos enviar el código. Intentá nuevamente en un minuto.",503)
+  await supabase.from("workspace_creation_requests").delete().eq("user_id",user.id).eq("code_hash",hash).catch(()=>{})
+  throw new WorkspaceOnboardingError("No pudimos enviar el código. Intentá nuevamente.",503)
  }
  return {verificationRequired:true as const,email}
 }
