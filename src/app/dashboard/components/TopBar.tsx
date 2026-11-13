@@ -8,6 +8,7 @@ const ClientCsvModal=dynamic(()=>import("./ClientCsvModal"));
 const PlansModal = dynamic(() => import("./PlansModal"));
 const TeamAccessModal = dynamic(() => import("./TeamAccessModal"));
 const BusinessToolsModal = dynamic(() => import("./BusinessToolsModal"));
+const EventsModal = dynamic(() => import("./EventsModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
 import LanguageSwitch from "../../LanguageSwitch";
@@ -33,6 +34,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
   const [showPlans,setShowPlans]=useState(false);
   const [showTeam,setShowTeam]=useState(false);
   const [showTools,setShowTools]=useState(false);
+  const [showEvents,setShowEvents]=useState(false);
   const [enabledTools,setEnabledTools]=useState<BusinessTool[]>([...DEFAULT_BUSINESS_TOOLS]);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const businessMenuRef=useRef<HTMLDivElement|null>(null);
@@ -118,6 +120,12 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
     setShowTools(true);
   };
 
+  const openEvents=()=>{
+    setShowBusinessMenu(false);
+    setShowSheet(false);
+    setShowEvents(true);
+  };
+
   const askLogout=()=>{
     setShowBusinessMenu(false);
     setShowSheet(false);
@@ -186,6 +194,13 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
                       onClick={openPlans}
                     >
                       {t("topbar.plans")}
+                    </button>}
+                    {enabledTools.includes("events")&&<button
+                      role="menuitem"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                      onClick={openEvents}
+                    >
+                      {t("topbar.events")}
                     </button>}
                     <button
                       role="menuitem"
@@ -284,6 +299,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
               <div className="mb-p10 flex items-center justify-between gap-p20 px-p5"><p className="fs-12 font-medium text-app-secondary">{t("topbar.more")}</p><LanguageSwitch compact/></div>
               <div className="overflow-hidden rounded-br15 border border-n1" style={{backgroundColor:"var(--n)"}}>
                 {enabledTools.includes("plans")&&<button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openPlans}>{t("topbar.plans")}</button>}
+                {enabledTools.includes("events")&&<button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openEvents}>{t("topbar.events")}</button>}
                 <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTools}>{t("topbar.tools")}</button>
                 <button className={`flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1 ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
                 {modern&&<>
@@ -307,6 +323,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
       {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={tools=>{setEnabledTools(tools);onToolsChange?.(tools)}}/>}
+      {showEvents&&<EventsModal onClose={()=>setShowEvents(false)}/>}
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
