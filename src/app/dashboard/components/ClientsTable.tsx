@@ -11,9 +11,9 @@ import {ClientContextMenu,type ClientMenuAction} from "./ClientContextMenu"
 import React from "react"
 import {useI18n} from "../../I18nProvider"
 
-type Props={clients:ClientRow[];status:ClientStatus;loading:boolean;error:string|null;sortKey:"name"|"plan"|"paid"|"debt"|"due";sortDir:"asc"|"desc";onToggleSort:(key:"name"|"plan"|"paid"|"debt"|"due")=>void;onOpenDetail:(client:ClientRow)=>void;onMenuAction?:(action:ClientMenuAction,client:ClientRow)=>void}
+type Props={clients:ClientRow[];status:ClientStatus;loading:boolean;error:string|null;sortKey:"name"|"plan"|"paid"|"debt"|"due";sortDir:"asc"|"desc";onToggleSort:(key:"name"|"plan"|"paid"|"debt"|"due")=>void;onOpenDetail:(client:ClientRow)=>void;onMenuAction?:(action:ClientMenuAction,client:ClientRow)=>void;paymentEnabled?:boolean}
 
-export default function ClientsTable({clients,status,loading,error,sortKey,sortDir,onToggleSort,onOpenDetail,onMenuAction}:Props){
+export default function ClientsTable({clients,status,loading,error,sortKey,sortDir,onToggleSort,onOpenDetail,onMenuAction,paymentEnabled=true}:Props){
  const {t,locale}=useI18n()
  const [colWidths,setColWidths]=useState<number[]>([80,260,160,140,160,120])
  const [menuClient,setMenuClient]=useState<ClientRow|null>(null),[menuPosition,setMenuPosition]=useState<{top:number;left:number}|null>(null)
