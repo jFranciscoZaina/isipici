@@ -4,6 +4,7 @@ import {supabase} from "@/lib/supabaseClient"
 import {getResend} from "@/lib/emails/provider"
 import {businessEmail,businessText,businessTimezone} from "@/lib/business-validation"
 import {withAuditActor} from "@/lib/audit-context"
+import {normalizeBusinessTools,type BusinessTool} from "@/lib/business-tools"
 
 type ModernUser={id:string;email?:string|null;last_sign_in_at?:string;user_metadata?:Record<string,unknown>}
 export type WorkspaceBusinessInput={
@@ -13,6 +14,7 @@ export type WorkspaceBusinessInput={
  timezone:string|null
  country:string|null
  businessType:string|null
+ enabledTools:BusinessTool[]
 }
 type CreateResult={ownerId:string;membershipId:string;name:string}
 
@@ -23,7 +25,7 @@ export class WorkspaceOnboardingError extends Error{
 function onboardingSchemaUnavailable(error:{code?:string|null;message?:string|null;details?:string|null;hint?:string|null}){
  const code=error.code??""
  const text=[error.message,error.details,error.hint].filter(Boolean).join(" ").toLowerCase()
- return code==="PGRST202"||code==="42883"||code==="42P01"||text.includes("workspace_create_self_service")||text.includes("workspace_begin_self_service_verification")||text.includes("workspace_creation_requests")
+ return code==="PGRST202"||code==="42883"||code==="42P01"||text.includes("workspace_create_self_service_v2")||text.includes("workspace_create_self_service")||text.includes("workspace_begin_self_service_verification")||text.includes("workspace_creation_requests")||text.includes("enabled_tools")
 }
 
 function logDatabaseError(scope:string,error:{code?:string|null;message?:string|null;details?:string|null;hint?:string|null}){
@@ -53,6 +55,7 @@ export function parseWorkspaceBusiness(input:unknown):WorkspaceBusinessInput{
   timezone:businessTimezone(body.timezone),
   country:businessText(body.country),
   businessType:businessText(body.businessType,200),
+  enabledTools:(()=>{try{return normalizeBusinessTools(body.enabledTools)}catch{throw new WorkspaceOnboardingError("Elegí al menos un tipo de cobro.",400)}})(),
  }
 }
 
@@ -110,7 +113,7 @@ export async function createSelfServiceWorkspace(user:ModernUser,input:unknown,c
   codeHash=verificationHash(user.id,business.contactEmail,code.trim())
  }
 
- const {data,error}=await withAuditActor({kind:"system"},()=>supabase.rpc("workspace_create_self_service",{
+ const {data,error}=await withAuditActor({kind:"system"},()=>supabase.rpc("workspace_create_self_service_v2",{
   p_user:user.id,
   p_name:business.name,
   p_contact_email:business.contactEmail,
@@ -118,7 +121,8 @@ export async function createSelfServiceWorkspace(user:ModernUser,input:unknown,c
   p_timezone:business.timezone,
   p_country:business.country,
   p_business_type:business.businessType,
-  p_code_hash:codeHash
+  p_code_hash:codeHash,
+  p_enabled_tools:business.enabledTools
  }))
  if(error){
   logDatabaseError("create rpc failed",error)
@@ -132,6 +136,7 @@ export async function createSelfServiceWorkspace(user:ModernUser,input:unknown,c
   if(result?.reason==="expired_code")throw new WorkspaceOnboardingError("El código venció. Pedí uno nuevo.",409)
   if(result?.reason==="attempts_exhausted")throw new WorkspaceOnboardingError("Superaste los intentos permitidos. Pedí un código nuevo.",409)
   if(result?.reason==="verification_required")throw new WorkspaceOnboardingError("Primero verificá el email de contacto.",409)
+  if(result?.reason==="invalid_tools")throw new WorkspaceOnboardingError("Elegí al menos un tipo de cobro.",400)
   throw new WorkspaceOnboardingError("Revisá los datos del negocio e intentá nuevamente.",400)
  }
  if(!result.ownerId||!result.membershipId||!result.name)throw new WorkspaceOnboardingError("No se pudo crear el negocio.",503,"WORKSPACE_CREATE_FAILED")
