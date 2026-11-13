@@ -60,5 +60,5 @@ export default function ClientsTable({clients,status,loading,error,sortKey,sortD
    </article>
   })}</div>}
  </div>
- <ClientContextMenu client={menuClient} position={menuPosition} onClose={closeMenu} onAction={handleMenuAction}/></div>
+ <ClientContextMenu client={menuClient} position={menuPosition} onClose={closeMenu} onAction={handleMenuAction} paymentEnabled={paymentEnabled}/></div>
 }
