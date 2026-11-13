@@ -7,10 +7,12 @@ import dynamic from "next/dynamic";
 const ClientCsvModal=dynamic(()=>import("./ClientCsvModal"));
 const PlansModal = dynamic(() => import("./PlansModal"));
 const TeamAccessModal = dynamic(() => import("./TeamAccessModal"));
+const BusinessToolsModal = dynamic(() => import("./BusinessToolsModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
 import LanguageSwitch from "../../LanguageSwitch";
 import {useI18n} from "../../I18nProvider";
+import {DEFAULT_BUSINESS_TOOLS,type BusinessTool} from "@/lib/business-tools";
 
 interface TopBarProps {
   paymentReady?: boolean;
@@ -29,6 +31,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
   const [showCsv,setShowCsv]=useState(false);
   const [showPlans,setShowPlans]=useState(false);
   const [showTeam,setShowTeam]=useState(false);
+  const [showTools,setShowTools]=useState(false);
+  const [enabledTools,setEnabledTools]=useState<BusinessTool[]>([...DEFAULT_BUSINESS_TOOLS]);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const businessMenuRef=useRef<HTMLDivElement|null>(null);
 
@@ -56,6 +60,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
           const data = await res.json();
           setOwnerName(data.name);
           setModern(data.authKind==="user");
+          if(Array.isArray(data.enabled_tools))setEnabledTools(data.enabled_tools.filter((tool:unknown):tool is BusinessTool=>typeof tool==="string"&&["plans","events","payments"].includes(tool)));
         } else {
           console.error("No se pudo cargar el owner logueado");
         }
@@ -104,6 +109,12 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
     setShowBusinessMenu(false);
     setShowSheet(false);
     setShowTeam(true);
+  };
+
+  const openTools=()=>{
+    setShowBusinessMenu(false);
+    setShowSheet(false);
+    setShowTools(true);
   };
 
   const askLogout=()=>{
@@ -168,12 +179,19 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
                     className="absolute right-0 top-full z-50 mt-p10 min-w-[280px] overflow-hidden rounded-br15 border border-n1 p-p10"
                     style={{backgroundColor:"var(--n)",boxShadow:"var(--shadow-lg)"}}
                   >
-                    <button
+                    {enabledTools.includes("plans")&&<button
                       role="menuitem"
                       className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
                       onClick={openPlans}
                     >
                       {t("topbar.plans")}
+                    </button>}
+                    <button
+                      role="menuitem"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                      onClick={openTools}
+                    >
+                      {t("topbar.tools")}
                     </button>
                     <button
                       role="menuitem"
@@ -264,7 +282,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             <div className="border-t border-n1 pt-p20">
               <div className="mb-p10 flex items-center justify-between gap-p20 px-p5"><p className="fs-12 font-medium text-app-secondary">{t("topbar.more")}</p><LanguageSwitch compact/></div>
               <div className="overflow-hidden rounded-br15 border border-n1" style={{backgroundColor:"var(--n)"}}>
-                <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openPlans}>{t("topbar.plans")}</button>
+                {enabledTools.includes("plans")&&<button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openPlans}>{t("topbar.plans")}</button>}
+                <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTools}>{t("topbar.tools")}</button>
                 <button className={`flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1 ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
                 {modern&&<>
                   <button className="flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTeam}>{t("topbar.team")}</button>
@@ -285,7 +304,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
       {showCsv&&<ClientCsvModal onClose={()=>setShowCsv(false)} onImported={()=>onClientsImported?.()}/>}
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
-      {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
+      {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}\n      {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={setEnabledTools}/>}
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
