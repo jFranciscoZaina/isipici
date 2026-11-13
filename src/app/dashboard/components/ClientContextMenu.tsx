@@ -7,9 +7,9 @@ import { Trash2, DollarSign, UserPlus, CreditCard, Mail } from "react-feather";
 import {useI18n} from "../../I18nProvider";
 
 export type ClientMenuAction="delete"|"registerPayment"|"editProfile"|"paymentsHistory"|"emailsHistory";
-type Props={client:ClientRow|null;position:{top:number;left:number}|null;onClose:()=>void;onAction:(action:ClientMenuAction,client:ClientRow)=>void};
+type Props={client:ClientRow|null;position:{top:number;left:number}|null;onClose:()=>void;onAction:(action:ClientMenuAction,client:ClientRow)=>void;paymentEnabled?:boolean};
 
-export function ClientContextMenu({client,position,onClose,onAction}:Props){
+export function ClientContextMenu({client,position,onClose,onAction,paymentEnabled=true}:Props){
   const {t}=useI18n();
   const ref=useRef<HTMLDivElement|null>(null);
   const [adjustedTop,setAdjustedTop]=useState<number|null>(null),[isMobile,setIsMobile]=useState(false);
@@ -37,7 +37,7 @@ export function ClientContextMenu({client,position,onClose,onAction}:Props){
 
   if(!client||!position)return null;
   const items:{id:ClientMenuAction;label:string;icon:ComponentType<SVGProps<SVGSVGElement>>;tone?:"danger"}[]=[
-    {id:"registerPayment",label:t("menu.registerPayment"),icon:DollarSign},
+    ...(paymentEnabled?[{id:"registerPayment" as ClientMenuAction,label:t("menu.registerPayment"),icon:DollarSign}]:[]),
     {id:"editProfile",label:t("menu.editProfile"),icon:UserPlus},
     {id:"paymentsHistory",label:t("menu.paymentHistory"),icon:CreditCard},
     {id:"emailsHistory",label:t("menu.emailHistory"),icon:Mail},
