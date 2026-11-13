@@ -16,11 +16,13 @@ import type { PaymentType, SubscriptionState } from "@/lib/payments/types"
 import { formatPaymentMoney } from "@/lib/payments/format"
 import {frequencyLabel} from "@/lib/i18n"
 import {useI18n} from "../../I18nProvider"
-type Props={clients:ClientRow[];onClose:()=>void;onCreated:()=>void;preselectedClientId?:string;onSuccess?:(msg:string)=>void;onError?:(msg:string)=>void}
+import type {BusinessTool} from "@/lib/business-tools"
+type Props={clients:ClientRow[];onClose:()=>void;onCreated:()=>void;preselectedClientId?:string;enabledTools:BusinessTool[];onSuccess?:(msg:string)=>void;onError?:(msg:string)=>void}
 const inputClass="w-full rounded-br15 border border-n1 bg-bg1 px-p20 py-p10 fs-14 text-app"
-export default function NewPaymentModal({clients,onClose,onCreated,preselectedClientId}:Props){
+export default function NewPaymentModal({clients,onClose,onCreated,preselectedClientId,enabledTools}:Props){
  const {t,locale}=useI18n()
- const [clientId,setClientId]=useState(preselectedClientId??""),[chosenType,setType]=useState<PaymentType>("one_off")
+ const allowRecurring=enabledTools.includes("plans"),allowOneOff=enabledTools.includes("payments")
+ const [clientId,setClientId]=useState(preselectedClientId??""),[chosenType,setType]=useState<PaymentType>(allowOneOff?"one_off":"recurring")
  const submission=useSubmissionLock()
  const toast=useToast()
  const [saving,setSaving]=useState(false),[choice,setChoice]=useState("")
@@ -40,7 +42,8 @@ export default function NewPaymentModal({clients,onClose,onCreated,preselectedCl
  },[clientId,visible.from,visible.to,t])
  const remote=useRemoteData(`/api/clients/${clientId}/subscription?from=${visible.from}&to=${visible.to}`,t("payment.loadingClient"),t("payment.loadingClient"),Boolean(clientId),clientId,loadClient)
  const state=remote.data?.subscription??null,loading=remote.loading,loadError=remote.error
- const type=state&&!typeChoice.current.initialized&&!typeChoice.current.manual?defaultPaymentType(state.current):chosenType
+ const preferredType=(current:SubscriptionState["current"]):PaymentType=>allowRecurring&&allowOneOff?defaultPaymentType(current):allowRecurring?"recurring":"one_off"
+ const type=state&&!typeChoice.current.initialized&&!typeChoice.current.manual?preferredType(state.current):chosenType==="recurring"&&!allowRecurring&&allowOneOff?"one_off":chosenType==="one_off"&&!allowOneOff&&allowRecurring?"recurring":chosenType
  const historyMarkers=paymentHistoryMarkers(remote.data?.history??[],{from:visible.from,to:visible.to})
  const onVisible=useCallback((next:{from:string;to:string})=>{if(visible.from===next.from&&visible.to===next.to)return;setVisible(next);setSelectedIds([]);setChoice("");if(!(type==="recurring"&&!state?.current)){setAmount("");setDiscount("")}},[visible.from,visible.to,type,state])
  const selectedClient=clients.find(c=>c.id===clientId), a=state?.current
@@ -51,11 +54,11 @@ export default function NewPaymentModal({clients,onClose,onCreated,preselectedCl
  const periods=installmentPeriods(state?.installments??[],Boolean(state?.archivedAt))
  const pick=(id:string)=>{if(!state||loading||saving)return;const ids=toggleInstallment(state.installments,selectedIds,id);setSelectedIds(ids);setChoice("");setDiscount("");setAmount(String(state.installments.filter(i=>ids.includes(i.id)).reduce((sum,i)=>sum+Number(i.remaining),0)))}
  const eligible=state?.installments.filter(i=>i.status==="open"&&i.remaining>0&&(!state.archivedAt||i.due_date<=new Date().toISOString().slice(0,10)))??[]
- useEffect(()=>{if(!clientId||remote.status!=="success"||!state)return;if(typeChoice.current.clientId!==clientId)typeChoice.current={clientId,initialized:false,manual:false};if(!typeChoice.current.initialized){if(!typeChoice.current.manual)setType(defaultPaymentType(state.current));typeChoice.current.initialized=true}},[clientId,remote.status,state])
+ useEffect(()=>{if(!clientId||remote.status!=="success"||!state)return;if(typeChoice.current.clientId!==clientId)typeChoice.current={clientId,initialized:false,manual:false};if(!typeChoice.current.initialized){if(!typeChoice.current.manual)setType(preferredType(state.current));typeChoice.current.initialized=true}},[clientId,remote.status,state,allowRecurring,allowOneOff])
  const remainingBase=(selected.length?selected.reduce((sum,i)=>sum+Number(i.remaining),0):undefined)??(legacyDebt?state?.legacyDebt??0:Number(price))
  const remaining=Math.max(Math.round((remainingBase-Number(amount)-Number(discount))*100)/100,0)
  const over=type==="recurring"&&Number(amount)+Number(discount)>remainingBase
- const canSave=Boolean(clientId&&state&&!loading&&!loadError&&!over&&selected.length<=100&&validPaymentMoneyDraft(amount)&&validPaymentMoneyDraft(discount)&&Number(amount)>=0&&Number(discount)>=0&&Number.isFinite(Number(amount))&&Number.isFinite(Number(discount))&&(Number(amount)>0||Number(discount)>0)&&
+ const canSave=Boolean(clientId&&state&&!loading&&!loadError&&!over&&selected.length<=100&&(type==="recurring"?allowRecurring:allowOneOff)&&validPaymentMoneyDraft(amount)&&validPaymentMoneyDraft(discount)&&Number(amount)>=0&&Number(discount)>=0&&Number.isFinite(Number(amount))&&Number.isFinite(Number(discount))&&(Number(amount)>0||Number(discount)>0)&&
   (type==="one_off"?!state.archivedAt&&concept.trim()&&range.from&&validPaymentMoneyDraft(oneOffDebt):installment||legacyDebt||creating&&!state.archivedAt&&planId&&date&&(validPaymentMoneyDraft(price)&&Number(price)>0)))
  const save=async()=>{if(!canSave||saving)return;if(!submission.acquire())return;const operation=toast.start(t("payment.registering"));setSaving(true);try{
   const payload:Record<string,unknown>={clientId,paymentType:type,provider:"manual",amount:Number(amount),discount:Number(discount),receiptNote:note.trim()||undefined,concept:concept.trim()||undefined}
@@ -67,8 +70,9 @@ export default function NewPaymentModal({clients,onClose,onCreated,preselectedCl
  }catch{operation.error(t("payment.error"))}finally{submission.release();operation.close();setSaving(false)}}
  return <Modal size="large" onClose={()=>{if(!saving)onClose()}} header={<h2 className="fs-14 font-semibold">{t("payment.title")}</h2>} secondaryAction={{label:t("common.back"),onClick:onClose,disabled:saving}} primaryAction={{label:saving?t("payment.saving"):t("payment.title"),onClick:save,disabled:saving||!canSave}}>
   <div className="grid grid-cols-1 md:grid-cols-2 gap-p30"><div className="space-y-p10">
-   <ClientSearchSelect disabled={saving} clients={clients} selectedClientId={clientId} onSelectClient={id=>{typeChoice.current={clientId:id,initialized:false,manual:false};setType("one_off");setPlanId("");setPlanName("");setClientId(id);setOneOffDebt("");setChoice("");setSelectedIds([]);setAmount("");setDiscount("")}}/>
-   {state&&<Field label={t("payment.type")}><select disabled={loading||saving} className={inputClass} value={type} onChange={e=>{typeChoice.current.manual=true;setType(e.target.value as PaymentType)}}><option value="recurring">{t("payment.recurring")}</option><option value="one_off">{t("payment.oneOff")}</option></select></Field>}
+   <ClientSearchSelect disabled={saving} clients={clients} selectedClientId={clientId} onSelectClient={id=>{typeChoice.current={clientId:id,initialized:false,manual:false};setType(allowOneOff?"one_off":"recurring");setPlanId("");setPlanName("");setClientId(id);setOneOffDebt("");setChoice("");setSelectedIds([]);setAmount("");setDiscount("")}}/>
+   {state&&allowRecurring&&allowOneOff&&<Field label={t("payment.type")}><select disabled={loading||saving} className={inputClass} value={type} onChange={e=>{typeChoice.current.manual=true;setType(e.target.value as PaymentType)}}><option value="recurring">{t("payment.recurring")}</option><option value="one_off">{t("payment.oneOff")}</option></select></Field>}
+   {state&&!allowRecurring&&!allowOneOff&&<p className="rounded-br10 border border-n1 p-p10 fs-14 text-app-secondary">{t("tools.noDirectPayments")}</p>}
    {state&&loading&&<InlineLoader text={t("payment.refreshingInstallments")}/>}
    {!state&&loading&&<InlineLoader text={t("payment.loadingClient")}/>}{loadError&&<button className="btn-secondary" disabled={loading} onClick={()=>void remote.refresh()}>{t("payment.retryClient")}</button>}
    {state?.archivedAt&&<p className="fs-14 font-semibold">{t("payment.archivedClient")}</p>}
