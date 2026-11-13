@@ -23,6 +23,7 @@ import {useToast} from "./components/ToastProvider";
 import {LOADER_DELAY} from "@/lib/ui/toast-state";
 import type { Currency, PaymentProvider, PaymentType } from "@/lib/payments/types";
 import {useI18n} from "../I18nProvider";
+import {DEFAULT_BUSINESS_TOOLS,type BusinessTool} from "@/lib/business-tools";
 
 // === TYPES =======================================================================
 
@@ -75,6 +76,8 @@ export default function DashboardPage() {
   const [snapshots,setSnapshots]=useState<Partial<Record<ClientStatus,{clients:ClientRow[];currency:Currency}>>>({});
   const [settledStatus,setSettledStatus]=useState<ClientStatus|null>(null);
   const [deleting,setDeleting]=useState(false);
+  const [enabledTools,setEnabledTools]=useState<BusinessTool[]>([...DEFAULT_BUSINESS_TOOLS]);
+  const directPaymentsEnabled=enabledTools.includes("plans")||enabledTools.includes("payments");
 
   const [loading, setLoading] = useState(true);
   const [requestError,setRequestError]=useState<{status:ClientStatus;message:string}|null>(null);
@@ -289,9 +292,10 @@ export default function DashboardPage() {
         {/* HEADER */}
         <TopBar
           onClientsImported={handleClientsImported}
-          paymentReady={loaded}
+          paymentReady={loaded&&directPaymentsEnabled}
           onNewPayment={() => openNewPayment()}
           onNewClient={() => setShowNewClient(true)}
+          onToolsChange={setEnabledTools}
         />
 
         {/* STATS */}
@@ -332,7 +336,7 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        <MobileDashboardActions onNewPayment={() => openNewPayment()} onNewClient={() => setShowNewClient(true)} paymentReady={loaded} />
+        <MobileDashboardActions onNewPayment={() => openNewPayment()} onNewClient={() => setShowNewClient(true)} paymentReady={loaded&&directPaymentsEnabled} />
 
         {/* MODALS */}
         {showNewClient && (
@@ -346,6 +350,7 @@ export default function DashboardPage() {
           <NewPaymentModal
             clients={clients}
             preselectedClientId={paymentClientId}
+            enabledTools={enabledTools}
             onClose={closeNewPayment}
             onCreated={async () => {
               await refreshAfterMutation();
