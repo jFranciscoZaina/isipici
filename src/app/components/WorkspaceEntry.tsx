@@ -8,6 +8,46 @@ import {useI18n} from "../I18nProvider"
 type Workspace={ownerId:string;membershipId:string;name:string}
 type JoinChoice="choice"|"join"|"create"|"verify"
 type BusinessDraft={name:string;contactEmail:string;currency:"ARS"|"AUD";timezone:string;country:string;businessType:string}
+type SupportedCountry="Australia"|"Argentina"
+
+const COUNTRY_CONFIG:Record<SupportedCountry,{currency:"ARS"|"AUD";defaultTimezone:string;timezones:{value:string;label:string}[]}>={
+ Australia:{
+  currency:"AUD",
+  defaultTimezone:"Australia/Brisbane",
+  timezones:[
+   {value:"Australia/Brisbane",label:"Brisbane · Queensland"},
+   {value:"Australia/Sydney",label:"Sydney · NSW / ACT"},
+   {value:"Australia/Melbourne",label:"Melbourne · Victoria"},
+   {value:"Australia/Hobart",label:"Hobart · Tasmania"},
+   {value:"Australia/Adelaide",label:"Adelaide · South Australia"},
+   {value:"Australia/Darwin",label:"Darwin · Northern Territory"},
+   {value:"Australia/Perth",label:"Perth · Western Australia"},
+  ],
+ },
+ Argentina:{
+  currency:"ARS",
+  defaultTimezone:"America/Argentina/Buenos_Aires",
+  timezones:[
+   {value:"America/Argentina/Buenos_Aires",label:"Buenos Aires"},
+   {value:"America/Argentina/Cordoba",label:"Córdoba"},
+   {value:"America/Argentina/Mendoza",label:"Mendoza"},
+   {value:"America/Argentina/Salta",label:"Salta"},
+   {value:"America/Argentina/Jujuy",label:"Jujuy"},
+   {value:"America/Argentina/Tucuman",label:"Tucumán"},
+   {value:"America/Argentina/Catamarca",label:"Catamarca"},
+   {value:"America/Argentina/La_Rioja",label:"La Rioja"},
+   {value:"America/Argentina/San_Juan",label:"San Juan"},
+   {value:"America/Argentina/Rio_Gallegos",label:"Río Gallegos"},
+   {value:"America/Argentina/Ushuaia",label:"Ushuaia"},
+  ],
+ },
+}
+
+function countryFromTimezone(timezone:string):SupportedCountry|null{
+ if(timezone.startsWith("Australia/"))return "Australia"
+ if(timezone.startsWith("America/Argentina/"))return "Argentina"
+ return null
+}
 
 const field="w-full rounded-br15 border border-n1 bg-bg0 px-p20 py-p10 fs-14 text-app"
 const secondary="inline-flex w-full items-center justify-center rounded-full border border-n2 px-p20 py-p10 fs-14 font-medium text-app transition-colors hover:bg-bg1 disabled:opacity-50"
@@ -24,18 +64,37 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
  const [business,setBusiness]=useState<BusinessDraft>({
   name:"",
   contactEmail:googleEmail,
-  currency:"ARS",
-  timezone:"",
-  country:"",
+  currency:"AUD",
+  timezone:"Australia/Brisbane",
+  country:"Australia",
   businessType:"",
  })
  const lock=useSubmissionLock()
 
  useEffect(()=>{
-  if(mode!=="join"||business.timezone)return
-  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone
-  if(zone)setBusiness(current=>({...current,timezone:zone}))
- },[mode,business.timezone])
+  if(mode!=="join")return
+  const browserTimezone=Intl.DateTimeFormat().resolvedOptions().timeZone
+  const detectedCountry=countryFromTimezone(browserTimezone)
+  if(!detectedCountry)return
+  const config=COUNTRY_CONFIG[detectedCountry]
+  const timezone=config.timezones.some(item=>item.value===browserTimezone)?browserTimezone:config.defaultTimezone
+  setBusiness(current=>({
+   ...current,
+   country:detectedCountry,
+   currency:config.currency,
+   timezone,
+  }))
+ },[mode])
+
+ const changeCountry=(country:SupportedCountry)=>{
+  const config=COUNTRY_CONFIG[country]
+  setBusiness(current=>({
+   ...current,
+   country,
+   currency:config.currency,
+   timezone:config.defaultTimezone,
+  }))
+ }
 
  useEffect(()=>{
   if(mode!=="select")return
@@ -153,9 +212,9 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
     <div className="grid grid-cols-1 gap-p20 sm:grid-cols-2">
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary sm:col-span-2">{t("onboarding.businessName")}<input className={field} value={business.name} onChange={event=>setBusiness({...business,name:event.target.value})} required maxLength={200}/></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary sm:col-span-2">{t("onboarding.contactEmail")}<input className={field} type="email" value={business.contactEmail} onChange={event=>setBusiness({...business,contactEmail:event.target.value})} required maxLength={254}/><span>{t("onboarding.contactHelp")}</span></label>
-     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.currency")}<select className={field} value={business.currency} onChange={event=>setBusiness({...business,currency:event.target.value as "ARS"|"AUD"})}><option value="ARS">{t("admin.ars")}</option><option value="AUD">{t("admin.aud")}</option></select></label>
-     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.timezone")}<input className={field} value={business.timezone} onChange={event=>setBusiness({...business,timezone:event.target.value})} placeholder="Australia/Brisbane" maxLength={100}/></label>
-     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.country")}<input className={field} value={business.country} onChange={event=>setBusiness({...business,country:event.target.value})} maxLength={100}/></label>
+     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.country")}<select className={field} value={business.country} onChange={event=>changeCountry(event.target.value as SupportedCountry)}><option value="Australia">Australia</option><option value="Argentina">Argentina</option></select></label>
+     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.currency")}<input className={field} value={business.currency==="AUD"?t("admin.aud"):t("admin.ars")} readOnly aria-readonly="true"/></label>
+     <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.timezone")}<select className={field} value={business.timezone} onChange={event=>setBusiness({...business,timezone:event.target.value})}>{COUNTRY_CONFIG[business.country as SupportedCountry].timezones.map(zone=><option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.activity")}<input className={field} value={business.businessType} onChange={event=>setBusiness({...business,businessType:event.target.value})} maxLength={200}/></label>
     </div>
     <div className="flex flex-col-reverse gap-p10 sm:flex-row sm:justify-between"><button type="button" className={secondary+" sm:w-auto"} disabled={busy} onClick={()=>{setError(null);setStep("choice")}}>{t("common.back")}</button><button className="btn-primary justify-center" disabled={busy||!business.name.trim()||!business.contactEmail.trim()}>{busy?t("onboarding.preparing"):t("onboarding.createButton")}</button></div>
