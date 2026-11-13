@@ -12,7 +12,12 @@ export async function GET(req:NextRequest){
  const context=await getAccessContext(req)
  if(!context)return NextResponse.json({error:"No autorizado"},{status:401,headers})
  const {data,error}=await supabase.from("owners").select("enabled_tools").eq("id",context.ownerId).single()
- if(error||!data)return NextResponse.json({error:"Herramientas no disponibles"},{status:503,headers})
+ if(error){
+  const missing=error.code==="42703"||error.code==="PGRST204"
+  if(missing)return NextResponse.json({tools:["plans","payments"],migrationRequired:true},{headers})
+  return NextResponse.json({error:"Herramientas no disponibles"},{status:503,headers})
+ }
+ if(!data)return NextResponse.json({error:"Herramientas no disponibles"},{status:503,headers})
  return NextResponse.json({tools:data.enabled_tools},{headers})
 }
 
