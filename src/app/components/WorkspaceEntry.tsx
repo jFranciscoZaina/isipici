@@ -4,10 +4,12 @@ import {useEffect,useState} from "react"
 import InlineLoader from "../dashboard/components/InlineLoader"
 import {useSubmissionLock} from "../dashboard/components/useSubmissionLock"
 import {useI18n} from "../I18nProvider"
+import BusinessToolsSelector from "./BusinessToolsSelector"
+import {DEFAULT_BUSINESS_TOOLS,type BusinessTool} from "@/lib/business-tools"
 
 type Workspace={ownerId:string;membershipId:string;name:string}
 type JoinChoice="choice"|"join"|"create"|"verify"
-type BusinessDraft={name:string;contactEmail:string;currency:"ARS"|"AUD";timezone:string;country:string;businessType:string}
+type BusinessDraft={name:string;contactEmail:string;currency:"ARS"|"AUD";timezone:string;country:string;businessType:string;enabledTools:BusinessTool[]}
 type SupportedCountry="Australia"|"Argentina"
 
 const COUNTRY_CONFIG:Record<SupportedCountry,{currency:"ARS"|"AUD";defaultTimezone:string;timezones:{value:string;label:string}[]}>={
@@ -15,30 +17,30 @@ const COUNTRY_CONFIG:Record<SupportedCountry,{currency:"ARS"|"AUD";defaultTimezo
   currency:"AUD",
   defaultTimezone:"Australia/Brisbane",
   timezones:[
-   {value:"Australia/Brisbane",label:"Brisbane · Queensland"},
-   {value:"Australia/Sydney",label:"Sydney · NSW / ACT"},
-   {value:"Australia/Melbourne",label:"Melbourne · Victoria"},
-   {value:"Australia/Hobart",label:"Hobart · Tasmania"},
-   {value:"Australia/Adelaide",label:"Adelaide · South Australia"},
-   {value:"Australia/Darwin",label:"Darwin · Northern Territory"},
-   {value:"Australia/Perth",label:"Perth · Western Australia"},
+   {value:"Australia/Brisbane",label:"Brisbane · Queensland · GMT+10"},
+   {value:"Australia/Sydney",label:"Sydney · NSW / ACT · GMT+10 / +11 DST"},
+   {value:"Australia/Melbourne",label:"Melbourne · Victoria · GMT+10 / +11 DST"},
+   {value:"Australia/Hobart",label:"Hobart · Tasmania · GMT+10 / +11 DST"},
+   {value:"Australia/Adelaide",label:"Adelaide · South Australia · GMT+9:30 / +10:30 DST"},
+   {value:"Australia/Darwin",label:"Darwin · Northern Territory · GMT+9:30"},
+   {value:"Australia/Perth",label:"Perth · Western Australia · GMT+8"},
   ],
  },
  Argentina:{
   currency:"ARS",
   defaultTimezone:"America/Argentina/Buenos_Aires",
   timezones:[
-   {value:"America/Argentina/Buenos_Aires",label:"Buenos Aires"},
-   {value:"America/Argentina/Cordoba",label:"Córdoba"},
-   {value:"America/Argentina/Mendoza",label:"Mendoza"},
-   {value:"America/Argentina/Salta",label:"Salta"},
-   {value:"America/Argentina/Jujuy",label:"Jujuy"},
-   {value:"America/Argentina/Tucuman",label:"Tucumán"},
-   {value:"America/Argentina/Catamarca",label:"Catamarca"},
-   {value:"America/Argentina/La_Rioja",label:"La Rioja"},
-   {value:"America/Argentina/San_Juan",label:"San Juan"},
-   {value:"America/Argentina/Rio_Gallegos",label:"Río Gallegos"},
-   {value:"America/Argentina/Ushuaia",label:"Ushuaia"},
+   {value:"America/Argentina/Buenos_Aires",label:"Buenos Aires · GMT−3"},
+   {value:"America/Argentina/Cordoba",label:"Córdoba · GMT−3"},
+   {value:"America/Argentina/Mendoza",label:"Mendoza · GMT−3"},
+   {value:"America/Argentina/Salta",label:"Salta · GMT−3"},
+   {value:"America/Argentina/Jujuy",label:"Jujuy · GMT−3"},
+   {value:"America/Argentina/Tucuman",label:"Tucumán · GMT−3"},
+   {value:"America/Argentina/Catamarca",label:"Catamarca · GMT−3"},
+   {value:"America/Argentina/La_Rioja",label:"La Rioja · GMT−3"},
+   {value:"America/Argentina/San_Juan",label:"San Juan · GMT−3"},
+   {value:"America/Argentina/Rio_Gallegos",label:"Río Gallegos · GMT−3"},
+   {value:"America/Argentina/Ushuaia",label:"Ushuaia · GMT−3"},
   ],
  },
 }
@@ -68,6 +70,7 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
   timezone:"Australia/Brisbane",
   country:"Australia",
   businessType:"",
+  enabledTools:[...DEFAULT_BUSINESS_TOOLS],
  })
  const lock=useSubmissionLock()
 
@@ -216,8 +219,15 @@ export default function WorkspaceEntry({mode,googleEmail=""}:{mode:"join"|"selec
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.currency")}<input className={field} value={business.currency==="AUD"?t("admin.aud"):t("admin.ars")} readOnly aria-readonly="true"/></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.timezone")}<select className={field} value={business.timezone} onChange={event=>setBusiness({...business,timezone:event.target.value})}>{COUNTRY_CONFIG[business.country as SupportedCountry].timezones.map(zone=><option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
      <label className="flex flex-col gap-p5 fs-12 text-app-secondary">{t("onboarding.activity")}<input className={field} value={business.businessType} onChange={event=>setBusiness({...business,businessType:event.target.value})} maxLength={200}/></label>
+     <div className="flex flex-col gap-p10 sm:col-span-2">
+      <div>
+       <p className="fs-14 font-semibold text-app">{t("onboarding.toolsTitle")}</p>
+       <p className="mt-p5 fs-12 text-app-secondary">{t("onboarding.toolsHelp")}</p>
+      </div>
+      <BusinessToolsSelector value={business.enabledTools} onChange={enabledTools=>setBusiness({...business,enabledTools})} disabled={busy}/>
+     </div>
     </div>
-    <div className="flex flex-col-reverse gap-p10 sm:flex-row sm:justify-between"><button type="button" className={secondary+" sm:w-auto"} disabled={busy} onClick={()=>{setError(null);setStep("choice")}}>{t("common.back")}</button><button className="btn-primary justify-center" disabled={busy||!business.name.trim()||!business.contactEmail.trim()}>{busy?t("onboarding.preparing"):t("onboarding.createButton")}</button></div>
+    <div className="flex flex-col-reverse gap-p10 sm:flex-row sm:justify-between"><button type="button" className={secondary+" sm:w-auto"} disabled={busy} onClick={()=>{setError(null);setStep("choice")}}>{t("common.back")}</button><button className="btn-primary justify-center" disabled={busy||!business.name.trim()||!business.contactEmail.trim()||business.enabledTools.length===0}>{busy?t("onboarding.preparing"):t("onboarding.createButton")}</button></div>
    </form>}
 
    {step==="verify"&&<form className="flex flex-col gap-p20" onSubmit={event=>{event.preventDefault();void onboarding("complete")}}>
