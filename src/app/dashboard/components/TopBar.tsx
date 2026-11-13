@@ -60,7 +60,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
           const data = await res.json();
           setOwnerName(data.name);
           setModern(data.authKind==="user");
-          if(Array.isArray(data.enabled_tools))setEnabledTools(data.enabled_tools.filter((tool:unknown):tool is BusinessTool=>typeof tool==="string"&&["plans","events","payments"].includes(tool)));
+          if(Array.isArray(data.enabled_tools)){const tools=data.enabled_tools.filter((tool:unknown):tool is BusinessTool=>typeof tool==="string"&&["plans","events","payments"].includes(tool));setEnabledTools(tools.length?tools:[...DEFAULT_BUSINESS_TOOLS]);}
         } else {
           console.error("No se pudo cargar el owner logueado");
         }
@@ -304,7 +304,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
 
       {showCsv&&<ClientCsvModal onClose={()=>setShowCsv(false)} onImported={()=>onClientsImported?.()}/>}
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
-      {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}\n      {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={setEnabledTools}/>}
+      {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
+      {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={setEnabledTools}/>}
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
