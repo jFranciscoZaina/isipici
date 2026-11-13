@@ -306,7 +306,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
       {showCsv&&<ClientCsvModal onClose={()=>setShowCsv(false)} onImported={()=>onClientsImported?.()}/>}
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
-      {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={setEnabledTools}/>}
+      {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={tools=>{setEnabledTools(tools);onToolsChange?.(tools)}}/>}
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
