@@ -19,9 +19,10 @@ interface TopBarProps {
   onNewPayment: () => void;
   onNewClient: () => void;
   onClientsImported?:()=>void;
+  onToolsChange?:(tools:BusinessTool[])=>void;
 }
 
-export default function TopBar({ onNewPayment, onNewClient, onClientsImported, paymentReady=true }: TopBarProps) {
+export default function TopBar({ onNewPayment, onNewClient, onClientsImported, onToolsChange, paymentReady=true }: TopBarProps) {
   const {t}=useI18n();
   const [modern,setModern]=useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
           const data = await res.json();
           setOwnerName(data.name);
           setModern(data.authKind==="user");
-          if(Array.isArray(data.enabled_tools)){const tools=data.enabled_tools.filter((tool:unknown):tool is BusinessTool=>typeof tool==="string"&&["plans","events","payments"].includes(tool));setEnabledTools(tools.length?tools:[...DEFAULT_BUSINESS_TOOLS]);}
+          if(Array.isArray(data.enabled_tools)){const tools=data.enabled_tools.filter((tool:unknown):tool is BusinessTool=>typeof tool==="string"&&["plans","events","payments"].includes(tool));const next=tools.length?tools:[...DEFAULT_BUSINESS_TOOLS];setEnabledTools(next);onToolsChange?.(next);}
         } else {
           console.error("No se pudo cargar el owner logueado");
         }
@@ -146,10 +147,10 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
         <div className="flex items-center gap-p40">
           {!isMobile && (
             <div className="flex items-center gap-p20">
-              <button disabled={!paymentReady} onClick={onNewPayment} className="btn-primary">
+              {(enabledTools.includes("plans")||enabledTools.includes("payments"))&&<button disabled={!paymentReady} onClick={onNewPayment} className="btn-primary">
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
                 <span>{t("topbar.payment")}</span>
-              </button>
+              </button>}
               <button onClick={onNewClient} className="btn-primary">
                 <UserPlus className="h-4 w-4" strokeWidth={2} />
                 <span>{t("topbar.client")}</span>
@@ -255,7 +256,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
             </div>
 
             <div className="flex flex-col gap-p10">
-              <button
+              {(enabledTools.includes("plans")||enabledTools.includes("payments"))&&<button
                 disabled={!paymentReady}
                 onClick={() => {
                   setShowSheet(false);
@@ -265,7 +266,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, p
               >
                 <DollarSign className="h-4 w-4" strokeWidth={2} />
                 <span>{t("topbar.payment")}</span>
-              </button>
+              </button>}
 
               <button
                 onClick={() => {
