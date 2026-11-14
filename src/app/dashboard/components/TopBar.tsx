@@ -9,6 +9,7 @@ const PlansModal = dynamic(() => import("./PlansModal"));
 const TeamAccessModal = dynamic(() => import("./TeamAccessModal"));
 const BusinessToolsModal = dynamic(() => import("./BusinessToolsModal"));
 const EventsModal = dynamic(() => import("./EventsModal"));
+const ArchivedClientsModal = dynamic(() => import("./ArchivedClientsModal"));
 import ConfirmDialog from "./ConfirmDialog";
 import isipiciLogo from "../../isipici.svg";
 import LanguageSwitch from "../../LanguageSwitch";
@@ -36,6 +37,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
   const [showTeam,setShowTeam]=useState(false);
   const [showTools,setShowTools]=useState(false);
   const [showEvents,setShowEvents]=useState(false);
+  const [showArchived,setShowArchived]=useState(false);
   const [enabledTools,setEnabledTools]=useState<BusinessTool[]>([...DEFAULT_BUSINESS_TOOLS]);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const businessMenuRef=useRef<HTMLDivElement|null>(null);
@@ -125,6 +127,12 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
     setShowBusinessMenu(false);
     setShowSheet(false);
     setShowEvents(true);
+  };
+
+  const openArchived=()=>{
+    setShowBusinessMenu(false);
+    setShowSheet(false);
+    setShowArchived(true);
   };
 
   const askLogout=()=>{
@@ -217,6 +225,13 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
                     >
                       {t("topbar.csv")}
                     </button>
+                    <button
+                      role="menuitem"
+                      className="flex min-h-11 w-full items-center rounded-br10 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1"
+                      onClick={openArchived}
+                    >
+                      {t("topbar.archived")}
+                    </button>
                     {modern&&(
                       <>
                         <button
@@ -302,7 +317,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
                 {enabledTools.includes("plans")&&<button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openPlans}>{t("topbar.plans")}</button>}
                 {enabledTools.includes("events")&&<button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openEvents}>{t("topbar.events")}</button>}
                 <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTools}>{t("topbar.tools")}</button>
-                <button className={`flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1 ${modern?"border-b border-n1":""}`} onClick={openCsv}>{t("topbar.csv")}</button>
+                <button className="flex min-h-12 w-full items-center border-b border-n1 px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openCsv}>{t("topbar.csv")}</button>
+                <button className={`flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1 ${modern?"border-b border-n1":""}`} onClick={openArchived}>{t("topbar.archived")}</button>
                 {modern&&<>
                   <button className="flex min-h-12 w-full items-center px-p20 py-p10 text-left fs-14 text-app hover:bg-bg1" onClick={openTeam}>{t("topbar.team")}</button>
                 </>}
@@ -324,7 +340,8 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
       {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={tools=>{setEnabledTools(tools);onToolsChange?.(tools)}}/>}
-      {showEvents&&<EventsModal onClose={()=>setShowEvents(false)} onPaymentRecorded={onPaymentRecorded}/>} 
+      {showEvents&&<EventsModal onClose={()=>setShowEvents(false)} onPaymentRecorded={onPaymentRecorded}/>}
+      {showArchived&&<ArchivedClientsModal onClose={()=>setShowArchived(false)}/>} 
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
