@@ -171,6 +171,15 @@ export default function DashboardPage() {
     setStatus("inactive");
   };
 
+  const handleClientCreated=()=>{
+    setShowNewClient(false);
+    setSearchTerm("");
+    setCurrentPage(1);
+    setSnapshots({});
+    if(status==="new"){void fetchClients();return;}
+    setStatus("new");
+  };
+
   // === Stats =====================================================================
   const stats = useMemo(
     () => ({
@@ -344,7 +353,7 @@ export default function DashboardPage() {
         {showNewClient && (
           <NewClientModal
             onClose={() => setShowNewClient(false)}
-            onCreated={refreshAfterMutation}
+            onCreated={handleClientCreated}
           />
         )}
 
