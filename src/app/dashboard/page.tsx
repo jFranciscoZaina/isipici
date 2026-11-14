@@ -296,6 +296,7 @@ export default function DashboardPage() {
           onNewPayment={() => openNewPayment()}
           onNewClient={() => setShowNewClient(true)}
           onToolsChange={setEnabledTools}
+          onPaymentRecorded={()=>{void refreshAfterMutation()}}
         />
 
         {/* STATS */}
