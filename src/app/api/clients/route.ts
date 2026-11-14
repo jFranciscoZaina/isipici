@@ -154,16 +154,14 @@ export async function GET(req: NextRequest) {
     }
 
     const rows=((data ?? []) as SupabaseClientRow[])
-    const clientIds=rows.map(client=>client.id)
     const agreementActivity=new Map<string,number>()
     const eventActivity=new Map<string,number>()
 
-    if(statusParam!=="archived"&&clientIds.length){
+    if(statusParam!=="archived"&&rows.length){
       const agreements=await supabase
         .from("recurring_agreements")
         .select("client_id,created_at")
         .eq("owner_id",ownerId)
-        .in("client_id",clientIds)
 
       if(agreements.error){
         console.error("Supabase agreement activity error:",agreements.error)
@@ -179,7 +177,6 @@ export async function GET(req: NextRequest) {
         .from("event_participants")
         .select("client_id,event_id,created_at,status")
         .eq("owner_id",ownerId)
-        .in("client_id",clientIds)
         .neq("status","cancelled")
 
       const eventSchemaMissing=eventParticipants.error&&["42P01","42703","PGRST205"].includes(eventParticipants.error.code)
@@ -192,7 +189,7 @@ export async function GET(req: NextRequest) {
         const eventIds=[...new Set((eventParticipants.data??[]).map(item=>item.event_id))]
         const eventDates=new Map<string,number>()
         if(eventIds.length){
-          const events=await supabase.from("business_events").select("id,starts_at,status").eq("owner_id",ownerId).in("id",eventIds)
+          const events=await supabase.from("business_events").select("id,starts_at,status").eq("owner_id",ownerId)
           if(events.error){
             console.error("Supabase event date error:",events.error)
             return NextResponse.json({error:"Error fetching client activity"},{status:500})
