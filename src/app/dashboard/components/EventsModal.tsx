@@ -181,6 +181,7 @@ export default function EventsModal({onClose,onPaymentRecorded}:{onClose:()=>voi
    operation.success(t("events.personAdded"))
    resetParticipantForm();setAddingPerson(false)
    await loadParticipants(selectedEvent)
+   onPaymentRecorded?.()
   }catch(reason){
    const message=reason instanceof Error?reason.message:t("events.personError")
    setError(message);operation.error(message)
