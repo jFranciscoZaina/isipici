@@ -11,6 +11,7 @@ export const runtime = "nodejs"
 // -----------------------------------------------------------------------------
 // GET - Lista clientes con filtro active/inactive (para el owner logueado)
 // -----------------------------------------------------------------------------
+const NEW_CLIENT_DAYS = 7
 const INACTIVE_AFTER_DAYS = 21
 
 type SupabasePaymentRow = {
@@ -29,6 +30,7 @@ type SupabasePaymentRow = {
 
 type SupabaseClientRow = {
   currency: Currency
+  created_at?: string
   id: string
   name: string
   email: string | null
@@ -80,6 +82,7 @@ export async function GET(req: NextRequest) {
 
     const selectClause = `
       id,
+      created_at,
       name,
       email,
       phone,
@@ -150,7 +153,66 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const mapped = ((data ?? []) as SupabaseClientRow[]).map((client) => {
+    const rows=((data ?? []) as SupabaseClientRow[])
+    const clientIds=rows.map(client=>client.id)
+    const agreementActivity=new Map<string,number>()
+    const eventActivity=new Map<string,number>()
+
+    if(statusParam!=="archived"&&clientIds.length){
+      const agreements=await supabase
+        .from("recurring_agreements")
+        .select("client_id,created_at")
+        .eq("owner_id",ownerId)
+        .in("client_id",clientIds)
+
+      if(agreements.error){
+        console.error("Supabase agreement activity error:",agreements.error)
+        return NextResponse.json({error:"Error fetching client activity"},{status:500})
+      }
+
+      for(const agreement of agreements.data??[]){
+        const time=new Date(agreement.created_at).getTime()
+        if(Number.isFinite(time)&&time>(agreementActivity.get(agreement.client_id)??-Infinity))agreementActivity.set(agreement.client_id,time)
+      }
+
+      const eventParticipants=await supabase
+        .from("event_participants")
+        .select("client_id,event_id,created_at,status")
+        .eq("owner_id",ownerId)
+        .in("client_id",clientIds)
+        .neq("status","cancelled")
+
+      const eventSchemaMissing=eventParticipants.error&&["42P01","42703","PGRST205"].includes(eventParticipants.error.code)
+      if(eventParticipants.error&&!eventSchemaMissing){
+        console.error("Supabase event activity error:",eventParticipants.error)
+        return NextResponse.json({error:"Error fetching client activity"},{status:500})
+      }
+
+      if(!eventParticipants.error){
+        const eventIds=[...new Set((eventParticipants.data??[]).map(item=>item.event_id))]
+        const eventDates=new Map<string,number>()
+        if(eventIds.length){
+          const events=await supabase.from("business_events").select("id,starts_at,status").eq("owner_id",ownerId).in("id",eventIds)
+          if(events.error){
+            console.error("Supabase event date error:",events.error)
+            return NextResponse.json({error:"Error fetching client activity"},{status:500})
+          }
+          for(const event of events.data??[]){
+            if(event.status==="cancelled")continue
+            const time=new Date(event.starts_at).getTime()
+            if(Number.isFinite(time))eventDates.set(event.id,time)
+          }
+        }
+        for(const participant of eventParticipants.data??[]){
+          const created=new Date(participant.created_at).getTime()
+          const eventDate=eventDates.get(participant.event_id)??-Infinity
+          const time=Math.max(Number.isFinite(created)?created:-Infinity,eventDate)
+          if(Number.isFinite(time)&&time>(eventActivity.get(participant.client_id)??-Infinity))eventActivity.set(participant.client_id,time)
+        }
+      }
+    }
+
+    const mapped = rows.map((client) => {
       const payments = client.payments ?? []
 
       // Una pasada: último pago, última recurrencia e ingreso mensual.
@@ -169,32 +231,32 @@ export async function GET(req: NextRequest) {
       const currentDebt = client.legacy_debt_amount != null ? Number(client.legacy_debt_amount)+installmentDebt : Number(client.current_debt ?? lastRecurring?.debt ?? 0)
       const nextDue = (client.has_agreements && !client.has_active_agreement) || (client.recurring_agreements?.length && !client.recurring_agreements.some(a=>a.status === "active")) ? null : client.next_payment_date ?? lastRecurring?.next_payment_date ?? lastRecurring?.period_to ?? null
 
-      // calcular status: inactivo si nunca pagó o si pasó el umbral desde el ultimo pago/vencimiento
-      let computedStatus: "active" | "inactive" = "active"
-      const activityPayment = lastRecurring ?? lastPayment
-      const lastPaymentDate = activityPayment?.created_at
-        ? new Date(activityPayment.created_at)
-        : null
-      if (lastPaymentDate) lastPaymentDate.setHours(0, 0, 0, 0)
+      // Estado derivado:
+      // - new: primeros 7 días sin ninguna actividad relevante.
+      // - active: existe pago, suscripción/plan o participación en evento y sigue dentro de la ventana operativa.
+      // - inactive: nunca tuvo actividad y venció la ventana New, o pasaron 21 días desde la última referencia relevante.
+      let computedStatus: "new" | "active" | "inactive" = "active"
+      const paymentActivityTime=lastPayment?.created_at?new Date(lastPayment.created_at).getTime():-Infinity
+      const agreementActivityTime=agreementActivity.get(client.id)??-Infinity
+      const eventActivityTime=eventActivity.get(client.id)??-Infinity
+      const lastRelevantActivityTime=Math.max(paymentActivityTime,agreementActivityTime,eventActivityTime)
+      const hasRelevantActivity=Number.isFinite(lastRelevantActivityTime)
 
-      if (!lastPaymentDate) {
-        computedStatus = "inactive"
-      } else {
-        const inactiveThreshold = new Date(lastPaymentDate)
-        inactiveThreshold.setDate(
-          inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS
-        )
-        if (now > inactiveThreshold) computedStatus = "inactive"
-      }
-
-      if (nextDue) {
-        const due = fromCalendarDate(nextDue)!
-        due.setHours(0, 0, 0, 0)
-        const inactiveThreshold = new Date(due)
-        inactiveThreshold.setDate(
-          inactiveThreshold.getDate() + INACTIVE_AFTER_DAYS
-        )
-        if (now > inactiveThreshold) computedStatus = "inactive"
+      if(!hasRelevantActivity){
+        const createdTime=client.created_at?new Date(client.created_at).getTime():NaN
+        const newUntil=Number.isFinite(createdTime)?createdTime+NEW_CLIENT_DAYS*24*60*60*1000:-Infinity
+        computedStatus=now.getTime()<=newUntil?"new":"inactive"
+      }else{
+        let referenceTime=lastRelevantActivityTime
+        if(nextDue){
+          const due=fromCalendarDate(nextDue)
+          if(due){
+            due.setHours(0,0,0,0)
+            referenceTime=Math.max(referenceTime,due.getTime())
+          }
+        }
+        const inactiveAfter=referenceTime+INACTIVE_AFTER_DAYS*24*60*60*1000
+        computedStatus=now.getTime()>inactiveAfter?"inactive":"active"
       }
 
       return {
@@ -218,7 +280,7 @@ export async function GET(req: NextRequest) {
 
     const filtered =
       statusParam === "archived" ? mapped.filter(c=>c.archivedAt) :
-      statusParam === "active" || statusParam === "inactive"
+      statusParam === "new" || statusParam === "active" || statusParam === "inactive"
         ? mapped.filter((c) => !c.archivedAt && c.computedStatus === statusParam)
         : mapped.filter(c=>!c.archivedAt)
 
