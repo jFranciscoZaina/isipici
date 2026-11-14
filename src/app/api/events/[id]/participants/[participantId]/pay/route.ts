@@ -9,7 +9,7 @@ import type {CanonicalPayment} from "@/lib/payments/types"
 export const runtime="nodejs"
 export const maxDuration=60
 const headers={"Cache-Control":"private, no-store"}
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function performPOST(req:NextRequest,{params}:{params:Promise<{id:string;participantId:string}>}){
  if(!sameOrigin(req))return NextResponse.json({error:"No autorizado"},{status:401,headers})
