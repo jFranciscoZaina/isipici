@@ -277,8 +277,10 @@ export async function GET(req: NextRequest) {
 
     const filtered =
       statusParam === "archived" ? mapped.filter(c=>c.archivedAt) :
-      statusParam === "new" || statusParam === "active" || statusParam === "inactive"
-        ? mapped.filter((c) => !c.archivedAt && c.computedStatus === statusParam)
+      statusParam === "active"
+        ? mapped.filter((c) => !c.archivedAt && (c.computedStatus === "active" || c.computedStatus === "new")) :
+      statusParam === "inactive"
+        ? mapped.filter((c) => !c.archivedAt && c.computedStatus === "inactive")
         : mapped.filter(c=>!c.archivedAt)
 
     return NextResponse.json(filtered, { headers: { "X-Owner-Currency": owner.default_currency, "X-Dashboard-Source": legacySchema ? "legacy" : "summary", "Server-Timing": `dashboard;dur=${Date.now()-started}` } })
