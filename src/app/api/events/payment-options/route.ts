@@ -35,7 +35,7 @@ export async function GET(req:NextRequest){
  const now=new Date().toISOString()
  const {data:events,error:eventError}=await supabase
   .from("business_events")
-  .select("id,name,starts_at,location,status")
+  .select("id,name,starts_at,timezone,location,status")
   .eq("owner_id",context.ownerId)
   .in("id",eventIds)
   .gte("starts_at",now)
@@ -52,6 +52,7 @@ export async function GET(req:NextRequest){
    eventId:event.id,
    name:event.name,
    startsAt:event.starts_at,
+   timezone:event.timezone,
    location:event.location,
    amountDue:Number(participant.amount_due),
    currency:participant.currency,
