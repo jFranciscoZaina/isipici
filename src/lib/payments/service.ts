@@ -6,6 +6,36 @@ import { parsePayment, paymentId, PaymentError } from "./validation"
 import {receiptAllocations} from "./receipts"
 import type { CanonicalPayment } from "./types"
 
+export async function processPaymentReceipt(ownerId:string,payment:CanonicalPayment,queueReceipt=false){
+  let receiptStatus="not_sent"
+  let receiptJobId:string|undefined
+  try{
+    const ownerColumn=await ownedClientColumn(payment.client_id,ownerId)
+    if(!ownerColumn)return {receiptStatus,receiptJobId}
+    const {data:client,error:clientError}=await supabase.from("clients").select("name, email, next_payment_date").eq("id",payment.client_id).eq(ownerColumn,ownerId).single()
+    if(!clientError&&client?.email){
+      const {data:owner}=await supabase.from("owners").select("name").eq("id",ownerId).single()
+      const allocations=payment.recurring_agreement_id?await receiptAllocations(ownerId,payment.id):[]
+      const receiptInput={allocations,
+        ownerId,clientId:payment.client_id,deduplicationKey:`payment-receipt:${ownerId}:${payment.id}`,
+        to:client.email,clientName:client.name??"Cliente",ownerName:owner?.name??"Tu negocio",
+        amount:payment.amount,currency:payment.currency,dueDate:payment.payment_type==="one_off"?null:payment.recurring_agreement_id?client.next_payment_date:payment.next_payment_date,
+        paymentType:payment.payment_type??"recurring" as const,paymentDate:payment.created_at,
+        periodFrom:payment.period_from,periodTo:payment.period_to,
+        plan:payment.plan,concept:payment.concept,serviceDate:payment.service_date,
+        receiptNote:payment.receipt_note,remainingDebt:payment.debt,
+      }
+      const queued=queueReceipt?await enqueuePaymentReceiptEmail(receiptInput,payment.id):null
+      if(queued&&!queued.legacySchema){receiptStatus=queued.status;receiptJobId=queued.jobId}
+      else{
+        const email=await sendPaymentReceiptEmail(receiptInput)
+        receiptStatus=email.loggingError?"pending":email.status
+      }
+    }
+  }catch{receiptStatus="failed"}
+  return {receiptStatus,receiptJobId}
+}
+
 async function register(ownerId: string, input: unknown, source: "manual" | "provider", queueReceipt = false) {
   paymentId(ownerId, "Cuenta propietaria")
   const paymentInput = parsePayment(input, source)
@@ -32,31 +62,7 @@ async function register(ownerId: string, input: unknown, source: "manual" | "pro
   }
   const result = data as { payment: CanonicalPayment; duplicate: boolean }
   if (!result.payment?.id || typeof result.duplicate !== "boolean") throw new PaymentError("Respuesta de pago inválida", 503)
-  // Pago y snapshot confirmados. Ningún fallo de email cambia ese resultado.
-  let receiptStatus = "not_sent"
-  let receiptJobId: string | undefined
-  try {
-    const { data: client, error: clientError } = await supabase.from("clients").select("name, email, next_payment_date").eq("id", result.payment.client_id).eq(ownerColumn, ownerId).single()
-    if (!clientError && client?.email) {
-      const { data: owner } = await supabase.from("owners").select("name").eq("id", ownerId).single()
-      const allocations=result.payment.recurring_agreement_id?await receiptAllocations(ownerId,result.payment.id):[]
-      const receiptInput = { allocations,
-        ownerId, clientId: result.payment.client_id, deduplicationKey: `payment-receipt:${ownerId}:${result.payment.id}`,
-        to: client.email, clientName: client.name ?? "Cliente", ownerName: owner?.name ?? "Tu negocio",
-        amount: result.payment.amount, currency: result.payment.currency, dueDate: result.payment.payment_type === "one_off" ? null : result.payment.recurring_agreement_id ? client.next_payment_date : result.payment.next_payment_date,
-        paymentType: result.payment.payment_type ?? "recurring" as const, paymentDate: result.payment.created_at,
-        periodFrom: result.payment.period_from, periodTo: result.payment.period_to,
-        plan: result.payment.plan, concept: result.payment.concept, serviceDate: result.payment.service_date,
-        receiptNote: result.payment.receipt_note, remainingDebt: result.payment.debt,
-      }
-      const queued = queueReceipt ? await enqueuePaymentReceiptEmail(receiptInput, result.payment.id) : null
-      if (queued && !queued.legacySchema) { receiptStatus = queued.status; receiptJobId = queued.jobId }
-      else {
-        const email = await sendPaymentReceiptEmail(receiptInput)
-        receiptStatus = email.loggingError ? "pending" : email.status
-      }
-    }
-  } catch { receiptStatus = "failed" }
+  const {receiptStatus,receiptJobId}=await processPaymentReceipt(ownerId,result.payment,queueReceipt)
   return { ...result, receiptStatus, receiptJobId }
 }
 export function registerManualPayment(ownerId: string, input: unknown, options?: { queueReceipt: boolean }) { return register(ownerId, input, "manual", options?.queueReceipt ?? false) }
