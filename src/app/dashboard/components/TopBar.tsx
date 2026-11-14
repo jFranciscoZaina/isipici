@@ -21,9 +21,10 @@ interface TopBarProps {
   onNewClient: () => void;
   onClientsImported?:()=>void;
   onToolsChange?:(tools:BusinessTool[])=>void;
+  onPaymentRecorded?:()=>void;
 }
 
-export default function TopBar({ onNewPayment, onNewClient, onClientsImported, onToolsChange, paymentReady=true }: TopBarProps) {
+export default function TopBar({ onNewPayment, onNewClient, onClientsImported, onToolsChange, onPaymentRecorded, paymentReady=true }: TopBarProps) {
   const {t}=useI18n();
   const [modern,setModern]=useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
@@ -323,7 +324,7 @@ export default function TopBar({ onNewPayment, onNewClient, onClientsImported, o
       {showPlans&&<PlansModal onClose={()=>setShowPlans(false)}/>}
       {showTeam&&<TeamAccessModal onClose={()=>setShowTeam(false)}/>}
       {showTools&&<BusinessToolsModal onClose={()=>setShowTools(false)} onSaved={tools=>{setEnabledTools(tools);onToolsChange?.(tools)}}/>}
-      {showEvents&&<EventsModal onClose={()=>setShowEvents(false)}/>}
+      {showEvents&&<EventsModal onClose={()=>setShowEvents(false)} onPaymentRecorded={onPaymentRecorded}/>} 
       <ConfirmDialog
         open={confirmLogout}
         title={t("topbar.logoutTitle")}
