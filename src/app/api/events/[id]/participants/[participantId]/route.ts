@@ -6,7 +6,7 @@ import {withRequestAudit} from "@/lib/audit-request"
 
 export const runtime="nodejs"
 const headers={"Cache-Control":"private, no-store"}
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function performDELETE(req:NextRequest,{params}:{params:Promise<{id:string;participantId:string}>}){
  if(!sameOrigin(req))return NextResponse.json({error:"No autorizado"},{status:401,headers})
