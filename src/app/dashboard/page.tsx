@@ -42,6 +42,7 @@ export type ClientRow = {
   currency: Currency;
   hasPayments: boolean;
   archivedAt?: string | null;
+  computedStatus?: "new" | "active" | "inactive";
 };
 
 const emptyClients:ClientRow[]=[];
@@ -176,8 +177,8 @@ export default function DashboardPage() {
     setSearchTerm("");
     setCurrentPage(1);
     setSnapshots({});
-    if(status==="new"){void fetchClients();return;}
-    setStatus("new");
+    if(status==="active"){void fetchClients();return;}
+    setStatus("active");
   };
 
   // === Stats =====================================================================
