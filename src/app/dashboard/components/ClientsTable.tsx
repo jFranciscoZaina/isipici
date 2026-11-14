@@ -34,7 +34,7 @@ export default function ClientsTable({clients,status,loading,error,sortKey,sortD
    {!loading&&error&&<tr><td colSpan={6} className="px-p20 py-p20 text-center text-danger">{error}</td></tr>}
    {!loading&&!error&&clients.map(client=>{const due=fromCalendarDate(client.nextDue)??null;if(due)due.setHours(0,0,0,0);const isOverdue=!!due&&due<today;return <tr key={client.id} className="border-b border-[color:var(--n0)] fs-12 text-app transition hover:border-[color:var(--n2)]" onClick={e=>{if(window.innerWidth<450){e.stopPropagation();openMenu(client,e)}}}>
     <td className="pl-p50 pr-p20 py-p10">{isOverdue?<Minus className="h-4 w-4 stroke-[2.5] text-danger"/>:client.isMonthFullyPaid?<Check className="h-4 w-4 stroke-[2.5] text-app"/>:<X className="h-4 w-4 stroke-[2.5] text-danger"/>}</td>
-    <td className="px-p20 py-p10 fs-12 font-bold uppercase">{client.name}</td>
+    <td className="px-p20 py-p10 fs-12 font-bold uppercase"><span className="inline-flex items-center gap-p10"><span>{client.name}</span>{client.computedStatus==="new"&&<span className="rounded-full bg-[color:var(--color-accent-primary-soft)] px-p10 py-p5 fs-12 font-medium normal-case text-[color:var(--color-accent-primary)]">{t("search.new")}</span>}</span></td>
     <td className="px-p20 py-p10 fs-12 font-normal">{client.currentPlan??<span className="text-app-disabled">{t("table.noPlan")}</span>}</td>
     <td className="px-p20 py-p10 fs-12 font-normal">{client.currentDebt>0?formatPaymentMoney(client.currentDebt,client.currency):""}</td>
     <td className="px-p20 py-p10 fs-12 font-normal">{formatDateByLocale(client.nextDue,locale)}</td>
@@ -49,7 +49,7 @@ export default function ClientsTable({clients,status,loading,error,sortKey,sortD
    const due=fromCalendarDate(client.nextDue)??null;if(due)due.setHours(0,0,0,0);const isOverdue=!!due&&due<today;
    return <article key={client.id} className="flex items-stretch gap-p5 rounded-br10 border border-n1 bg-bg0 p-p10 shadow-sm">
     <button type="button" onClick={()=>onOpenDetail(client)} className="min-w-0 flex-1 rounded-br5 py-p5 text-left focus-visible:outline-2 focus-visible:outline-[color:var(--color-accent-primary)]">
-     <div className="flex items-start justify-between gap-p10"><span className="truncate fs-14 font-semibold uppercase text-app">{client.name}</span><span className="shrink-0 rounded-full bg-[color:var(--color-accent-primary-soft)] px-p10 py-p5 fs-12 font-medium text-[color:var(--color-accent-primary)]">{t(`search.${status}`)}</span></div>
+     <div className="flex items-start justify-between gap-p10"><span className="truncate fs-14 font-semibold uppercase text-app">{client.name}</span><span className="shrink-0 rounded-full bg-[color:var(--color-accent-primary-soft)] px-p10 py-p5 fs-12 font-medium text-[color:var(--color-accent-primary)]">{client.computedStatus==="new"?t("search.new"):t(`search.${status}`)}</span></div>
      <div className="mt-p5 flex flex-wrap items-center gap-x-p10 gap-y-p5 fs-12 text-app-secondary">
       <span>{client.currentPlan??t("table.noPlan")}</span>
       {client.currentDebt>0?<span className="font-medium text-danger">{t("common.debt")}: {formatPaymentMoney(client.currentDebt,client.currency)}</span>:client.isMonthFullyPaid?<span className="inline-flex items-center gap-p5"><Check className="h-3 w-3 text-[color:var(--status-paid)]"/>{t("detail.paid")}</span>:null}
