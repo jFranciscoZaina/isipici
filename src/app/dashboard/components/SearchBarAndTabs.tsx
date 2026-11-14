@@ -4,7 +4,7 @@ import React from "react";
 import { Search as SearchIcon } from "react-feather";
 import {useI18n} from "../../I18nProvider";
 
-export type ClientStatus = "active" | "new" | "inactive";
+export type ClientStatus = "active" | "inactive";
 
 export type SearchTabsAndPaginationProps = {
   available?: boolean;
@@ -32,7 +32,6 @@ export default function SearchTabsAndPagination({
       <div className="flex items-center justify-between gap-p5">
         {([
           ["active",t("search.active")],
-          ["new",t("search.new")],
           ["inactive",t("search.inactive")],
         ] as [ClientStatus,string][]).map(([value,label])=>(
           <button
