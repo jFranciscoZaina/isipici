@@ -4,7 +4,7 @@ import React from "react";
 import { Search as SearchIcon } from "react-feather";
 import {useI18n} from "../../I18nProvider";
 
-export type ClientStatus = "active" | "inactive" | "archived";
+export type ClientStatus = "active" | "inactive";
 
 export type SearchTabsAndPaginationProps = {
   available?: boolean;
@@ -33,7 +33,6 @@ export default function SearchTabsAndPagination({
         {([
           ["active",t("search.active")],
           ["inactive",t("search.inactive")],
-          ["archived",t("search.archived")],
         ] as [ClientStatus,string][]).map(([value,label])=>(
           <button
             key={value}
