@@ -22,6 +22,7 @@ async function performPOST(req:NextRequest,{params}:{params:Promise<{id:string;p
  if(lookupError||!participant)return NextResponse.json({error:"Participante no disponible"},{status:404,headers})
 
  let receiptNote:string|null=null
+ let paymentDate:string|null=null
  try{
   const body=await req.json().catch(()=>({}))
   if(body?.receiptNote!=null){
@@ -30,16 +31,18 @@ async function performPOST(req:NextRequest,{params}:{params:Promise<{id:string;p
   }
  }catch{return NextResponse.json({error:"Datos inválidos"},{status:400,headers})}
 
- const {data,error}=await supabase.rpc("event_register_participant_payment",{
+ const {data,error}=await supabase.rpc("event_register_participant_payment_v2",{
   p_owner_id:context.ownerId,
   p_participant_id:participantId,
+  p_payment_date:paymentDate,
   p_receipt_note:receiptNote,
  })
  if(error||!data){
   const code=error?.message??error?.code??""
-  const missing=code.includes("event_register_participant_payment")||error?.code==="42883"||error?.code==="PGRST202"
+  const missing=code.includes("event_register_participant_payment_v2")||error?.code==="42883"||error?.code==="PGRST202"
+  const future=code.includes("EVENT_PAYMENT_DATE_FUTURE")
   const conflict=code.includes("EVENT_PARTICIPANT_PAID_IMMUTABLE")||code.includes("EVENT_PARTICIPANT_UNAVAILABLE")||code.includes("EVENT_UNAVAILABLE")
-  return NextResponse.json({error:missing?"Falta aplicar la migración M25.":conflict?"El participante ya no está disponible para registrar este pago.":"No se pudo registrar el pago del evento."},{status:missing?503:conflict?409:500,headers})
+  return NextResponse.json({error:missing?"Falta aplicar la migración M26.":future?"No podés registrar un pago en una fecha futura.":conflict?"El participante ya no está disponible para registrar este pago.":"No se pudo registrar el pago del evento."},{status:missing?503:future?400:conflict?409:500,headers})
  }
 
  const payment=data.payment as CanonicalPayment
